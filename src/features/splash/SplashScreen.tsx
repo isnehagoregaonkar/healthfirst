@@ -1,11 +1,11 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 
 export function SplashScreen() {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Screen>
       <View style={styles.container}>
         <Image
           source={require('../../assets/logo/health-first-animation.gif')}
@@ -13,15 +13,11 @@ export function SplashScreen() {
           style={styles.logo}
         />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   container: {
     flex: 1,
     alignItems: 'center',

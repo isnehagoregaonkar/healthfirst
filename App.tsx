@@ -7,6 +7,7 @@
 
 import { StatusBar, useColorScheme } from 'react-native';
 import { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { SplashScreen } from './src/features/splash/SplashScreen';
 
@@ -25,10 +26,10 @@ function App() {
   }, []);
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       {showSplash ? <SplashScreen /> : <LoginScreen />}
-    </>
+    </SafeAreaProvider>
   );
 }
 
