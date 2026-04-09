@@ -14,12 +14,13 @@ import {
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 
-type LoginScreenProps = Readonly<{
-  onNavigateToRegister?: () => void;
+type RegisterScreenProps = Readonly<{
+  onNavigateToLogin: () => void;
 }>;
 
-export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
+export function RegisterScreen({ onNavigateToLogin }: RegisterScreenProps) {
   const { width } = useWindowDimensions();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showErrors, setShowErrors] = useState(false);
@@ -34,12 +35,17 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
     return width - 32;
   }, [width]);
 
+  const nameError = showErrors && name.trim().length === 0;
   const emailError = showErrors && email.trim().length === 0;
   const passwordError = showErrors && password.trim().length === 0;
 
-  const handleLogin = () => {
+  const handleRegister = () => {
     setShowErrors(true);
-    if (email.trim().length === 0 || password.trim().length === 0) {
+    if (
+      name.trim().length === 0 ||
+      email.trim().length === 0 ||
+      password.trim().length === 0
+    ) {
       return;
     }
   };
@@ -61,10 +67,25 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
               style={styles.logo}
             />
 
-            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.title}>Create account</Text>
             <Text style={styles.subtitle}>
-              Sign in to continue your health journey.
+              Sign up to start your health journey.
             </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Your full name"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="words"
+                style={[styles.input, nameError && styles.inputError]}
+              />
+              {nameError ? (
+                <Text style={styles.errorText}>Name is required.</Text>
+              ) : null}
+            </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
@@ -87,7 +108,7 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder="Choose a password"
                 placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 style={[styles.input, passwordError && styles.inputError]}
@@ -97,22 +118,16 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
               ) : null}
             </View>
 
-            <Pressable style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginText}>Log In</Text>
+            <Pressable style={styles.primaryButton} onPress={handleRegister}>
+              <Text style={styles.primaryButtonText}>Register</Text>
             </Pressable>
 
-            <Pressable style={styles.secondaryAction}>
-              <Text style={styles.secondaryActionText}>Forgot password?</Text>
-            </Pressable>
-
-            {onNavigateToRegister ? (
-              <View style={styles.registerRow}>
-                <Text style={styles.registerPrompt}>Don't have an account? </Text>
-                <Pressable onPress={onNavigateToRegister}>
-                  <Text style={styles.registerLink}>Register</Text>
-                </Pressable>
-              </View>
-            ) : null}
+            <View style={styles.footerRow}>
+              <Text style={styles.footerPrompt}>Already have an account? </Text>
+              <Pressable onPress={onNavigateToLogin}>
+                <Text style={styles.footerLink}>Log in</Text>
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -190,39 +205,30 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 12,
   },
-  loginButton: {
+  primaryButton: {
     marginTop: 6,
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  loginText: {
+  primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
-  secondaryAction: {
-    marginTop: 14,
-    alignItems: 'center',
-  },
-  secondaryActionText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  registerRow: {
+  footerRow: {
     marginTop: 18,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  registerPrompt: {
+  footerPrompt: {
     fontSize: 14,
     color: colors.textSecondary,
   },
-  registerLink: {
+  footerLink: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary,
