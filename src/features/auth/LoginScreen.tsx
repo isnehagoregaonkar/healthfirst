@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 
 export function LoginScreen() {
@@ -41,7 +41,7 @@ export function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Screen>
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -103,15 +103,11 @@ export function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   keyboardAvoidingView: {
     flex: 1,
   },
