@@ -1,5 +1,7 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
+import { CustomDrawerContent } from './CustomDrawerContent';
+import { DrawerMenuButton } from './DrawerMenuButton';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { ExerciseHistoryScreen } from '../features/exercise/ExerciseHistoryScreen';
 import { IntermittentFastingScreen } from '../features/fasting/IntermittentFastingScreen';
@@ -23,19 +25,25 @@ import type { DrawerParamList } from './types';
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
+function drawerHeaderMenuLeft() {
+  return <DrawerMenuButton />;
+}
+
 export function RootDrawer() {
   return (
     <Drawer.Navigator
       initialRouteName="Dashboard"
+      drawerContent={CustomDrawerContent}
       screenOptions={{
         headerShown: true,
+        headerLeft: drawerHeaderMenuLeft,
         drawerActiveTintColor: colors.primary,
         drawerInactiveTintColor: colors.textSecondary,
         drawerLabelStyle: { marginLeft: -8, fontSize: 15 },
         headerTintColor: colors.textPrimary,
         headerStyle: { backgroundColor: colors.surface },
         headerTitleStyle: { fontWeight: '700', fontSize: 18, color: colors.textPrimary },
-        drawerStyle: { backgroundColor: colors.surface },
+        drawerStyle: { backgroundColor: colors.surface, width: '86%' },
       }}
     >
       <Drawer.Screen

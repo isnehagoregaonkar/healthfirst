@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { signIn } from '../../../services/auth';
 
 export function useLoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('goregaonkarsneha98@gmail.com');
+  const [password, setPassword] = useState('Sneha@1998');
   const [showErrors, setShowErrors] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
