@@ -7,9 +7,19 @@ type ScreenProps = Readonly<{
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   backgroundColor?: string;
+  /**
+   * When false, skips top safe-area padding (use under React Navigation’s opaque header
+   * so content isn’t pushed down twice).
+   */
+  applyTopSafeArea?: boolean;
 }>;
 
-export function Screen({ children, style, backgroundColor = colors.background }: ScreenProps) {
+export function Screen({
+  children,
+  style,
+  backgroundColor = colors.background,
+  applyTopSafeArea = true,
+}: ScreenProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -18,7 +28,7 @@ export function Screen({ children, style, backgroundColor = colors.background }:
         styles.container,
         {
           backgroundColor,
-          paddingTop: insets.top,
+          paddingTop: applyTopSafeArea ? insets.top : 0,
           paddingBottom: insets.bottom,
         },
         style,
