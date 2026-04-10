@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,14 +9,10 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
-import {
-  addWaterIntake,
-  DEFAULT_DAILY_GOAL_ML,
-  getTodayTotalMl,
-  getTotalMlForLocalDay,
-} from '../../services/water';
 import { colors } from '../../theme/tokens';
-import { addCalendarDays, formatDayShort, getWaterDateNavLabels, startOfLocalDay } from './waterDayUtils';
+import { formatWaterEntryTime } from './waterDayUtils';
+import { useWaterIntakeScreen } from './hooks/useWaterIntakeScreen';
+import { WaterMiniCharts } from './WaterMiniCharts';
 import { WaterDropletProgress } from './WaterDropletProgress';
 
 const QUICK_ADD_ML = [250, 500, 1000] as const;
@@ -24,97 +20,30 @@ const QUICK_ADD_ML = [250, 500, 1000] as const;
 const WATER_BLUE = '#3B82F6';
 const WATER_TRACK = '#E5E7EB';
 
-function clampPct(n: number): number {
-  return Math.min(100, Math.max(0, n));
-}
-
 export function WaterIntakeScreen() {
-  const goalMl = DEFAULT_DAILY_GOAL_ML;
-  const [selectedDay, setSelectedDay] = useState(() => startOfLocalDay(new Date()));
-  const [totalMl, setTotalMl] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    goalMl,
+    dateNav,
+    goPrevDay,
+    goNextDay,
+    loading,
+    error,
+    totalMl,
+    entries,
+    weekTotals,
+    percent,
+    leftMl,
+    coachingLines,
+    dropletPalette,
+    timelineEntries,
+    compareSlice,
+    adding,
+    deletingId,
+    addMl,
+    confirmRemoveEntry,
+  } = useWaterIntakeScreen();
 
-  const { leftLabel, rightLabel, centerLabel, canGoNext, isViewingToday } = useMemo(
-    () => getWaterDateNavLabels(selectedDay),
-    [selectedDay],
-  );
-
-  const percent = useMemo(
-    () => clampPct(goalMl > 0 ? (totalMl / goalMl) * 100 : 0),
-    [totalMl, goalMl],
-  );
-
-  const leftMl = Math.max(0, goalMl - totalMl);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      setTotalMl(0);
-      setError(null);
-      const result = await getTotalMlForLocalDay(selectedDay);
-      if (!alive) {
-        return;
-      }
-      if ('error' in result) {
-        setError(result.error.message);
-      } else {
-        setTotalMl(result.totalMl);
-      }
-      setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [selectedDay]);
-
-  const goPrevDay = useCallback(() => {
-    setSelectedDay((d) => addCalendarDays(d, -1));
-  }, []);
-
-  const goNextDay = useCallback(() => {
-    if (!canGoNext) {
-      return;
-    }
-    setSelectedDay((d) => addCalendarDays(d, 1));
-  }, [canGoNext]);
-
-  const onAddMl = useCallback(
-    async (ml: number) => {
-      if (!isViewingToday) {
-        return;
-      }
-      setError(null);
-      const previous = totalMl;
-      setTotalMl(previous + ml);
-      setAdding(true);
-
-      try {
-        const result = await addWaterIntake(ml);
-        if (!result.ok) {
-          setTotalMl(previous);
-          setError(result.error.message);
-          return;
-        }
-        const refreshed = await getTodayTotalMl();
-        if ('totalMl' in refreshed) {
-          setTotalMl(refreshed.totalMl);
-        } else {
-          setError(refreshed.error.message);
-          setTotalMl(previous);
-        }
-      } finally {
-        setAdding(false);
-      }
-    },
-    [totalMl, isViewingToday],
-  );
-
-  const progressTitle = isViewingToday
-    ? "Today's progress"
-    : `Progress · ${formatDayShort(selectedDay)}`;
+  const { leftLabel, rightLabel, centerLabel, canGoNext, isViewingToday } = dateNav;
 
   return (
     <Screen applyTopSafeArea={false}>
@@ -129,7 +58,7 @@ export function WaterIntakeScreen() {
           </View>
         ) : null}
 
-        <View style={styles.dateCard}>
+        <View style={styles.dateHeader}>
           <View style={styles.dateNav}>
             <Pressable
               accessibilityRole="button"
@@ -137,7 +66,7 @@ export function WaterIntakeScreen() {
               onPress={goPrevDay}
               style={({ pressed }) => [styles.dateNavSide, pressed && styles.dateNavPressed]}
             >
-              <Icon name="chevron-left" size={26} color={colors.primary} />
+              <Icon name="chevron-left" size={28} color={colors.primary} />
               <Text style={styles.dateNavSideText} numberOfLines={2}>
                 {leftLabel}
               </Text>
@@ -164,7 +93,7 @@ export function WaterIntakeScreen() {
               </Text>
               <Icon
                 name="chevron-right"
-                size={26}
+                size={28}
                 color={canGoNext ? colors.primary : colors.border}
               />
             </Pressable>
@@ -208,20 +137,32 @@ export function WaterIntakeScreen() {
                 </View>
               </View>
 
-              <View style={styles.progressSection}>
-                <View style={styles.barRow}>
-                  <Text style={styles.barTitle}>{progressTitle}</Text>
-                  <Text style={styles.barPercent}>{Math.round(percent)}%</Text>
-                </View>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${percent}%` }]} />
-                </View>
-                <Text style={styles.barCaption}>
-                  {totalMl >= goalMl
-                    ? 'Daily goal met'
-                    : `${Math.round(100 - percent)}% of your goal still to go`}
+              {entries.length > 0 ? (
+                <Text style={styles.lastDrink}>
+                  Last drink · {formatWaterEntryTime(entries[0].createdAt)}
                 </Text>
-              </View>
+              ) : (
+                <Text style={styles.lastDrinkMuted}>No drinks logged for this day yet.</Text>
+              )}
+
+              {coachingLines.length > 0 ? (
+                <View style={styles.coachingBlock}>
+                  {coachingLines.map((line, idx) => (
+                    <View
+                      key={`${line.kind}-${idx}`}
+                      style={[
+                        styles.coachingCard,
+                        line.kind === 'almostThere' && styles.coachingAlmost,
+                        line.kind === 'behindSchedule' && styles.coachingBehind,
+                        line.kind === 'goalMet' && styles.coachingGoal,
+                      ]}
+                    >
+                      <Text style={styles.coachingTitle}>{line.title}</Text>
+                      {line.subtitle ? <Text style={styles.coachingSub}>{line.subtitle}</Text> : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </>
           )}
         </View>
@@ -235,7 +176,9 @@ export function WaterIntakeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Add ${ml} milliliters`}
                 disabled={adding || loading || !isViewingToday}
-                onPress={() => void onAddMl(ml)}
+                onPress={() => {
+                  addMl(ml).catch(() => {});
+                }}
                 style={({ pressed }) => [
                   styles.addButton,
                   pressed && styles.addButtonPressed,
@@ -253,6 +196,74 @@ export function WaterIntakeScreen() {
           ) : null}
           {isViewingToday ? null : (
             <Text style={styles.pastDayHint}>Switch to Today to log water.</Text>
+          )}
+        </View>
+
+        {!loading && weekTotals.length > 0 ? (
+          <View style={styles.insightsWrap}>
+            {compareSlice ? (
+              <Text style={styles.insightsSectionTitle}>{compareSlice.compareTitle}</Text>
+            ) : null}
+            <View style={styles.insightsCard}>
+              {compareSlice ? (
+                <WaterMiniCharts.Compare
+                  showTitle={false}
+                  title={compareSlice.compareTitle}
+                  leftLabel={compareSlice.leftLabel}
+                  rightLabel={compareSlice.rightLabel}
+                  leftMl={compareSlice.prev.totalMl}
+                  rightMl={compareSlice.current.totalMl}
+                  goalMl={goalMl}
+                />
+              ) : null}
+              {compareSlice ? <View style={styles.chartDivider} /> : null}
+              <WaterMiniCharts.Week days={weekTotals} goalMl={goalMl} />
+            </View>
+          </View>
+        ) : null}
+
+        <View style={styles.timelineSection}>
+          <Text style={styles.sectionTitle}>Intake timeline</Text>
+          {loading ? (
+            <Text style={styles.mutedBody}>Loading…</Text>
+          ) : timelineEntries.length === 0 ? (
+            <Text style={styles.mutedBody}>No intake events for this day.</Text>
+          ) : (
+            <View style={styles.timelineCard}>
+              {timelineEntries.map((entry, index) => {
+                const isLast = index === timelineEntries.length - 1;
+                const busy = deletingId === entry.id;
+                return (
+                  <View key={entry.id} style={styles.tlRow}>
+                    <View style={styles.tlAxis}>
+                      <View style={[styles.tlDot, { backgroundColor: dropletPalette.accent }]} />
+                      {!isLast ? <View style={styles.tlLine} /> : null}
+                    </View>
+                    <View style={styles.tlMain}>
+                      <Text style={styles.tlTime}>{formatWaterEntryTime(entry.createdAt)}</Text>
+                      <Text style={styles.tlAmount}>+{entry.amountMl} ml</Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${entry.amountMl} milliliters`}
+                      disabled={busy || adding}
+                      onPress={() => confirmRemoveEntry(entry)}
+                      style={({ pressed }) => [
+                        styles.tlDelete,
+                        (busy || adding) && styles.tlDeleteDisabled,
+                        pressed && !busy && !adding && styles.tlDeletePressed,
+                      ]}
+                    >
+                      {busy ? (
+                        <ActivityIndicator size="small" color={colors.error} />
+                      ) : (
+                        <Icon name="trash-can-outline" size={22} color={colors.error} />
+                      )}
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -292,50 +303,203 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  dateCard: {
-    ...cardChrome,
-    marginBottom: 12,
-    paddingVertical: 14,
+  dateHeader: {
+    paddingTop: 4,
+    paddingBottom: 10,
+    marginBottom: 0,
   },
   progressCard: {
     ...cardChrome,
+    marginTop: 4,
     marginBottom: 14,
+  },
+  lastDrink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  lastDrinkMuted: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  coachingBlock: {
+    marginTop: 4,
+    gap: 10,
+  },
+  coachingCard: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  coachingAlmost: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  coachingBehind: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  coachingGoal: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  coachingTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  coachingSub: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  insightsWrap: {
+    marginTop: 22,
+  },
+  insightsSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  insightsCard: {
+    ...cardChrome,
+    marginBottom: 14,
+    gap: 0,
+  },
+  chartDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  mutedBody: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  timelineSection: {
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  timelineCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  tlRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    minHeight: 48,
+  },
+  tlAxis: {
+    width: 22,
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  tlDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  tlLine: {
+    flex: 1,
+    width: 2,
+    marginTop: 2,
+    minHeight: 28,
+    backgroundColor: WATER_TRACK,
+    borderRadius: 1,
+  },
+  tlMain: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingLeft: 8,
+    paddingRight: 6,
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  tlTime: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  tlAmount: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  tlDelete: {
+    padding: 8,
+    marginTop: 4,
+    borderRadius: 10,
+  },
+  tlDeletePressed: {
+    opacity: 0.75,
+    backgroundColor: '#FEF2F2',
+  },
+  tlDeleteDisabled: {
+    opacity: 0.45,
   },
   dateNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 2,
+    minHeight: 52,
+    paddingHorizontal: 0,
   },
   dateNavSide: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 2,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   dateNavSideEnd: {
     justifyContent: 'flex-end',
   },
   dateNavSideText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.textPrimary,
+    lineHeight: 17,
   },
   dateNavSideTextDisabled: {
     color: colors.textSecondary,
     fontWeight: '600',
   },
   dateNavCenter: {
-    paddingHorizontal: 8,
-    minWidth: 100,
+    paddingHorizontal: 12,
+    minWidth: 112,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   dateNavCenterText: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '800',
     color: colors.textPrimary,
+    letterSpacing: -0.2,
   },
   dateNavDisabled: {
     opacity: 0.85,
@@ -421,46 +585,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '700',
   },
-  progressSection: {
-    marginTop: 0,
-  },
-  barRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 10,
-  },
-  barTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    flex: 1,
-    paddingRight: 8,
-  },
-  barPercent: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: WATER_BLUE,
-  },
-  barCaption: {
-    marginTop: 8,
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  barTrack: {
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: WATER_TRACK,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 8,
-    backgroundColor: WATER_BLUE,
-  },
   quickAddSection: {
     paddingTop: 4,
+    marginBottom: 10,
   },
   quickAddTitle: {
     fontSize: 15,
