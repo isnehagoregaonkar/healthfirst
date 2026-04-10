@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MealType } from '../../services/meals';
+import type { LogMealItemPayload, MealType } from '../../services/meals';
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import { formatDayShort, isSameLocalDay } from '../water/waterDayUtils';
@@ -77,11 +77,11 @@ export function MealTrackingScreen() {
   );
 
   const handleSubmitFood = useCallback(
-    async (name: string, quantity: string, calories: string) => {
+    async (item: LogMealItemPayload) => {
       if (!foodModalMealId) {
         return 'No meal selected.';
       }
-      return submitFoodItem(foodModalMealId, name, quantity, calories);
+      return submitFoodItem(foodModalMealId, item);
     },
     [foodModalMealId, submitFoodItem],
   );

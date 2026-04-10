@@ -1,22 +1,24 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MealWithItems } from '../../../services/meals';
+import type { LogMealItemPayload, MealWithItems } from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY, MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI, mealCard, mealTypography } from '../mealUiTheme';
 import { MEAL_TYPE_LABEL } from '../mealConstants';
 import { formatMealLogTime } from '../mealFormat';
+import { UsdaFoodSearchSection } from './UsdaFoodSearchSection';
 
 type AddFoodItemFormProps = Readonly<{
   activeMeal: MealWithItems | null;
   submitting: boolean;
-  onSubmit: (name: string, quantity: string, calories: string) => Promise<string | null>;
-  /** Slimmer layout for bottom sheet modal. */
+  onSubmit: (item: LogMealItemPayload) => Promise<string | null>;
   variant?: 'standalone' | 'modal';
 }>;
 
 const PLACEHOLDER = '#9CA3AF';
 const INPUT_BG = '#F3F4F6';
+
+type EntryMode = 'usda' | 'manual';
 
 export function AddFoodItemForm({
   activeMeal,
@@ -25,14 +27,30 @@ export function AddFoodItemForm({
   variant = 'standalone',
 }: AddFoodItemFormProps) {
   const inModal = variant === 'modal';
+  const [mode, setMode] = useState<EntryMode>('usda');
+
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [calories, setCalories] = useState('');
   const [fieldError, setFieldError] = useState<string | null>(null);
 
-  const handleAdd = useCallback(async () => {
+  const handleManualAdd = useCallback(async () => {
     setFieldError(null);
-    const err = await onSubmit(name, quantity, calories);
+    const cal = Number.parseInt(calories.replaceAll(/\s/g, ''), 10);
+    if (Number.isNaN(cal)) {
+      setFieldError('Enter calories as a whole number.');
+      return;
+    }
+    const err = await onSubmit({
+      name: name.trim(),
+      quantity: quantity.trim(),
+      calories: cal,
+      usdaFdcId: null,
+      proteinG: null,
+      carbsG: null,
+      fatG: null,
+      fiberG: null,
+    });
     if (err) {
       setFieldError(err);
       return;
@@ -79,40 +97,96 @@ export function AddFoodItemForm({
       {inModal ? null : (
         <>
           <Text style={styles.formTitle}>Add a food</Text>
-          <Text style={[mealTypography.body, styles.formSub]}>Name, portion, and calories — quick to log.</Text>
+          <Text style={[mealTypography.body, styles.formSub]}>USDA search or manual entry.</Text>
         </>
       )}
 
-      <Text style={[mealTypography.caption, styles.fieldLabel]}>Name</Text>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. Greek yogurt & berries"
-        placeholderTextColor={PLACEHOLDER}
-        editable={!submitting}
-        style={styles.input}
-      />
+      <View style={styles.modeRow}>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mode === 'usda' }}
+          onPress={() => {
+            setMode('usda');
+            setFieldError(null);
+          }}
+          style={({ pressed }) => [
+            styles.modeTab,
+            mode === 'usda' && styles.modeTabOn,
+            pressed && styles.modeTabPressed,
+          ]}
+        >
+          <Icon name="food-apple-outline" size={18} color={mode === 'usda' ? MEAL_PRIMARY : colors.textSecondary} />
+          <Text style={[styles.modeTabText, mode === 'usda' && styles.modeTabTextOn]}>USDA</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mode === 'manual' }}
+          onPress={() => {
+            setMode('manual');
+            setFieldError(null);
+          }}
+          style={({ pressed }) => [
+            styles.modeTab,
+            mode === 'manual' && styles.modeTabOn,
+            pressed && styles.modeTabPressed,
+          ]}
+        >
+          <Icon name="pencil-outline" size={18} color={mode === 'manual' ? MEAL_PRIMARY : colors.textSecondary} />
+          <Text style={[styles.modeTabText, mode === 'manual' && styles.modeTabTextOn]}>Manual</Text>
+        </Pressable>
+      </View>
 
-      <Text style={[mealTypography.caption, styles.fieldLabel]}>Quantity</Text>
-      <TextInput
-        value={quantity}
-        onChangeText={setQuantity}
-        placeholder="e.g. 1 bowl, 2 eggs"
-        placeholderTextColor={PLACEHOLDER}
-        editable={!submitting}
-        style={styles.input}
-      />
+      {mode === 'usda' ? (
+        <UsdaFoodSearchSection submitting={submitting} onSubmitPayload={onSubmit} />
+      ) : (
+        <>
+          <Text style={[mealTypography.caption, styles.fieldLabel]}>Name</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Homemade soup"
+            placeholderTextColor={PLACEHOLDER}
+            editable={!submitting}
+            style={styles.input}
+          />
 
-      <Text style={[mealTypography.caption, styles.fieldLabel]}>Calories</Text>
-      <TextInput
-        value={calories}
-        onChangeText={setCalories}
-        placeholder="e.g. 320"
-        placeholderTextColor={PLACEHOLDER}
-        keyboardType="number-pad"
-        editable={!submitting}
-        style={styles.input}
-      />
+          <Text style={[mealTypography.caption, styles.fieldLabel]}>Quantity</Text>
+          <TextInput
+            value={quantity}
+            onChangeText={setQuantity}
+            placeholder="e.g. 1 bowl, 2 eggs"
+            placeholderTextColor={PLACEHOLDER}
+            editable={!submitting}
+            style={styles.input}
+          />
+
+          <Text style={[mealTypography.caption, styles.fieldLabel]}>Calories</Text>
+          <TextInput
+            value={calories}
+            onChangeText={setCalories}
+            placeholder="e.g. 320"
+            placeholderTextColor={PLACEHOLDER}
+            keyboardType="number-pad"
+            editable={!submitting}
+            style={styles.input}
+          />
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add food item"
+            disabled={submitting}
+            onPress={() => handleManualAdd().catch(() => {})}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              submitting && styles.submitDisabled,
+              pressed && !submitting && styles.submitPressed,
+            ]}
+          >
+            <Icon name="plus-circle-outline" size={22} color={colors.surface} />
+            <Text style={styles.submitText}>{submitting ? 'Adding…' : 'Add to this meal'}</Text>
+          </Pressable>
+        </>
+      )}
 
       {fieldError ? (
         <View style={styles.errorRow}>
@@ -120,21 +194,6 @@ export function AddFoodItemForm({
           <Text style={styles.fieldError}>{fieldError}</Text>
         </View>
       ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add food item"
-        disabled={submitting}
-        onPress={() => handleAdd().catch(() => {})}
-        style={({ pressed }) => [
-          styles.submitBtn,
-          submitting && styles.submitDisabled,
-          pressed && !submitting && styles.submitPressed,
-        ]}
-      >
-        <Icon name="plus-circle-outline" size={22} color={colors.surface} />
-        <Text style={styles.submitText}>{submitting ? 'Adding…' : 'Add to this meal'}</Text>
-      </Pressable>
     </View>
   );
 }
@@ -184,7 +243,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 18,
+    marginBottom: 14,
   },
   mealChip: {
     flexDirection: 'row',
@@ -223,6 +282,38 @@ const styles = StyleSheet.create({
   formSub: {
     marginBottom: 8,
     fontSize: 14,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 6,
+  },
+  modeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modeTabOn: {
+    borderColor: MEAL_PRIMARY,
+    backgroundColor: colors.primarySoft,
+  },
+  modeTabPressed: {
+    opacity: 0.9,
+  },
+  modeTabText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.textSecondary,
+  },
+  modeTabTextOn: {
+    color: MEAL_PRIMARY,
   },
   fieldLabel: {
     marginTop: 14,

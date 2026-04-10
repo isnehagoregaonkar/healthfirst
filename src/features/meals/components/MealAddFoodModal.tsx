@@ -13,6 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MealWithItems } from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
+import type { LogMealItemPayload } from '../../../services/meals';
 import { AddFoodItemForm } from './AddFoodItemForm';
 
 type MealAddFoodModalProps = Readonly<{
@@ -20,7 +21,7 @@ type MealAddFoodModalProps = Readonly<{
   meal: MealWithItems | null;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (name: string, quantity: string, calories: string) => Promise<string | null>;
+  onSubmit: (item: LogMealItemPayload) => Promise<string | null>;
 }>;
 
 export function MealAddFoodModal({

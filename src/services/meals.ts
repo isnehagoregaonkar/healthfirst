@@ -7,12 +7,28 @@ export type MealServiceError = Readonly<{
   code?: string;
 }>;
 
+export type LogMealItemPayload = Readonly<{
+  name: string;
+  quantity: string;
+  calories: number;
+  usdaFdcId?: number | null;
+  proteinG?: number | null;
+  carbsG?: number | null;
+  fatG?: number | null;
+  fiberG?: number | null;
+}>;
+
 export type MealItemRow = Readonly<{
   id: string;
   mealId: string;
   name: string;
   quantity: string;
   calories: number;
+  usdaFdcId: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  fiberG: number | null;
 }>;
 
 export type MealWithItems = Readonly<{
@@ -63,18 +79,18 @@ function isMealType(v: string): v is MealType {
   return MEAL_TYPES.has(v);
 }
 
+function roundMacro(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
 type AddMealResult =
   | Readonly<{ ok: true; mealId: string }>
   | Readonly<{ ok: false; error: MealServiceError }>;
 
 export type AddMealOptions = Readonly<{
-  /** Local calendar day this meal belongs to (defaults to today). */
   day?: Date;
 }>;
 
-/**
- * Creates an empty meal row. Uses `now` on the device's local "today", or noon local on other days.
- */
 export async function addMeal(mealType: MealType, options?: AddMealOptions): Promise<AddMealResult> {
   const user = await requireUserId();
   if ('error' in user) {
@@ -113,20 +129,13 @@ export async function addMeal(mealType: MealType, options?: AddMealOptions): Pro
 
 type AddItemResult = Readonly<{ ok: true }> | Readonly<{ ok: false; error: MealServiceError }>;
 
-/**
- * Adds one food line to an existing meal (must belong to the signed-in user via RLS).
- */
-export async function addMealItem(
-  mealId: string,
-  name: string,
-  quantity: string,
-  calories: number,
-): Promise<AddItemResult> {
-  const trimmed = name.trim();
+export async function addMealItem(mealId: string, item: LogMealItemPayload): Promise<AddItemResult> {
+  const trimmed = item.name.trim();
   if (!trimmed) {
     return { ok: false, error: { message: 'Food name is required' } };
   }
-  if (!Number.isFinite(calories) || calories < 0 || calories > 50_000) {
+  const cal = item.calories;
+  if (!Number.isFinite(cal) || cal < 0 || cal > 50_000) {
     return { ok: false, error: { message: 'Calories must be between 0 and 50000' } };
   }
 
@@ -135,12 +144,30 @@ export async function addMealItem(
     return { ok: false, error: user.error };
   }
 
-  const { error } = await supabase.from('meal_items').insert({
+  const row: Record<string, unknown> = {
     meal_id: mealId.trim(),
     name: trimmed,
-    quantity: quantity.trim(),
-    calories: Math.round(calories),
-  });
+    quantity: item.quantity.trim(),
+    calories: Math.round(cal),
+  };
+
+  if (item.usdaFdcId != null && Number.isFinite(item.usdaFdcId)) {
+    row.usda_fdc_id = Math.round(item.usdaFdcId);
+  }
+  if (item.proteinG != null && Number.isFinite(item.proteinG)) {
+    row.protein_g = roundMacro(item.proteinG);
+  }
+  if (item.carbsG != null && Number.isFinite(item.carbsG)) {
+    row.carbs_g = roundMacro(item.carbsG);
+  }
+  if (item.fatG != null && Number.isFinite(item.fatG)) {
+    row.fat_g = roundMacro(item.fatG);
+  }
+  if (item.fiberG != null && Number.isFinite(item.fiberG)) {
+    row.fiber_g = roundMacro(item.fiberG);
+  }
+
+  const { error } = await supabase.from('meal_items').insert(row);
 
   if (error) {
     return { ok: false, error: { message: error.message, code: error.code } };
@@ -153,10 +180,6 @@ type GetMealsTodayResult =
   | Readonly<{ meals: MealWithItems[]; totalCalories: number }>
   | Readonly<{ error: MealServiceError }>;
 
-/**
- * All meals for the current user on a given local calendar day,
- * each with nested items. Sorted by time ascending.
- */
 export async function getMealsForLocalDay(day: Date): Promise<GetMealsTodayResult> {
   const user = await requireUserId();
   if ('error' in user) {
@@ -186,7 +209,9 @@ export async function getMealsForLocalDay(day: Date): Promise<GetMealsTodayResul
 
   const { data: itemRows, error: itemsError } = await supabase
     .from('meal_items')
-    .select('id, meal_id, name, quantity, calories')
+    .select(
+      'id, meal_id, name, quantity, calories, usda_fdc_id, protein_g, carbs_g, fat_g, fiber_g',
+    )
     .in('meal_id', mealIds);
 
   if (itemsError) {
@@ -210,6 +235,11 @@ export async function getMealsForLocalDay(day: Date): Promise<GetMealsTodayResul
       name: String(row.name),
       quantity: String(row.quantity ?? ''),
       calories: Number(row.calories),
+      usdaFdcId: row.usda_fdc_id != null ? Number(row.usda_fdc_id) : null,
+      proteinG: row.protein_g != null ? Number(row.protein_g) : null,
+      carbsG: row.carbs_g != null ? Number(row.carbs_g) : null,
+      fatG: row.fat_g != null ? Number(row.fat_g) : null,
+      fiberG: row.fiber_g != null ? Number(row.fiber_g) : null,
     });
   }
 
@@ -233,7 +263,6 @@ export async function getMealsForLocalDay(day: Date): Promise<GetMealsTodayResul
   return { meals: result, totalCalories };
 }
 
-/** @deprecated Use getMealsForLocalDay(new Date()). */
 export async function getMealsForToday(): Promise<GetMealsTodayResult> {
   return getMealsForLocalDay(new Date());
 }

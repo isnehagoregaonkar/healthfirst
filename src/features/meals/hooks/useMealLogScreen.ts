@@ -3,6 +3,7 @@ import {
   addMeal,
   addMealItem,
   getMealsForLocalDay,
+  type LogMealItemPayload,
   type MealType,
   type MealWithItems,
 } from '../../../services/meals';
@@ -46,12 +47,7 @@ export type UseMealLogScreenResult = Readonly<{
   refresh: () => Promise<void>;
   /** Creates a meal on `selectedDay` and returns its id, or null on failure. */
   startMeal: (mealType: MealType) => Promise<string | null>;
-  submitFoodItem: (
-    mealId: string,
-    name: string,
-    quantity: string,
-    calories: string,
-  ) => Promise<string | null>;
+  submitFoodItem: (mealId: string, item: LogMealItemPayload) => Promise<string | null>;
   clearError: () => void;
 }>;
 
@@ -149,20 +145,14 @@ export function useMealLogScreen(): UseMealLogScreenResult {
   );
 
   const submitFoodItem = useCallback(
-    async (
-      mealId: string,
-      name: string,
-      quantity: string,
-      calories: string,
-    ): Promise<string | null> => {
-      const cal = Number.parseInt(calories.replaceAll(/\s/g, ''), 10);
-      if (Number.isNaN(cal)) {
-        return 'Enter calories as a whole number.';
+    async (mealId: string, item: LogMealItemPayload): Promise<string | null> => {
+      if (!Number.isFinite(item.calories) || item.calories < 0) {
+        return 'Invalid calories.';
       }
       setItemSubmitting(true);
       setError(null);
       try {
-        const result = await addMealItem(mealId, name, quantity, cal);
+        const result = await addMealItem(mealId, item);
         if (!result.ok) {
           return result.error.message;
         }

@@ -59,6 +59,12 @@ export function MealEntryCard({ meal, selected, onSelect }: MealEntryCardProps) 
               <Text style={styles.itemMeta}>
                 {it.quantity ? `${it.quantity} · ` : ''}
                 {it.calories} cal
+                {it.usdaFdcId != null &&
+                (it.proteinG != null || it.carbsG != null || it.fatG != null || it.fiberG != null)
+                  ? ` · P ${(it.proteinG ?? 0).toFixed(1)} / C ${(it.carbsG ?? 0).toFixed(1)} / F ${(it.fatG ?? 0).toFixed(1)}${
+                      it.fiberG != null && it.fiberG > 0 ? ` · Fi ${it.fiberG.toFixed(1)}` : ''
+                    } g`
+                  : ''}
               </Text>
             </View>
           </View>
