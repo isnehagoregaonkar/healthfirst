@@ -1,8 +1,4 @@
-import {
-  DrawerContentScrollView,
-  DrawerItemList,
-  type DrawerContentComponentProps,
-} from '@react-navigation/drawer';
+import { DrawerContentScrollView, type DrawerContentComponentProps } from '@react-navigation/drawer';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,12 +6,13 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { signOut } from '../services/auth';
 import { colors } from '../theme/tokens';
 import { useDrawerUserProfile } from './hooks/useDrawerUserProfile';
+import { DrawerNavItemsList } from './ui/DrawerNavItemsList';
 import { DrawerProfileHeader } from './ui/DrawerProfileHeader';
 
 const FOOTER_MIN_PADDING = 14;
 
 export function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { navigation } = props;
+  const { navigation, state } = props;
   const insets = useSafeAreaInsets();
   const profile = useDrawerUserProfile();
 
@@ -38,7 +35,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
       >
         <DrawerProfileHeader profile={profile} onClosePress={handleCloseDrawer} />
 
-        <DrawerItemList {...props} />
+        <DrawerNavItemsList navigation={navigation} drawerState={state} />
       </DrawerContentScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, FOOTER_MIN_PADDING) }]}>
