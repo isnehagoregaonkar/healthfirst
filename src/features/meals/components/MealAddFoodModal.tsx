@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -31,6 +32,13 @@ export function MealAddFoodModal({
   onClose,
   onSubmit,
 }: MealAddFoodModalProps) {
+  const { height: windowH } = useWindowDimensions();
+  const sheetLayout = useMemo(() => {
+    const target = Math.round(windowH * 0.8);
+    const cap = Math.round(windowH * 0.92);
+    return { height: Math.min(target, cap) };
+  }, [windowH]);
+
   return (
     <Modal
       visible={visible}
@@ -44,12 +52,12 @@ export function MealAddFoodModal({
         style={styles.backdrop}
       >
         <Pressable style={styles.scrim} accessibilityLabel="Dismiss" onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { height: sheetLayout.height }]}>
           <View style={styles.grabberWrap}>
             <View style={styles.grabber} />
           </View>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Add foods</Text>
+            <Text style={styles.headerTitle}>Add meal</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"
@@ -61,6 +69,7 @@ export function MealAddFoodModal({
           </View>
           {meal ? (
             <ScrollView
+              style={styles.scroll}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.formScroll}
@@ -107,7 +116,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     paddingHorizontal: 20,
     paddingBottom: 28,
-    maxHeight: '92%',
+    width: '100%',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.12,
@@ -147,7 +156,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   fallback: {
-    minHeight: 120,
+    flex: 1,
     justifyContent: 'center',
   },
   fallbackInner: {
@@ -158,6 +167,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textSecondary,
     fontWeight: '600',
+  },
+  scroll: {
+    flex: 1,
   },
   formScroll: {
     paddingBottom: 12,

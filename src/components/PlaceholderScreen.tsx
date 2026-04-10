@@ -10,7 +10,7 @@ type PlaceholderScreenProps = Readonly<{
 
 export function PlaceholderScreen({ title, subtitle = 'Content coming soon.' }: PlaceholderScreenProps) {
   return (
-    <Screen>
+    <Screen applyBottomSafeArea={false}>
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>

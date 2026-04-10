@@ -182,13 +182,14 @@ export async function searchUsdaFoods(query: string): Promise<
 
   try {
     const url = `${FDC_BASE}/foods/search?api_key=${encodeURIComponent(key)}`;
+    // Omit `dataType` so FDC returns every category (Foundation, SR Legacy, Branded,
+    // Survey FNDDS, experimental, etc.). Larger pageSize yields more generic + branded hits.
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         query: q,
-        pageSize: 20,
-        dataType: ['Foundation', 'SR Legacy', 'Branded', 'Survey (FNDDS)'],
+        pageSize: 50,
       }),
     });
     if (!res.ok) {

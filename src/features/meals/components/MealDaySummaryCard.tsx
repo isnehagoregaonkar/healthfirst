@@ -1,12 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import type { DayMacroTotals } from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY, MEAL_PRIMARY_DEEP, mealTypography } from '../mealUiTheme';
+
+function fmtGrams(n: number): string {
+  if (n < 0.05) {
+    return '0';
+  }
+  if (Math.abs(n - Math.round(n)) < 0.05) {
+    return String(Math.round(n));
+  }
+  return n.toFixed(1);
+}
 
 type MealDaySummaryCardProps = Readonly<{
   dayLabel: string;
   totalCalories: number;
+  macros: DayMacroTotals;
   suggestedKcal: number;
   dayLoading: boolean;
   onPressAdjustTargets: () => void;
@@ -15,6 +27,7 @@ type MealDaySummaryCardProps = Readonly<{
 export function MealDaySummaryCard({
   dayLabel,
   totalCalories,
+  macros,
   suggestedKcal,
   dayLoading,
   onPressAdjustTargets,
@@ -22,6 +35,11 @@ export function MealDaySummaryCard({
   const pct =
     suggestedKcal > 0 ? Math.min(100, Math.round((totalCalories / suggestedKcal) * 100)) : 0;
   const over = totalCalories > suggestedKcal && suggestedKcal > 0;
+
+  const showMacroStrip = useMemo(() => {
+    const sum = macros.proteinG + macros.carbsG + macros.fatG + macros.fiberG;
+    return sum > 0.02;
+  }, [macros]);
 
   return (
     <View style={styles.outer}>
@@ -82,6 +100,30 @@ export function MealDaySummaryCard({
                 ? `${(totalCalories - suggestedKcal).toLocaleString()} kcal over suggested`
                 : `${(suggestedKcal - totalCalories).toLocaleString()} kcal remaining`}
             </Text>
+
+            {showMacroStrip ? (
+              <View style={styles.macroStrip}>
+                <Text style={styles.macroStripTitle}>Today's macros</Text>
+                <View style={styles.macroRow}>
+                  <View style={[styles.macroTile, styles.macroTileProtein]}>
+                    <Text style={styles.macroTileLabel}>Protein</Text>
+                    <Text style={styles.macroTileValue}>{fmtGrams(macros.proteinG)} g</Text>
+                  </View>
+                  <View style={[styles.macroTile, styles.macroTileCarbs]}>
+                    <Text style={styles.macroTileLabel}>Carbs</Text>
+                    <Text style={styles.macroTileValue}>{fmtGrams(macros.carbsG)} g</Text>
+                  </View>
+                  <View style={[styles.macroTile, styles.macroTileFat]}>
+                    <Text style={styles.macroTileLabel}>Fat</Text>
+                    <Text style={styles.macroTileValue}>{fmtGrams(macros.fatG)} g</Text>
+                  </View>
+                  <View style={[styles.macroTile, styles.macroTileFiber]}>
+                    <Text style={styles.macroTileLabel}>Fiber</Text>
+                    <Text style={styles.macroTileValue}>{fmtGrams(macros.fiberG)} g</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </>
         )}
       </View>
@@ -198,8 +240,65 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
+  macroStrip: {
+    marginTop: 16,
+  },
+  macroStripTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  macroRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 6,
+  },
+  macroTile: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  macroTileProtein: {
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderColor: 'rgba(59, 130, 246, 0.22)',
+  },
+  macroTileCarbs: {
+    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+    borderColor: 'rgba(234, 179, 8, 0.28)',
+  },
+  macroTileFat: {
+    backgroundColor: 'rgba(249, 115, 22, 0.08)',
+    borderColor: 'rgba(249, 115, 22, 0.22)',
+  },
+  macroTileFiber: {
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderColor: 'rgba(34, 197, 94, 0.22)',
+  },
+  macroTileLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  macroTileValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
   barTrack: {
-    marginTop: 18,
+    marginTop: 16,
     height: 10,
     borderRadius: 999,
     backgroundColor: colors.border,

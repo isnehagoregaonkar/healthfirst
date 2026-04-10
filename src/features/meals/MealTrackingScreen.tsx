@@ -37,11 +37,16 @@ export function MealTrackingScreen() {
     meals,
     grouped,
     totalCalories,
+    dayMacroTotals,
     creatingMealType,
     itemSubmitting,
     refresh,
     startMeal,
     submitFoodItem,
+    confirmRemoveFoodItem,
+    confirmRemoveEmptyMeal,
+    deletingItemId,
+    deletingMealId,
     clearError,
   } = useMealLogScreen();
 
@@ -87,7 +92,11 @@ export function MealTrackingScreen() {
   );
 
   return (
-    <Screen applyTopSafeArea={false} backgroundColor={colors.background}>
+    <Screen
+      applyTopSafeArea={false}
+      applyBottomSafeArea={false}
+      backgroundColor={colors.background}
+    >
       <View style={styles.flex}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -142,6 +151,7 @@ export function MealTrackingScreen() {
               <MealDaySummaryCard
                 dayLabel={isViewingToday ? 'Today' : selectedDayLabel}
                 totalCalories={totalCalories}
+                macros={dayMacroTotals}
                 suggestedKcal={suggestedKcal}
                 dayLoading={dayLoading}
                 onPressAdjustTargets={() => setProfileModalOpen(true)}
@@ -149,19 +159,17 @@ export function MealTrackingScreen() {
 
               <AddMealActions creatingMealType={creatingMealType} onAddMeal={handleMealTypePress} />
 
-              <View style={[styles.dividerLabelRow, styles.dividerAfterActions]}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>Logged meals</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
               {MEAL_TYPE_ORDER.map((type) => (
                 <MealTypeSection
                   key={type}
                   mealType={type}
                   meals={grouped[type]}
                   highlightedMealId={foodModalMealId}
+                  deletingItemId={deletingItemId}
+                  deletingMealId={deletingMealId}
                   onSelectMeal={openFoodModalForMeal}
+                  onRemoveItem={confirmRemoveFoodItem}
+                  onRemoveEmptyMeal={confirmRemoveEmptyMeal}
                 />
               ))}
             </ScrollView>
@@ -237,9 +245,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginTop: 4,
   },
-  dividerAfterActions: {
-    marginTop: 8,
-  },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -270,24 +275,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  dividerLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
 });

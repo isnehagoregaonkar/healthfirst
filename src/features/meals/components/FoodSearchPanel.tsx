@@ -20,7 +20,7 @@ import {
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY } from '../mealUiTheme';
 
-type UsdaFoodSearchSectionProps = Readonly<{
+type FoodSearchPanelProps = Readonly<{
   submitting: boolean;
   onSubmitPayload: (item: LogMealItemPayload) => Promise<string | null>;
 }>;
@@ -29,7 +29,7 @@ const SEARCH_DEBOUNCE_MS = 450;
 const PLACEHOLDER = '#9CA3AF';
 const INPUT_BG = '#F3F4F6';
 
-export function UsdaFoodSearchSection({ submitting, onSubmitPayload }: UsdaFoodSearchSectionProps) {
+export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanelProps) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [hits, setHits] = useState<UsdaSearchHit[]>([]);
@@ -110,7 +110,7 @@ export function UsdaFoodSearchSection({ submitting, onSubmitPayload }: UsdaFoodS
     return { ...scaleUsdaToGrams(detail.per100g, grams), grams, servings, portionLabel: p.label };
   })();
 
-  const handleLogUsda = useCallback(async () => {
+  const handleAddFood = useCallback(async () => {
     if (!detail || !scaled) {
       return;
     }
@@ -144,8 +144,10 @@ export function UsdaFoodSearchSection({ submitting, onSubmitPayload }: UsdaFoodS
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.sectionLabel}>USDA FoodData Central</Text>
-      <Text style={styles.hint}>Search foods for accurate calories and macros (per portion).</Text>
+      <Text style={styles.sectionTitle}>Search foods</Text>
+      <Text style={styles.hint}>
+        Search the food catalog — calories and macros update for your portion.
+      </Text>
 
       <View style={styles.searchRow}>
         <Icon name="magnify" size={22} color={colors.textSecondary} style={styles.searchIcon} />
@@ -168,7 +170,7 @@ export function UsdaFoodSearchSection({ submitting, onSubmitPayload }: UsdaFoodS
 
       {hits.length > 0 && !detail ? (
         <View style={styles.resultsBox}>
-          <Text style={styles.resultsCaption}>Results</Text>
+          <Text style={styles.resultsCaption}>Matches</Text>
           {hits.map((h) => (
             <Pressable
               key={h.fdcId}
@@ -185,7 +187,6 @@ export function UsdaFoodSearchSection({ submitting, onSubmitPayload }: UsdaFoodS
                   {h.brandName}
                 </Text>
               ) : null}
-              <Text style={styles.hitMeta}>{h.dataType ?? 'Food'}</Text>
             </Pressable>
           ))}
         </View>
@@ -295,7 +296,7 @@ export function UsdaFoodSearchSection({ submitting, onSubmitPayload }: UsdaFoodS
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => handleLogUsda().catch(() => {})}
+            onPress={() => handleAddFood().catch(() => {})}
             disabled={submitting}
             style={({ pressed }) => [styles.addUsdaBtn, submitting && styles.addUsdaDisabled, pressed && !submitting && styles.addUsdaPressed]}
           >
@@ -330,12 +331,10 @@ const styles = StyleSheet.create({
   wrap: {
     marginBottom: 8,
   },
-  sectionLabel: {
-    fontSize: 12,
+  sectionTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   hint: {
@@ -407,12 +406,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  hitMeta: {
-    marginTop: 4,
-    fontSize: 11,
-    fontWeight: '600',
-    color: MEAL_PRIMARY,
   },
   detailLoading: {
     flexDirection: 'row',

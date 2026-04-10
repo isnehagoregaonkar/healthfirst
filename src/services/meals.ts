@@ -39,6 +39,13 @@ export type MealWithItems = Readonly<{
   subtotalCalories: number;
 }>;
 
+export type DayMacroTotals = Readonly<{
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
+}>;
+
 const MEAL_TYPES: ReadonlySet<string> = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
 
 function startOfLocalDay(d: Date): Date {
@@ -174,6 +181,55 @@ export async function addMealItem(mealId: string, item: LogMealItemPayload): Pro
   }
 
   return { ok: true };
+}
+
+type DeleteResult = Readonly<{ ok: true }> | Readonly<{ ok: false; error: MealServiceError }>;
+
+export async function deleteMealItem(itemId: string): Promise<DeleteResult> {
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { ok: false, error: user.error };
+  }
+
+  const { error } = await supabase.from('meal_items').delete().eq('id', itemId.trim());
+
+  if (error) {
+    return { ok: false, error: { message: error.message, code: error.code } };
+  }
+
+  return { ok: true };
+}
+
+/** Deletes the meal row (items cascade). Caller should own the meal via RLS. */
+export async function deleteMeal(mealId: string): Promise<DeleteResult> {
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { ok: false, error: user.error };
+  }
+
+  const { error } = await supabase.from('meals').delete().eq('id', mealId.trim());
+
+  if (error) {
+    return { ok: false, error: { message: error.message, code: error.code } };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * After removing the last item, remove the empty meal so the slot disappears.
+ */
+export async function deleteMealIfEmpty(mealId: string): Promise<void> {
+  const { count, error } = await supabase
+    .from('meal_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('meal_id', mealId.trim());
+
+  if (error || (count ?? 0) > 0) {
+    return;
+  }
+
+  await supabase.from('meals').delete().eq('id', mealId.trim());
 }
 
 type GetMealsTodayResult =

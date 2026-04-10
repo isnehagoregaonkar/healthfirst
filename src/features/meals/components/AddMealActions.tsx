@@ -2,7 +2,8 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MealType } from '../../../services/meals';
-import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI, mealTypography } from '../mealUiTheme';
+import { colors } from '../../../theme/tokens';
+import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI } from '../mealUiTheme';
 import { MEAL_TYPE_LABEL, MEAL_TYPE_ORDER } from '../mealConstants';
 
 type AddMealActionsProps = Readonly<{
@@ -16,8 +17,7 @@ export function AddMealActions({ creatingMealType, onAddMeal }: AddMealActionsPr
 
   return (
     <View style={styles.wrap}>
-      <Text style={mealTypography.sectionEyebrow}>Add meal</Text>
-      <Text style={[mealTypography.body, styles.hint]}>Tap a slot — opens the food sheet.</Text>
+      <Text style={styles.title}>Add meal</Text>
       <View style={styles.row}>
         {MEAL_TYPE_ORDER.map((type) => {
           const busy = creatingMealType === type;
@@ -62,12 +62,14 @@ export function AddMealActions({ creatingMealType, onAddMeal }: AddMealActionsPr
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 20,
+    paddingTop: 4,
+    marginBottom: 22,
   },
-  hint: {
+  title: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
     marginBottom: 12,
-    marginTop: 2,
-    fontSize: 14,
   },
   row: {
     flexDirection: 'row',

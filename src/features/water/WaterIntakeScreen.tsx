@@ -46,7 +46,7 @@ export function WaterIntakeScreen() {
   const { leftLabel, rightLabel, centerLabel, canGoNext, isViewingToday } = dateNav;
 
   return (
-    <Screen applyTopSafeArea={false}>
+    <Screen applyTopSafeArea={false} applyBottomSafeArea={false}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"

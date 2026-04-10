@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import {
   addMeal,
   addMealItem,
+  deleteMeal,
+  deleteMealIfEmpty,
+  deleteMealItem,
   getMealsForLocalDay,
+  type DayMacroTotals,
   type LogMealItemPayload,
+  type MealItemRow,
   type MealType,
   type MealWithItems,
 } from '../../../services/meals';
 import { addCalendarDays, isSameLocalDay, startOfLocalDay } from '../../water/waterDayUtils';
 
 export type MealsGrouped = Readonly<Record<MealType, MealWithItems[]>>;
+export type { DayMacroTotals } from '../../../services/meals';
 
 function emptyGrouped(): MealsGrouped {
   return {
@@ -42,12 +49,17 @@ export type UseMealLogScreenResult = Readonly<{
   meals: MealWithItems[];
   grouped: MealsGrouped;
   totalCalories: number;
+  dayMacroTotals: DayMacroTotals;
   creatingMealType: MealType | null;
   itemSubmitting: boolean;
   refresh: () => Promise<void>;
   /** Creates a meal on `selectedDay` and returns its id, or null on failure. */
   startMeal: (mealType: MealType) => Promise<string | null>;
   submitFoodItem: (mealId: string, item: LogMealItemPayload) => Promise<string | null>;
+  confirmRemoveFoodItem: (item: MealItemRow, mealId: string) => void;
+  confirmRemoveEmptyMeal: (mealId: string) => void;
+  deletingItemId: string | null;
+  deletingMealId: string | null;
   clearError: () => void;
 }>;
 
@@ -61,8 +73,31 @@ export function useMealLogScreen(): UseMealLogScreenResult {
   const [totalCalories, setTotalCalories] = useState(0);
   const [creatingMealType, setCreatingMealType] = useState<MealType | null>(null);
   const [itemSubmitting, setItemSubmitting] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const [deletingMealId, setDeletingMealId] = useState<string | null>(null);
 
   const grouped = useMemo(() => groupByType(meals), [meals]);
+
+  const dayMacroTotals = useMemo((): DayMacroTotals => {
+    const out = { proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 };
+    for (const m of meals) {
+      for (const it of m.items) {
+        if (it.proteinG != null && Number.isFinite(it.proteinG)) {
+          out.proteinG += it.proteinG;
+        }
+        if (it.carbsG != null && Number.isFinite(it.carbsG)) {
+          out.carbsG += it.carbsG;
+        }
+        if (it.fatG != null && Number.isFinite(it.fatG)) {
+          out.fatG += it.fatG;
+        }
+        if (it.fiberG != null && Number.isFinite(it.fiberG)) {
+          out.fiberG += it.fiberG;
+        }
+      }
+    }
+    return out;
+  }, [meals]);
 
   const setSelectedDay = useCallback((d: Date) => {
     setSelectedDayState(startOfLocalDay(d));
@@ -165,6 +200,75 @@ export function useMealLogScreen(): UseMealLogScreenResult {
     [fetchDay, selectedDay],
   );
 
+  const removeFoodItemById = useCallback(
+    async (itemId: string, mealId: string) => {
+      setDeletingItemId(itemId);
+      setError(null);
+      try {
+        const result = await deleteMealItem(itemId);
+        if (!result.ok) {
+          setError(result.error.message);
+          return;
+        }
+        await deleteMealIfEmpty(mealId);
+        await fetchDay(selectedDay, 'silent');
+      } finally {
+        setDeletingItemId(null);
+      }
+    },
+    [fetchDay, selectedDay],
+  );
+
+  const confirmRemoveFoodItem = useCallback(
+    (item: MealItemRow, mealId: string) => {
+      Alert.alert('Remove this food?', item.name, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            removeFoodItemById(item.id, mealId).catch(() => {});
+          },
+        },
+      ]);
+    },
+    [removeFoodItemById],
+  );
+
+  const removeEmptyMealById = useCallback(
+    async (mealId: string) => {
+      setDeletingMealId(mealId);
+      setError(null);
+      try {
+        const result = await deleteMeal(mealId);
+        if (!result.ok) {
+          setError(result.error.message);
+          return;
+        }
+        await fetchDay(selectedDay, 'silent');
+      } finally {
+        setDeletingMealId(null);
+      }
+    },
+    [fetchDay, selectedDay],
+  );
+
+  const confirmRemoveEmptyMeal = useCallback(
+    (mealId: string) => {
+      Alert.alert('Remove this meal?', 'This empty slot will be removed from your log.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            removeEmptyMealById(mealId).catch(() => {});
+          },
+        },
+      ]);
+    },
+    [removeEmptyMealById],
+  );
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -181,11 +285,16 @@ export function useMealLogScreen(): UseMealLogScreenResult {
     meals,
     grouped,
     totalCalories,
+    dayMacroTotals,
     creatingMealType,
     itemSubmitting,
     refresh,
     startMeal,
     submitFoodItem,
+    confirmRemoveFoodItem,
+    confirmRemoveEmptyMeal,
+    deletingItemId,
+    deletingMealId,
     clearError,
   };
 }
