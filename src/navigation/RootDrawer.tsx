@@ -37,10 +37,13 @@ export function RootDrawer() {
       screenOptions={{
         headerShown: true,
         headerLeft: drawerHeaderMenuLeft,
+        headerLeftContainerStyle: {
+          paddingLeft: 16,
+        },
         drawerActiveTintColor: colors.primary,
         drawerInactiveTintColor: colors.textSecondary,
         drawerLabelStyle: { marginLeft: -8, fontSize: 15 },
-        headerTintColor: colors.textPrimary,
+        headerTintColor: colors.primary,
         headerStyle: { backgroundColor: colors.surface },
         headerTitleStyle: { fontWeight: '700', fontSize: 18, color: colors.textPrimary },
         drawerStyle: { backgroundColor: colors.surface, width: '86%' },
