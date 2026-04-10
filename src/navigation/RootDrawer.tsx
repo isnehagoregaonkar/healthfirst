@@ -17,7 +17,11 @@ export function RootDrawer() {
         drawerActiveTintColor: colors.primary,
         drawerInactiveTintColor: colors.textSecondary,
         drawerLabelStyle: { marginLeft: -8, fontSize: 15 },
-        drawerStyle: { backgroundColor: colors.surface, width: '86%' },
+        drawerStyle: {
+          backgroundColor: colors.surface,
+          width: '86%',
+          overflow: 'visible',
+        },
       }}
     >
       <Drawer.Screen name="Main" component={MainTabNavigator} options={{ title: 'HealthFirst' }} />

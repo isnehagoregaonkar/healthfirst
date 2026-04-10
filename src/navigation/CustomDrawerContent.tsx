@@ -6,12 +6,15 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { signOut } from '../services/auth';
 import { colors } from '../theme/tokens';
 import { useDrawerUserProfile } from './hooks/useDrawerUserProfile';
+import { DrawerEdgeCollapseHandle } from './ui/DrawerEdgeCollapseHandle';
 import { DrawerNavItemsList } from './ui/DrawerNavItemsList';
 import { DrawerProfileHeader } from './ui/DrawerProfileHeader';
 
 const FOOTER_MIN_PADDING = 14;
+const PROFILE_TOP_EXTRA = 12;
+const HANDLE_TOP_OFFSET = 6;
 
-export function CustomDrawerContent(props: DrawerContentComponentProps) {
+export function CustomDrawerContent(props: Readonly<DrawerContentComponentProps>) {
   const { navigation, state } = props;
   const insets = useSafeAreaInsets();
   const profile = useDrawerUserProfile();
@@ -25,15 +28,18 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
     await signOut();
   }, [navigation]);
 
+  const handleTop = insets.top + PROFILE_TOP_EXTRA + HANDLE_TOP_OFFSET;
+
   return (
     <View style={styles.root}>
+      <DrawerEdgeCollapseHandle onPress={handleCloseDrawer} top={handleTop} />
       <DrawerContentScrollView
         {...props}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <DrawerProfileHeader profile={profile} onClosePress={handleCloseDrawer} />
+        <DrawerProfileHeader profile={profile} />
 
         <DrawerNavItemsList navigation={navigation} drawerState={state} />
       </DrawerContentScrollView>
@@ -57,6 +63,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.surface,
+    overflow: 'visible',
   },
   scroll: {
     flex: 1,
