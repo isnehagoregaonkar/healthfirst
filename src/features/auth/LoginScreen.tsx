@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { Screen } from '../../components/layout/Screen';
+import { signIn } from '../../services/auth';
 import { colors } from '../../theme/tokens';
 
 type LoginScreenProps = Readonly<{
@@ -23,6 +25,8 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showErrors, setShowErrors] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const cardWidth = useMemo(() => {
     if (width >= 900) {
@@ -37,10 +41,19 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
   const emailError = showErrors && email.trim().length === 0;
   const passwordError = showErrors && password.trim().length === 0;
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setShowErrors(true);
+    setSubmitError('');
     if (email.trim().length === 0 || password.trim().length === 0) {
       return;
+    }
+
+    setIsSubmitting(true);
+    const { error } = await signIn(email.trim(), password);
+    setIsSubmitting(false);
+
+    if (error) {
+      setSubmitError(error.message);
     }
   };
 
@@ -98,8 +111,13 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
             </View>
 
             <Pressable style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginText}>Log In</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginText}>Log In</Text>
+              )}
             </Pressable>
+            {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
 
             <Pressable style={styles.secondaryAction}>
               <Text style={styles.secondaryActionText}>Forgot password?</Text>
@@ -201,6 +219,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  submitErrorText: {
+    marginTop: 10,
+    color: colors.error,
+    fontSize: 12,
+    textAlign: 'center',
   },
   secondaryAction: {
     marginTop: 14,

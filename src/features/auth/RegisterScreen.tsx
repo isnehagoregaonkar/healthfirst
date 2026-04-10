@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { Screen } from '../../components/layout/Screen';
+import { signUp } from '../../services/auth';
 import { colors } from '../../theme/tokens';
 
 type RegisterScreenProps = Readonly<{
@@ -24,6 +26,9 @@ export function RegisterScreen({ onNavigateToLogin }: RegisterScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showErrors, setShowErrors] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
 
   const cardWidth = useMemo(() => {
     if (width >= 900) {
@@ -39,8 +44,11 @@ export function RegisterScreen({ onNavigateToLogin }: RegisterScreenProps) {
   const emailError = showErrors && email.trim().length === 0;
   const passwordError = showErrors && password.trim().length === 0;
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setShowErrors(true);
+    setSubmitError('');
+    setSubmitSuccess('');
+
     if (
       name.trim().length === 0 ||
       email.trim().length === 0 ||
@@ -48,6 +56,17 @@ export function RegisterScreen({ onNavigateToLogin }: RegisterScreenProps) {
     ) {
       return;
     }
+
+    setIsSubmitting(true);
+    const { error } = await signUp(name.trim(), email.trim(), password);
+    setIsSubmitting(false);
+
+    if (error) {
+      setSubmitError(error.message);
+      return;
+    }
+
+    setSubmitSuccess('Registration successful. You can continue in the app.');
   };
 
   return (
@@ -119,8 +138,16 @@ export function RegisterScreen({ onNavigateToLogin }: RegisterScreenProps) {
             </View>
 
             <Pressable style={styles.primaryButton} onPress={handleRegister}>
-              <Text style={styles.primaryButtonText}>Register</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Register</Text>
+              )}
             </Pressable>
+            {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
+            {submitSuccess ? (
+              <Text style={styles.submitSuccessText}>{submitSuccess}</Text>
+            ) : null}
 
             <View style={styles.footerRow}>
               <Text style={styles.footerPrompt}>Already have an account? </Text>
@@ -216,6 +243,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  submitErrorText: {
+    marginTop: 10,
+    color: colors.error,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  submitSuccessText: {
+    marginTop: 10,
+    color: colors.primary,
+    fontSize: 12,
+    textAlign: 'center',
   },
   footerRow: {
     marginTop: 18,
