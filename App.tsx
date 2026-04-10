@@ -5,13 +5,15 @@
  * @format
  */
 
+import { NavigationContainer } from '@react-navigation/native';
 import { useState, type ReactNode } from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { RegisterScreen } from './src/features/auth/RegisterScreen';
 import { useAuthSession } from './src/features/auth/hooks/useAuthSession';
-import { HomeScreen } from './src/features/home/HomeScreen';
+import { RootDrawer } from './src/navigation/RootDrawer';
 import { SplashScreen } from './src/features/splash/SplashScreen';
 
 function App() {
@@ -23,7 +25,11 @@ function App() {
   if (showSplash) {
     mainContent = <SplashScreen />;
   } else if (isAuthenticated) {
-    mainContent = <HomeScreen />;
+    mainContent = (
+      <NavigationContainer>
+        <RootDrawer />
+      </NavigationContainer>
+    );
   } else if (authScreen === 'login') {
     mainContent = (
       <LoginScreen onNavigateToRegister={() => setAuthScreen('register')} />
@@ -35,11 +41,19 @@ function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      {mainContent}
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        {mainContent}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 export default App;
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
