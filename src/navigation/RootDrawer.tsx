@@ -1,11 +1,23 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
+import { ExerciseHistoryScreen } from '../features/exercise/ExerciseHistoryScreen';
+import { IntermittentFastingScreen } from '../features/fasting/IntermittentFastingScreen';
+import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
+import { RemindersScreen } from '../features/reminders/RemindersScreen';
+import { colors } from '../theme/tokens';
 import { CustomDrawerContent } from './CustomDrawerContent';
 import { MainTabNavigator } from './MainTabNavigator';
-import { colors } from '../theme/tokens';
+import { appHeaderChrome, renderDrawerMenuHeaderLeft } from './navHeaderOptions';
 import type { RootDrawerParamList } from './types';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
+
+const drawerLeafScreenOptions = {
+  headerShown: true,
+  ...appHeaderChrome,
+  headerLeft: renderDrawerMenuHeaderLeft,
+  headerLeftContainerStyle: { paddingLeft: 16 },
+} as const;
 
 export function RootDrawer() {
   return (
@@ -25,6 +37,38 @@ export function RootDrawer() {
       }}
     >
       <Drawer.Screen name="Main" component={MainTabNavigator} options={{ title: 'HealthFirst' }} />
+      <Drawer.Screen
+        name="ProgressHistory"
+        component={ProgressHistoryScreen}
+        options={{
+          ...drawerLeafScreenOptions,
+          title: 'Progress history',
+        }}
+      />
+      <Drawer.Screen
+        name="ExerciseHistory"
+        component={ExerciseHistoryScreen}
+        options={{
+          ...drawerLeafScreenOptions,
+          title: 'Exercise & streak',
+        }}
+      />
+      <Drawer.Screen
+        name="IntermittentFasting"
+        component={IntermittentFastingScreen}
+        options={{
+          ...drawerLeafScreenOptions,
+          title: 'Intermittent fasting',
+        }}
+      />
+      <Drawer.Screen
+        name="Reminders"
+        component={RemindersScreen}
+        options={{
+          ...drawerLeafScreenOptions,
+          title: 'Reminders',
+        }}
+      />
     </Drawer.Navigator>
   );
 }

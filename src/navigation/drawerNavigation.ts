@@ -1,22 +1,35 @@
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import type { NavigatorScreenParams } from '@react-navigation/native';
-import type { DrawerDestinationId, MainTabParamList } from './types';
+import type { DrawerDestinationId, MainTabParamList, RootDrawerParamList } from './types';
 
 type DrawerRootNavigation = DrawerContentComponentProps['navigation'];
 type DrawerNavState = DrawerContentComponentProps['state'];
 
 type MainNavigatorParams = NavigatorScreenParams<MainTabParamList>;
 
+type MainTabDrawerDestinationId = Exclude<
+  DrawerDestinationId,
+  'ProgressHistory' | 'ExerciseHistory' | 'IntermittentFasting' | 'Reminders'
+>;
+
+type LeafDrawerDestinationId = Extract<
+  DrawerDestinationId,
+  'ProgressHistory' | 'ExerciseHistory' | 'IntermittentFasting' | 'Reminders'
+>;
+
 const MAIN_NAV_BY_DESTINATION = {
   Dashboard: { screen: 'Home' },
   MealTracking: { screen: 'Meals' },
   WaterIntake: { screen: 'Water' },
   StepsTracking: { screen: 'Steps' },
-  ProgressHistory: { screen: 'More', params: { screen: 'ProgressHistory' } },
-  ExerciseHistory: { screen: 'More', params: { screen: 'ExerciseHistory' } },
-  IntermittentFasting: { screen: 'More', params: { screen: 'IntermittentFasting' } },
-  Reminders: { screen: 'More', params: { screen: 'Reminders' } },
-} as const satisfies Record<DrawerDestinationId, MainNavigatorParams>;
+} as const satisfies Record<MainTabDrawerDestinationId, MainNavigatorParams>;
+
+const DRAWER_SCREEN_BY_DESTINATION = {
+  ProgressHistory: 'ProgressHistory',
+  ExerciseHistory: 'ExerciseHistory',
+  IntermittentFasting: 'IntermittentFasting',
+  Reminders: 'Reminders',
+} as const satisfies Record<LeafDrawerDestinationId, keyof Pick<RootDrawerParamList, LeafDrawerDestinationId>>;
 
 const TAB_ROUTE_TO_DESTINATION: Record<string, DrawerDestinationId> = {
   Home: 'Dashboard',
@@ -25,8 +38,7 @@ const TAB_ROUTE_TO_DESTINATION: Record<string, DrawerDestinationId> = {
   Steps: 'StepsTracking',
 };
 
-const MORE_LEAF_TO_DESTINATION: Partial<Record<string, DrawerDestinationId | null>> = {
-  MoreHome: null,
+const DRAWER_ROUTE_TO_DESTINATION: Partial<Record<keyof RootDrawerParamList, DrawerDestinationId>> = {
   ProgressHistory: 'ProgressHistory',
   ExerciseHistory: 'ExerciseHistory',
   IntermittentFasting: 'IntermittentFasting',
@@ -45,32 +57,34 @@ function getFocusedChildName(
 
 export function navigateToDestination(navigation: DrawerRootNavigation, id: DrawerDestinationId) {
   navigation.closeDrawer();
-  navigation.navigate('Main', MAIN_NAV_BY_DESTINATION[id]);
+
+  if (id in DRAWER_SCREEN_BY_DESTINATION) {
+    const screen = DRAWER_SCREEN_BY_DESTINATION[id as LeafDrawerDestinationId];
+    navigation.navigate(screen);
+    return;
+  }
+
+  navigation.navigate('Main', MAIN_NAV_BY_DESTINATION[id as MainTabDrawerDestinationId]);
 }
 
 export function getActiveDestinationId(state: DrawerNavState): DrawerDestinationId | null {
-  const main = state.routes[0];
-  if (!main || main.name !== 'Main') {
+  const route = state.routes[state.index];
+  if (!route) {
     return null;
   }
 
-  const tabName = getFocusedChildName(main);
+  if (route.name !== 'Main') {
+    const mapped = DRAWER_ROUTE_TO_DESTINATION[route.name as keyof RootDrawerParamList];
+    return mapped ?? null;
+  }
+
+  const tabName = getFocusedChildName(route);
   if (!tabName) {
     return 'Dashboard';
   }
 
   if (tabName === 'More') {
-    const tabIndex = main.state?.index;
-    const tabRoute =
-      main.state?.routes !== undefined && typeof tabIndex === 'number'
-        ? main.state.routes[tabIndex]
-        : undefined;
-    const leafName = getFocusedChildName(tabRoute);
-    if (leafName === undefined) {
-      return null;
-    }
-    const mapped = MORE_LEAF_TO_DESTINATION[leafName];
-    return mapped === undefined ? null : mapped;
+    return null;
   }
 
   return TAB_ROUTE_TO_DESTINATION[tabName] ?? null;

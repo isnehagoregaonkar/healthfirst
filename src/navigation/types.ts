@@ -1,11 +1,8 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
+/** More tab stack — reserved for future tools (not the same as drawer destinations). */
 export type MoreStackParamList = {
   MoreHome: undefined;
-  ProgressHistory: undefined;
-  ExerciseHistory: undefined;
-  IntermittentFasting: undefined;
-  Reminders: undefined;
 };
 
 export type MainTabParamList = {
@@ -16,9 +13,12 @@ export type MainTabParamList = {
   More: NavigatorScreenParams<MoreStackParamList>;
 };
 
-/** Single drawer screen wrapping bottom tabs + nested stacks */
 export type RootDrawerParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
+  ProgressHistory: undefined;
+  ExerciseHistory: undefined;
+  IntermittentFasting: undefined;
+  Reminders: undefined;
 };
 
 /** Used for drawer highlight + navigation targets */
