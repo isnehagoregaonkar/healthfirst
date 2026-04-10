@@ -10,14 +10,14 @@ import { MealEntryCard } from './MealEntryCard';
 type MealTypeSectionProps = Readonly<{
   mealType: MealType;
   meals: MealWithItems[];
-  activeMealId: string | null;
+  highlightedMealId: string | null;
   onSelectMeal: (mealId: string) => void;
 }>;
 
 export function MealTypeSection({
   mealType,
   meals,
-  activeMealId,
+  highlightedMealId,
   onSelectMeal,
 }: MealTypeSectionProps) {
   const a = MEAL_TYPE_ACCENTS[mealType];
@@ -30,7 +30,7 @@ export function MealTypeSection({
           <Icon name={icon} size={20} color={a.primary} />
         </View>
         <View style={styles.headerText}>
-          <Text style={mealTypography.sectionTitle}>{MEAL_TYPE_LABEL[mealType]}</Text>
+          <Text style={styles.sectionHeading}>{MEAL_TYPE_LABEL[mealType]}</Text>
           <Text style={[mealTypography.body, styles.headerMeta]}>
             {meals.length === 0 ? 'Nothing here yet' : `${meals.length} logged`}
           </Text>
@@ -41,10 +41,10 @@ export function MealTypeSection({
       </View>
 
       {meals.length === 0 ? (
-        <View style={[mealCard.dashed, { borderColor: a.border }]}>
-          <Icon name="silverware-fork-knife" size={28} color={colors.textSecondary} style={styles.emptyIcon} />
+        <View style={[mealCard.dashed, styles.emptyCard, { borderColor: a.border }]}>
+          <Icon name="silverware-fork-knife" size={22} color={colors.textSecondary} style={styles.emptyIcon} />
           <Text style={[mealTypography.body, styles.emptyCenter]}>
-            No {MEAL_TYPE_LABEL[mealType].toLowerCase()} yet — tap a tile above to start.
+            No {MEAL_TYPE_LABEL[mealType].toLowerCase()} yet — tap a meal button above.
           </Text>
         </View>
       ) : (
@@ -52,7 +52,7 @@ export function MealTypeSection({
           <MealEntryCard
             key={m.id}
             meal={m}
-            selected={activeMealId === m.id}
+            selected={highlightedMealId === m.id}
             onSelect={() => onSelectMeal(m.id)}
           />
         ))
@@ -63,12 +63,19 @@ export function MealTypeSection({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 28,
+    marginBottom: 22,
+  },
+  sectionHeading: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+    marginBottom: 2,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
     gap: 12,
   },
   headerIcon: {
@@ -99,9 +106,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
+  emptyCard: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
   emptyIcon: {
     alignSelf: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     opacity: 0.55,
   },
   emptyCenter: {

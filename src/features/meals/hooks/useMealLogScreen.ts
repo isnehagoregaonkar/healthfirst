@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addMeal,
   addMealItem,
-  getMealsForToday,
+  getMealsForLocalDay,
   type MealType,
   type MealWithItems,
 } from '../../../services/meals';
+import { addCalendarDays, isSameLocalDay, startOfLocalDay } from '../../water/waterDayUtils';
 
 export type MealsGrouped = Readonly<Record<MealType, MealWithItems[]>>;
 
@@ -26,103 +27,134 @@ function groupByType(meals: MealWithItems[]): MealsGrouped {
   return g;
 }
 
-type FetchMode = 'initial' | 'silent' | 'pull';
+type FetchMode = 'initial' | 'silent' | 'pull' | 'day';
 
 export type UseMealLogScreenResult = Readonly<{
-  loading: boolean;
+  selectedDay: Date;
+  setSelectedDay: (d: Date) => void;
+  goPrevDay: () => void;
+  goNextDay: () => void;
+  initialLoading: boolean;
+  dayLoading: boolean;
   refreshing: boolean;
   error: string | null;
+  meals: MealWithItems[];
   grouped: MealsGrouped;
   totalCalories: number;
-  activeMealId: string | null;
-  activeMeal: MealWithItems | null;
   creatingMealType: MealType | null;
   itemSubmitting: boolean;
   refresh: () => Promise<void>;
-  startMeal: (mealType: MealType) => Promise<void>;
-  setActiveMealId: (id: string | null) => void;
-  submitFoodItem: (name: string, quantity: string, calories: string) => Promise<string | null>;
+  /** Creates a meal on `selectedDay` and returns its id, or null on failure. */
+  startMeal: (mealType: MealType) => Promise<string | null>;
+  submitFoodItem: (
+    mealId: string,
+    name: string,
+    quantity: string,
+    calories: string,
+  ) => Promise<string | null>;
   clearError: () => void;
 }>;
 
 export function useMealLogScreen(): UseMealLogScreenResult {
-  const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDayState] = useState(() => startOfLocalDay(new Date()));
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [dayLoading, setDayLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [meals, setMeals] = useState<MealWithItems[]>([]);
   const [totalCalories, setTotalCalories] = useState(0);
-  const [activeMealId, setActiveMealId] = useState<string | null>(null);
   const [creatingMealType, setCreatingMealType] = useState<MealType | null>(null);
   const [itemSubmitting, setItemSubmitting] = useState(false);
 
   const grouped = useMemo(() => groupByType(meals), [meals]);
 
-  const activeMeal = useMemo(
-    () => (activeMealId ? meals.find((m) => m.id === activeMealId) ?? null : null),
-    [meals, activeMealId],
-  );
-
-  const fetchToday = useCallback(async (mode: FetchMode) => {
-    if (mode === 'initial') {
-      setLoading(true);
-    }
-    if (mode === 'pull') {
-      setRefreshing(true);
-    }
-    if (mode !== 'silent') {
-      setError(null);
-    }
-    const result = await getMealsForToday();
-    if (mode === 'initial') {
-      setLoading(false);
-    }
-    if (mode === 'pull') {
-      setRefreshing(false);
-    }
-    if ('error' in result) {
-      setError(result.error.message);
-      return;
-    }
-    setMeals(result.meals);
-    setTotalCalories(result.totalCalories);
+  const setSelectedDay = useCallback((d: Date) => {
+    setSelectedDayState(startOfLocalDay(d));
   }, []);
 
-  useEffect(() => {
-    fetchToday('initial').catch(() => {});
-  }, [fetchToday]);
+  const goPrevDay = useCallback(() => {
+    setSelectedDayState((d) => addCalendarDays(d, -1));
+  }, []);
 
-  useEffect(() => {
-    if (activeMealId && !meals.some((m) => m.id === activeMealId)) {
-      setActiveMealId(null);
-    }
-  }, [meals, activeMealId]);
+  const goNextDay = useCallback(() => {
+    setSelectedDayState((d) => {
+      if (isSameLocalDay(d, new Date())) {
+        return d;
+      }
+      return addCalendarDays(d, 1);
+    });
+  }, []);
 
-  const refresh = useCallback(() => fetchToday('pull'), [fetchToday]);
+  const fetchDay = useCallback(
+    async (day: Date, mode: FetchMode) => {
+      if (mode === 'initial') {
+        setInitialLoading(true);
+      } else if (mode === 'day') {
+        setDayLoading(true);
+      } else if (mode === 'pull') {
+        setRefreshing(true);
+      }
+      if (mode !== 'silent') {
+        setError(null);
+      }
+
+      const result = await getMealsForLocalDay(day);
+
+      if (mode === 'initial') {
+        setInitialLoading(false);
+      }
+      if (mode === 'day') {
+        setDayLoading(false);
+      }
+      if (mode === 'pull') {
+        setRefreshing(false);
+      }
+
+      if ('error' in result) {
+        setError(result.error.message);
+        return;
+      }
+      setMeals(result.meals);
+      setTotalCalories(result.totalCalories);
+    },
+    [],
+  );
+
+  const prevSelectedDayRef = useRef<Date | null>(null);
+  useEffect(() => {
+    const mode = prevSelectedDayRef.current === null ? 'initial' : 'day';
+    prevSelectedDayRef.current = selectedDay;
+    fetchDay(selectedDay, mode).catch(() => {});
+  }, [selectedDay, fetchDay]);
+
+  const refresh = useCallback(() => fetchDay(selectedDay, 'pull'), [fetchDay, selectedDay]);
 
   const startMeal = useCallback(
-    async (mealType: MealType) => {
+    async (mealType: MealType): Promise<string | null> => {
       setCreatingMealType(mealType);
       setError(null);
       try {
-        const result = await addMeal(mealType);
+        const result = await addMeal(mealType, { day: selectedDay });
         if (!result.ok) {
           setError(result.error.message);
-          return;
+          return null;
         }
-        await fetchToday('silent');
-        setActiveMealId(result.mealId);
+        await fetchDay(selectedDay, 'silent');
+        return result.mealId;
       } finally {
         setCreatingMealType(null);
       }
     },
-    [fetchToday],
+    [fetchDay, selectedDay],
   );
 
   const submitFoodItem = useCallback(
-    async (name: string, quantity: string, calories: string): Promise<string | null> => {
-      if (!activeMealId) {
-        return 'Select or create a meal first.';
-      }
+    async (
+      mealId: string,
+      name: string,
+      quantity: string,
+      calories: string,
+    ): Promise<string | null> => {
       const cal = Number.parseInt(calories.replaceAll(/\s/g, ''), 10);
       if (Number.isNaN(cal)) {
         return 'Enter calories as a whole number.';
@@ -130,17 +162,17 @@ export function useMealLogScreen(): UseMealLogScreenResult {
       setItemSubmitting(true);
       setError(null);
       try {
-        const result = await addMealItem(activeMealId, name, quantity, cal);
+        const result = await addMealItem(mealId, name, quantity, cal);
         if (!result.ok) {
           return result.error.message;
         }
-        await fetchToday('silent');
+        await fetchDay(selectedDay, 'silent');
         return null;
       } finally {
         setItemSubmitting(false);
       }
     },
-    [activeMealId, fetchToday],
+    [fetchDay, selectedDay],
   );
 
   const clearError = useCallback(() => {
@@ -148,18 +180,21 @@ export function useMealLogScreen(): UseMealLogScreenResult {
   }, []);
 
   return {
-    loading,
+    selectedDay,
+    setSelectedDay,
+    goPrevDay,
+    goNextDay,
+    initialLoading,
+    dayLoading,
     refreshing,
     error,
+    meals,
     grouped,
     totalCalories,
-    activeMealId,
-    activeMeal,
     creatingMealType,
     itemSubmitting,
     refresh,
     startMeal,
-    setActiveMealId,
     submitFoodItem,
     clearError,
   };

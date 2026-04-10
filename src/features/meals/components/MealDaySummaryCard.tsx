@@ -1,14 +1,28 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY, MEAL_PRIMARY_DEEP, mealTypography } from '../mealUiTheme';
 
 type MealDaySummaryCardProps = Readonly<{
+  dayLabel: string;
   totalCalories: number;
+  suggestedKcal: number;
+  dayLoading: boolean;
+  onPressAdjustTargets: () => void;
 }>;
 
-export function MealDaySummaryCard({ totalCalories }: MealDaySummaryCardProps) {
+export function MealDaySummaryCard({
+  dayLabel,
+  totalCalories,
+  suggestedKcal,
+  dayLoading,
+  onPressAdjustTargets,
+}: MealDaySummaryCardProps) {
+  const pct =
+    suggestedKcal > 0 ? Math.min(100, Math.round((totalCalories / suggestedKcal) * 100)) : 0;
+  const over = totalCalories > suggestedKcal && suggestedKcal > 0;
+
   return (
     <View style={styles.outer}>
       <View style={styles.heroBand}>
@@ -16,22 +30,60 @@ export function MealDaySummaryCard({ totalCalories }: MealDaySummaryCardProps) {
           <Icon name="fire" size={22} color="#FFFFFF" />
         </View>
         <View style={styles.heroTitles}>
-          <Text style={styles.heroEyebrow}>Today</Text>
-          <Text style={styles.heroTitle}>Nutrition snapshot</Text>
+          <Text style={styles.heroEyebrow}>{dayLabel}</Text>
+          <Text style={styles.heroTitle}>Calories</Text>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Adjust calorie target"
+          onPress={onPressAdjustTargets}
+          style={({ pressed }) => [styles.gearBtn, pressed && styles.gearBtnPressed]}
+        >
+          <Icon name="tune-variant" size={22} color="#FFFFFF" />
+        </Pressable>
       </View>
+
       <View style={styles.body}>
-        <View style={styles.statRow}>
-          <Text style={styles.bigNumber}>{totalCalories.toLocaleString()}</Text>
-          <View style={styles.kcalPill}>
-            <Text style={styles.kcalPillText}>kcal</Text>
+        {dayLoading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={MEAL_PRIMARY} />
+            <Text style={styles.loadingText}>Updating day…</Text>
           </View>
-        </View>
-        <Text style={[mealTypography.body, styles.sub]}>Total calories logged so far</Text>
-        <View style={styles.sparkRow}>
-          <Icon name="chart-bell-curve" size={16} color={colors.textSecondary} />
-          <Text style={styles.sparkHint}>Keep logging meals for better insights</Text>
-        </View>
+        ) : (
+          <>
+            <View style={styles.statsRow}>
+              <View style={styles.statBlock}>
+                <Text style={styles.statCaption}>Logged</Text>
+                <Text style={styles.statValue}>{totalCalories.toLocaleString()}</Text>
+                <Text style={styles.statUnit}>kcal</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statBlock}>
+                <Text style={styles.statCaption}>Suggested</Text>
+                <Text style={[styles.statValue, styles.statValueMuted]}>
+                  {suggestedKcal.toLocaleString()}
+                </Text>
+                <Text style={styles.statUnit}>kcal / day</Text>
+              </View>
+            </View>
+
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  { width: `${pct}%` },
+                  over && styles.barFillOver,
+                  !over && pct >= 85 && pct < 100 && styles.barFillWarn,
+                ]}
+              />
+            </View>
+            <Text style={[mealTypography.body, styles.barHint]}>
+              {over
+                ? `${(totalCalories - suggestedKcal).toLocaleString()} kcal over suggested`
+                : `${(suggestedKcal - totalCalories).toLocaleString()} kcal remaining`}
+            </Text>
+          </>
+        )}
       </View>
     </View>
   );
@@ -39,7 +91,7 @@ export function MealDaySummaryCard({ totalCalories }: MealDaySummaryCardProps) {
 
 const styles = StyleSheet.create({
   outer: {
-    marginBottom: 22,
+    marginBottom: 18,
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: colors.surface,
@@ -54,10 +106,10 @@ const styles = StyleSheet.create({
   heroBand: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: MEAL_PRIMARY_DEEP,
-    gap: 14,
+    gap: 12,
   },
   heroIconWrap: {
     width: 44,
@@ -85,56 +137,88 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
+  gearBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  gearBtnPressed: {
+    opacity: 0.85,
+  },
   body: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 18,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
   },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  bigNumber: {
-    fontSize: 40,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    letterSpacing: -1.2,
-    lineHeight: 44,
-  },
-  kcalPill: {
-    marginBottom: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.35)',
-  },
-  kcalPillText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: MEAL_PRIMARY,
-    letterSpacing: 0.3,
-  },
-  sub: {
-    marginTop: 6,
-  },
-  sparkRow: {
+  loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    gap: 12,
+    paddingVertical: 20,
+    justifyContent: 'center',
   },
-  sparkHint: {
-    flex: 1,
-    fontSize: 13,
+  loadingText: {
+    fontSize: 15,
     fontWeight: '600',
     color: colors.textSecondary,
-    lineHeight: 18,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  statBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: 12,
+  },
+  statCaption: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    letterSpacing: -0.8,
+  },
+  statValueMuted: {
+    color: MEAL_PRIMARY,
+  },
+  statUnit: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  barTrack: {
+    marginTop: 18,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: MEAL_PRIMARY,
+  },
+  barFillWarn: {
+    backgroundColor: '#CA8A04',
+  },
+  barFillOver: {
+    backgroundColor: colors.error,
+  },
+  barHint: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

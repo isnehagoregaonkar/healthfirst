@@ -2,7 +2,6 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MealType } from '../../../services/meals';
-import { colors } from '../../../theme/tokens';
 import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI, mealTypography } from '../mealUiTheme';
 import { MEAL_TYPE_LABEL, MEAL_TYPE_ORDER } from '../mealConstants';
 
@@ -11,15 +10,15 @@ type AddMealActionsProps = Readonly<{
   onAddMeal: (mealType: MealType) => void;
 }>;
 
+/** Single horizontal row — avoids flexWrap + flexGrow overlap bugs inside ScrollView. */
 export function AddMealActions({ creatingMealType, onAddMeal }: AddMealActionsProps) {
   const anyCreating = creatingMealType !== null;
 
   return (
     <View style={styles.wrap}>
-      <Text style={mealTypography.sectionEyebrow}>Quick start</Text>
-      <Text style={mealTypography.sectionTitle}>Log a meal</Text>
-      <Text style={[mealTypography.body, styles.hint]}>Pick a slot — then add foods in the card below.</Text>
-      <View style={styles.grid}>
+      <Text style={mealTypography.sectionEyebrow}>Add meal</Text>
+      <Text style={[mealTypography.body, styles.hint]}>Tap a slot — opens the food sheet.</Text>
+      <View style={styles.row}>
         {MEAL_TYPE_ORDER.map((type) => {
           const busy = creatingMealType === type;
           const a = MEAL_TYPE_ACCENTS[type];
@@ -32,21 +31,25 @@ export function AddMealActions({ creatingMealType, onAddMeal }: AddMealActionsPr
               disabled={anyCreating}
               onPress={() => onAddMeal(type)}
               style={({ pressed }) => [
-                styles.tile,
+                styles.btn,
                 { backgroundColor: a.soft, borderColor: a.border },
-                anyCreating && !busy && styles.tileDimmed,
-                pressed && !anyCreating && styles.tilePressed,
+                anyCreating && !busy && styles.btnDimmed,
+                pressed && !anyCreating && styles.btnPressed,
               ]}
             >
               {busy ? (
-                <ActivityIndicator color={a.deep} style={styles.tileSpinner} />
+                <ActivityIndicator color={a.deep} />
               ) : (
                 <>
-                  <View style={[styles.iconBubble, { backgroundColor: `${a.primary}18` }]}>
-                    <Icon name={icon} size={26} color={a.primary} />
-                  </View>
-                  <Text style={[styles.tileLabel, { color: a.deep }]}>{MEAL_TYPE_LABEL[type]}</Text>
-                  <Text style={styles.tileSub}>New entry</Text>
+                  <Icon name={icon} size={20} color={a.primary} />
+                  <Text
+                    style={[styles.btnLabel, { color: a.deep }]}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.78}
+                  >
+                    {MEAL_TYPE_LABEL[type]}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -59,57 +62,42 @@ export function AddMealActions({ creatingMealType, onAddMeal }: AddMealActionsPr
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 26,
+    marginBottom: 20,
   },
   hint: {
-    marginBottom: 16,
+    marginBottom: 12,
     marginTop: 2,
+    fontSize: 14,
   },
-  grid: {
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    alignItems: 'stretch',
+    gap: 8,
   },
-  tile: {
-    flexGrow: 1,
-    flexBasis: 0,
-    minWidth: 148,
-    borderRadius: 18,
+  btn: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 12,
     borderWidth: 1.5,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
     alignItems: 'center',
-    minHeight: 118,
     justifyContent: 'center',
+    minHeight: 72,
   },
-  tileDimmed: {
+  btnDimmed: {
     opacity: 0.45,
   },
-  tilePressed: {
+  btnPressed: {
+    opacity: 0.9,
     transform: [{ scale: 0.98 }],
-    opacity: 0.92,
   },
-  tileSpinner: {
-    marginVertical: 8,
-  },
-  iconBubble: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  tileLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-    textAlign: 'center',
-  },
-  tileSub: {
+  btnLabel: {
     marginTop: 4,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+    lineHeight: 13,
   },
 });

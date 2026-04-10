@@ -25,12 +25,27 @@ export type MealWithItems = Readonly<{
 
 const MEAL_TYPES: ReadonlySet<string> = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
 
-function localDayBoundsIso(): Readonly<{ startIso: string; endIso: string }> {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { startIso: start.toISOString(), endIso: end.toISOString() };
+function startOfLocalDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfLocalDay(d: Date): Date {
+  const x = startOfLocalDay(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+function localDayBoundsFor(day: Date): Readonly<{ startIso: string; endIso: string }> {
+  return {
+    startIso: startOfLocalDay(day).toISOString(),
+    endIso: endOfLocalDay(day).toISOString(),
+  };
+}
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return startOfLocalDay(a).getTime() === startOfLocalDay(b).getTime();
 }
 
 async function requireUserId(): Promise<{ userId: string } | { error: MealServiceError }> {
@@ -52,20 +67,36 @@ type AddMealResult =
   | Readonly<{ ok: true; mealId: string }>
   | Readonly<{ ok: false; error: MealServiceError }>;
 
+export type AddMealOptions = Readonly<{
+  /** Local calendar day this meal belongs to (defaults to today). */
+  day?: Date;
+}>;
+
 /**
- * Creates an empty meal row for today (timestamp = now).
+ * Creates an empty meal row. Uses `now` on the device's local "today", or noon local on other days.
  */
-export async function addMeal(mealType: MealType): Promise<AddMealResult> {
+export async function addMeal(mealType: MealType, options?: AddMealOptions): Promise<AddMealResult> {
   const user = await requireUserId();
   if ('error' in user) {
     return { ok: false, error: user.error };
   }
+
+  const anchor = options?.day ? startOfLocalDay(options.day) : startOfLocalDay(new Date());
+  const now = new Date();
+  const createdAt = isSameLocalDay(anchor, now)
+    ? now.toISOString()
+    : (() => {
+        const t = new Date(anchor);
+        t.setHours(12, 0, 0, 0);
+        return t.toISOString();
+      })();
 
   const { data, error } = await supabase
     .from('meals')
     .insert({
       user_id: user.userId,
       meal_type: mealType,
+      created_at: createdAt,
     })
     .select('id')
     .single();
@@ -123,16 +154,16 @@ type GetMealsTodayResult =
   | Readonly<{ error: MealServiceError }>;
 
 /**
- * All meals for the current user whose `created_at` falls on the device’s local calendar day,
+ * All meals for the current user on a given local calendar day,
  * each with nested items. Sorted by time ascending.
  */
-export async function getMealsForToday(): Promise<GetMealsTodayResult> {
+export async function getMealsForLocalDay(day: Date): Promise<GetMealsTodayResult> {
   const user = await requireUserId();
   if ('error' in user) {
     return { error: user.error };
   }
 
-  const { startIso, endIso } = localDayBoundsIso();
+  const { startIso, endIso } = localDayBoundsFor(day);
 
   const { data: mealRows, error: mealsError } = await supabase
     .from('meals')
@@ -200,4 +231,9 @@ export async function getMealsForToday(): Promise<GetMealsTodayResult> {
   });
 
   return { meals: result, totalCalories };
+}
+
+/** @deprecated Use getMealsForLocalDay(new Date()). */
+export async function getMealsForToday(): Promise<GetMealsTodayResult> {
+  return getMealsForLocalDay(new Date());
 }

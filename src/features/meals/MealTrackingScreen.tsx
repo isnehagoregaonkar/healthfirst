@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,33 +11,80 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import type { MealType } from '../../services/meals';
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
-import { MEAL_PRIMARY, MEAL_PRIMARY_DEEP } from './mealUiTheme';
+import { formatDayShort, isSameLocalDay } from '../water/waterDayUtils';
+import { MEAL_PRIMARY } from './mealUiTheme';
 import { MEAL_TYPE_ORDER } from './mealConstants';
-import { AddFoodItemForm } from './components/AddFoodItemForm';
 import { AddMealActions } from './components/AddMealActions';
+import { MealAddFoodModal } from './components/MealAddFoodModal';
+import { MealCalorieProfileModal } from './components/MealCalorieProfileModal';
+import { MealDayStrip } from './components/MealDayStrip';
 import { MealDaySummaryCard } from './components/MealDaySummaryCard';
 import { MealTypeSection } from './components/MealTypeSection';
+import { useMealCalorieTarget } from './hooks/useMealCalorieTarget';
 import { useMealLogScreen } from './hooks/useMealLogScreen';
 
 export function MealTrackingScreen() {
   const {
-    loading,
+    selectedDay,
+    setSelectedDay,
+    initialLoading,
+    dayLoading,
     refreshing,
     error,
+    meals,
     grouped,
     totalCalories,
-    activeMealId,
-    activeMeal,
     creatingMealType,
     itemSubmitting,
     refresh,
     startMeal,
-    setActiveMealId,
     submitFoodItem,
     clearError,
   } = useMealLogScreen();
+
+  const { profile, suggestedKcal, updateProfile } = useMealCalorieTarget();
+
+  const [foodModalMealId, setFoodModalMealId] = useState<string | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  const isViewingToday = useMemo(() => isSameLocalDay(selectedDay, new Date()), [selectedDay]);
+  const selectedDayLabel = useMemo(() => formatDayShort(selectedDay), [selectedDay]);
+
+  const foodModalMeal = useMemo(
+    () => (foodModalMealId ? meals.find((m) => m.id === foodModalMealId) ?? null : null),
+    [meals, foodModalMealId],
+  );
+
+  const closeFoodModal = useCallback(() => {
+    setFoodModalMealId(null);
+  }, []);
+
+  const openFoodModalForMeal = useCallback((mealId: string) => {
+    setFoodModalMealId(mealId);
+  }, []);
+
+  const handleMealTypePress = useCallback(
+    async (mealType: MealType) => {
+      const id = await startMeal(mealType);
+      if (id) {
+        setFoodModalMealId(id);
+      }
+    },
+    [startMeal],
+  );
+
+  const handleSubmitFood = useCallback(
+    async (name: string, quantity: string, calories: string) => {
+      if (!foodModalMealId) {
+        return 'No meal selected.';
+      }
+      return submitFoodItem(foodModalMealId, name, quantity, calories);
+    },
+    [foodModalMealId, submitFoodItem],
+  );
 
   return (
     <Screen applyTopSafeArea={false} backgroundColor={colors.background}>
@@ -47,13 +94,13 @@ export function MealTrackingScreen() {
           style={styles.flex}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
         >
-          {loading ? (
+          {initialLoading ? (
             <View style={styles.loading}>
               <View style={styles.loadingOrb}>
                 <ActivityIndicator size="large" color={MEAL_PRIMARY} />
               </View>
-              <Text style={styles.loadingTitle}>Plating your meals…</Text>
-              <Text style={styles.loadingText}>Fetching today&apos;s log</Text>
+              <Text style={styles.loadingTitle}>Loading meals…</Text>
+              <Text style={styles.loadingText}>Fetching this day</Text>
             </View>
           ) : (
             <ScrollView
@@ -70,12 +117,6 @@ export function MealTrackingScreen() {
                 />
               }
             >
-              <View style={styles.screenIntro}>
-                <Text style={styles.screenEyebrow}>Meal log</Text>
-                <Text style={styles.screenTitle}>Fuel your day</Text>
-                <Text style={styles.screenSub}>Color-coded by meal type — tap to focus, then add foods.</Text>
-              </View>
-
               {error ? (
                 <Pressable
                   accessibilityRole="alert"
@@ -90,13 +131,27 @@ export function MealTrackingScreen() {
                 </Pressable>
               ) : null}
 
-              <MealDaySummaryCard totalCalories={totalCalories} />
+              <MealDayStrip selectedDay={selectedDay} onSelectDay={setSelectedDay} />
 
-              <AddMealActions creatingMealType={creatingMealType} onAddMeal={startMeal} />
+              {!isViewingToday ? (
+                <Text style={styles.pastHint}>
+                  Viewing {selectedDayLabel} — you can still log meals for this day.
+                </Text>
+              ) : null}
 
-              <View style={styles.dividerLabelRow}>
+              <MealDaySummaryCard
+                dayLabel={isViewingToday ? 'Today' : selectedDayLabel}
+                totalCalories={totalCalories}
+                suggestedKcal={suggestedKcal}
+                dayLoading={dayLoading}
+                onPressAdjustTargets={() => setProfileModalOpen(true)}
+              />
+
+              <AddMealActions creatingMealType={creatingMealType} onAddMeal={handleMealTypePress} />
+
+              <View style={[styles.dividerLabelRow, styles.dividerAfterActions]}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>Your day</Text>
+                <Text style={styles.dividerText}>Logged meals</Text>
                 <View style={styles.dividerLine} />
               </View>
 
@@ -105,18 +160,29 @@ export function MealTrackingScreen() {
                   key={type}
                   mealType={type}
                   meals={grouped[type]}
-                  activeMealId={activeMealId}
-                  onSelectMeal={setActiveMealId}
+                  highlightedMealId={foodModalMealId}
+                  onSelectMeal={openFoodModalForMeal}
                 />
               ))}
-
-              <View style={styles.formWrap}>
-                <AddFoodItemForm activeMeal={activeMeal} submitting={itemSubmitting} onSubmit={submitFoodItem} />
-              </View>
             </ScrollView>
           )}
         </KeyboardAvoidingView>
       </View>
+
+      <MealAddFoodModal
+        visible={foodModalMealId !== null}
+        meal={foodModalMeal}
+        submitting={itemSubmitting}
+        onClose={closeFoodModal}
+        onSubmit={handleSubmitFood}
+      />
+
+      <MealCalorieProfileModal
+        visible={profileModalOpen}
+        profile={profile}
+        onClose={() => setProfileModalOpen(false)}
+        onSave={updateProfile}
+      />
     </Screen>
   );
 }
@@ -158,41 +224,27 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 4,
   },
   scrollContent: {
     paddingBottom: 36,
   },
-  screenIntro: {
-    marginBottom: 20,
-  },
-  screenEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: MEAL_PRIMARY_DEEP,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  screenTitle: {
-    marginTop: 6,
-    fontSize: 28,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    letterSpacing: -0.8,
-  },
-  screenSub: {
-    marginTop: 8,
-    fontSize: 15,
-    fontWeight: '500',
+  pastHint: {
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textSecondary,
-    lineHeight: 22,
-    maxWidth: 340,
+    textAlign: 'center',
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  dividerAfterActions: {
+    marginTop: 8,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    marginBottom: 18,
+    marginBottom: 14,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#FECACA',
@@ -237,8 +289,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-  },
-  formWrap: {
-    marginTop: 4,
   },
 });

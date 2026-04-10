@@ -11,12 +11,20 @@ type AddFoodItemFormProps = Readonly<{
   activeMeal: MealWithItems | null;
   submitting: boolean;
   onSubmit: (name: string, quantity: string, calories: string) => Promise<string | null>;
+  /** Slimmer layout for bottom sheet modal. */
+  variant?: 'standalone' | 'modal';
 }>;
 
 const PLACEHOLDER = '#9CA3AF';
 const INPUT_BG = '#F3F4F6';
 
-export function AddFoodItemForm({ activeMeal, submitting, onSubmit }: AddFoodItemFormProps) {
+export function AddFoodItemForm({
+  activeMeal,
+  submitting,
+  onSubmit,
+  variant = 'standalone',
+}: AddFoodItemFormProps) {
+  const inModal = variant === 'modal';
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [calories, setCalories] = useState('');
@@ -54,7 +62,7 @@ export function AddFoodItemForm({ activeMeal, submitting, onSubmit }: AddFoodIte
   const mci = MEAL_TYPE_MCI[activeMeal.mealType];
 
   return (
-    <View style={[mealCard.wrap, styles.card]}>
+    <View style={[inModal ? styles.cardModal : mealCard.wrap, !inModal && styles.card, inModal && styles.cardModalPad]}>
       <View style={styles.cardHeader}>
         <View style={[styles.mealChip, { backgroundColor: a.soft, borderColor: a.border }]}>
           <Icon name={mci} size={18} color={a.primary} />
@@ -68,8 +76,12 @@ export function AddFoodItemForm({ activeMeal, submitting, onSubmit }: AddFoodIte
         ) : null}
       </View>
 
-      <Text style={styles.formTitle}>Add a food</Text>
-      <Text style={[mealTypography.body, styles.formSub]}>Name, portion, and calories — quick to log.</Text>
+      {inModal ? null : (
+        <>
+          <Text style={styles.formTitle}>Add a food</Text>
+          <Text style={[mealTypography.body, styles.formSub]}>Name, portion, and calories — quick to log.</Text>
+        </>
+      )}
 
       <Text style={[mealTypography.caption, styles.fieldLabel]}>Name</Text>
       <TextInput
@@ -152,6 +164,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 8,
     lineHeight: 22,
+  },
+  cardModal: {
+    backgroundColor: 'transparent',
+  },
+  cardModalPad: {
+    paddingVertical: 0,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   card: {
     paddingVertical: 20,
