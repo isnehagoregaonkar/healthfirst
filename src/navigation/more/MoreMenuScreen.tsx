@@ -9,11 +9,13 @@ import type { MoreStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
+type MoreMenuTarget = Exclude<keyof MoreStackParamList, 'MoreHome'>;
+
 type MoreTile = Readonly<{
   title: string;
   subtitle: string;
   icon: string;
-  target: keyof MoreStackParamList;
+  target: MoreMenuTarget;
 }>;
 
 const TILES: MoreTile[] = [

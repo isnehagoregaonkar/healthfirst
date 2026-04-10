@@ -4,32 +4,21 @@ import { ExerciseHistoryScreen } from '../features/exercise/ExerciseHistoryScree
 import { IntermittentFastingScreen } from '../features/fasting/IntermittentFastingScreen';
 import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
-import { colors } from '../theme/tokens';
-import { DrawerMenuButton } from './DrawerMenuButton';
 import { MoreMenuScreen } from './more/MoreMenuScreen';
+import { appHeaderChrome, renderDrawerMenuHeaderLeft } from './navHeaderOptions';
 import type { MoreStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
-function moreHomeHeaderLeft() {
-  return <DrawerMenuButton />;
-}
-
-const stackHeader = {
-  headerStyle: { backgroundColor: colors.surface },
-  headerTintColor: colors.primary,
-  headerTitleStyle: { fontWeight: '700' as const, fontSize: 18, color: colors.textPrimary },
-};
-
 export function MoreStackNavigator() {
   return (
-    <Stack.Navigator screenOptions={stackHeader}>
+    <Stack.Navigator screenOptions={appHeaderChrome}>
       <Stack.Screen
         name="MoreHome"
         component={MoreMenuScreen}
         options={{
           title: 'More',
-          headerLeft: moreHomeHeaderLeft,
+          headerLeft: renderDrawerMenuHeaderLeft,
         }}
       />
       <Stack.Screen

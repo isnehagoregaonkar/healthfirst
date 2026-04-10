@@ -5,39 +5,20 @@ import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { MealTrackingScreen } from '../features/meals/MealTrackingScreen';
 import { StepsTrackingScreen } from '../features/steps/StepsTrackingScreen';
 import { WaterIntakeScreen } from '../features/water/WaterIntakeScreen';
-import { colors } from '../theme/tokens';
-import { DrawerMenuButton } from './DrawerMenuButton';
 import { MoreStackNavigator } from './MoreStackNavigator';
+import { tabScreenOptions } from './navHeaderOptions';
 import type { MainTabParamList } from './types';
 import { HealthBottomTabBar } from './ui/HealthBottomTabBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function tabScreenHeaderLeft() {
-  return <DrawerMenuButton />;
-}
-
 function renderMainTabBar(props: BottomTabBarProps) {
   return <HealthBottomTabBar {...props} />;
 }
 
-const headerOptions = {
-  headerShown: true,
-  headerLeft: tabScreenHeaderLeft,
-  headerLeftContainerStyle: { paddingLeft: 16 },
-  headerTintColor: colors.primary,
-  headerStyle: { backgroundColor: colors.surface },
-  headerTitleStyle: { fontWeight: '700' as const, fontSize: 18, color: colors.textPrimary },
-};
-
 export function MainTabNavigator() {
   return (
-    <Tab.Navigator
-      tabBar={renderMainTabBar}
-      screenOptions={{
-        ...headerOptions,
-      }}
-    >
+    <Tab.Navigator tabBar={renderMainTabBar} screenOptions={tabScreenOptions}>
       <Tab.Screen
         name="Home"
         component={DashboardScreen}

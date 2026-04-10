@@ -8,17 +8,16 @@ import { colors } from '../../theme/tokens';
 const WATER_ROUTE = 'Water';
 
 type TabVisual = Readonly<{
-  routeName: string;
-  label: string;
+  defaultLabel: string;
   icon: string;
 }>;
 
 const TAB_CONFIG: Record<string, TabVisual> = {
-  Home: { routeName: 'Home', label: 'Home', icon: 'view-dashboard-outline' },
-  Meals: { routeName: 'Meals', label: 'Meals', icon: 'food-apple-outline' },
-  Water: { routeName: 'Water', label: 'Water', icon: 'cup-water' },
-  Steps: { routeName: 'Steps', label: 'Move', icon: 'walk' },
-  More: { routeName: 'More', label: 'More', icon: 'dots-horizontal' },
+  Home: { defaultLabel: 'Home', icon: 'view-dashboard-outline' },
+  Meals: { defaultLabel: 'Meals', icon: 'food-apple-outline' },
+  Water: { defaultLabel: 'Water', icon: 'cup-water' },
+  Steps: { defaultLabel: 'Move', icon: 'walk' },
+  More: { defaultLabel: 'More', icon: 'dots-horizontal' },
 };
 
 type TabSlotProps = Readonly<{
@@ -43,7 +42,7 @@ function TabSlot({ label, icon, focused, onPress, onLongPress, isWater }: TabSlo
           style={({ pressed }) => [styles.waterHit, pressed && styles.waterHitPressed]}
         >
           <View style={[styles.waterFab, focused && styles.waterFabFocused]}>
-            <Icon name={icon} size={26} color="#FFFFFF" />
+            <Icon name={icon} size={26} color={colors.surface} />
           </View>
         </Pressable>
         <Text style={[styles.waterLabel, focused && styles.labelFocused]}>{label}</Text>
@@ -82,7 +81,7 @@ export function HealthBottomTabBar({ state, descriptors, navigation }: BottomTab
             const label =
               typeof options.tabBarLabel === 'string'
                 ? options.tabBarLabel
-                : cfg?.label ?? route.name;
+                : cfg?.defaultLabel ?? route.name;
             const icon = cfg?.icon ?? 'circle-outline';
             const isWater = route.name === WATER_ROUTE;
 
