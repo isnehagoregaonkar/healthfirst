@@ -2,6 +2,7 @@ const { colors } = require('./src/theme/tokens');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  presets: [require('nativewind/preset')],
   content: ['./App.{js,ts,tsx}', './src/**/*.{js,ts,tsx}'],
   theme: {
     extend: {
