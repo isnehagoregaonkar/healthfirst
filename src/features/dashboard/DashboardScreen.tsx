@@ -4,7 +4,7 @@ import { Screen } from '../../components/layout/Screen';
 import { signOut } from '../../services/auth';
 import { colors } from '../../theme/tokens';
 
-export function HomeScreen() {
+export function DashboardScreen() {
   const handleSignOut = async () => {
     await signOut();
   };
@@ -12,11 +12,13 @@ export function HomeScreen() {
   return (
     <Screen>
       <View style={styles.container}>
-        <Text style={styles.title}>Welcome to HealthFirst</Text>
-        <Text style={styles.subtitle}>You are signed in.</Text>
+        <Text style={styles.title}>Dashboard</Text>
+        <Text style={styles.subtitle}>
+          Your overview for meals, activity, water, and goals.
+        </Text>
 
         <Pressable style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
       </View>
     </Screen>
@@ -26,24 +28,23 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingTop: 24,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
-    textAlign: 'center',
   },
   subtitle: {
     marginTop: 10,
     fontSize: 15,
     color: colors.textSecondary,
-    textAlign: 'center',
+    lineHeight: 22,
   },
   signOutButton: {
-    marginTop: 24,
+    marginTop: 28,
+    alignSelf: 'flex-start',
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingHorizontal: 22,
