@@ -1,6 +1,7 @@
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
   ActivityIndicator,
   Modal,
@@ -26,7 +27,6 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
 import { useDrawerUserProfile } from '../../navigation/hooks/useDrawerUserProfile';
 import type { MainTabParamList } from '../../navigation/types';
-import { suggestedDailyProteinGrams } from '../../services/mealCalorieTarget';
 import { addHeartRateReading } from '../../services/vitals';
 import { colors } from '../../theme/tokens';
 import { MEAL_PRIMARY } from '../meals/mealUiTheme';
@@ -40,9 +40,11 @@ const DASH_MUTED = '#64748B';
 const DASH_HEART = '#E11D48';
 const DASH_HEART_SOFT = '#FFE4E9';
 const DASH_WATER = '#0284C7';
-const DASH_CAL = '#D97706';
-const DASH_OK = '#22C55E';
-const DASH_WARN = '#F59E0B';
+/** Ring accents for Today hero cards */
+const RING_CAL = '#F97316';
+const RING_WATER = '#06B6D4';
+const EXERCISE_BAR = '#FF7A18';
+const EXERCISE_BAR_TODAY = '#EA580C';
 const DASH_BAD = '#EF4444';
 const DASH_EXERCISE = '#8B5CF6';
 /** Preview “minutes” per day for move row until exercise ships (index 6 = today). */
@@ -50,7 +52,54 @@ const EXERCISE_DUMMY = [18, 32, 45, 28, 52, 36, 22];
 const EXERCISE_STREAK_MIN = 25;
 const EXERCISE_RING_GOAL = 30;
 
+/** Slight floor so calories / water tiles align with heart rate / weight half-cards. */
+const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 158;
+/** Ring diameter in calories / water dashboard tiles (matches visual weight of icon bubbles). */
+const DASHBOARD_METRIC_RING_SIZE = 52;
+
 type TabNav = BottomTabNavigationProp<MainTabParamList>;
+
+type DashboardStatPillTone = 'cal' | 'calOver' | 'water' | 'weight';
+
+function DashboardStatPill({
+  tone,
+  children,
+  numberOfLines = 2,
+}: Readonly<{
+  tone: DashboardStatPillTone;
+  children: string;
+  numberOfLines?: number;
+}>) {
+  const wrap: StyleProp<ViewStyle>[] = [styles.halfCardStatPill];
+  const txt: StyleProp<TextStyle>[] = [styles.halfCardStatPillText];
+  switch (tone) {
+    case 'cal':
+      wrap.push(styles.halfCardStatPillCal);
+      txt.push(styles.halfCardStatPillTextCal);
+      break;
+    case 'calOver':
+      wrap.push(styles.halfCardStatPillCalOver);
+      txt.push(styles.halfCardStatPillTextCalOver);
+      break;
+    case 'water':
+      wrap.push(styles.halfCardStatPillWater);
+      txt.push(styles.halfCardStatPillTextWater);
+      break;
+    case 'weight':
+      wrap.push(styles.halfCardStatPillWeight);
+      txt.push(styles.halfCardStatPillTextWeight);
+      break;
+    default:
+      break;
+  }
+  return (
+    <View style={wrap}>
+      <Text style={txt} numberOfLines={numberOfLines}>
+        {children}
+      </Text>
+    </View>
+  );
+}
 
 function greetingForNow(): string {
   const h = new Date().getHours();
@@ -69,6 +118,17 @@ function formatWeekdayShort(d: Date): string {
 
 function localDayKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function waterRemainingFoot(goalMl: number, todayMl: number): string {
+  const rem = Math.max(0, goalMl - todayMl);
+  if (rem <= 0) {
+    return 'Daily goal reached';
+  }
+  if (rem >= 1000) {
+    return `${(rem / 1000).toFixed(1)} L to go`;
+  }
+  return `${rem.toLocaleString('en-US')} ml to go`;
 }
 
 function formatRelativeHeartTime(iso: string): string {
@@ -144,40 +204,38 @@ function HeartSpark({ points, color }: SparkProps) {
   );
 }
 
-type ProgressRingProps = Readonly<{
-  size: number;
+type MetricRingWithIconProps = Readonly<{
   pct: number;
   color: string;
-  label: string;
-  valueLine: string;
-  subLine?: string;
+  icon: string;
   alert?: boolean;
+  size?: number;
 }>;
 
-function ProgressRing({
-  size,
+/** Progress ring with a centered icon; show amounts as text beside the ring. */
+function MetricRingWithIcon({
   pct,
   color,
-  label,
-  valueLine,
-  subLine,
+  icon,
   alert,
-}: ProgressRingProps) {
-  const stroke = 7;
+  size = 56,
+}: MetricRingWithIconProps) {
+  const stroke = 5;
   const r = (size - stroke) / 2;
   const c = size / 2;
   const circ = 2 * Math.PI * r;
   const clamped = Math.min(100, Math.max(0, pct));
   const dash = (clamped / 100) * circ;
   const ringColor = alert ? DASH_BAD : color;
+  const iconColor = alert ? DASH_BAD : color;
   return (
-    <View style={styles.ringCol}>
+    <View style={styles.miniRingWrap}>
       <Svg width={size} height={size}>
         <Circle
           cx={c}
           cy={c}
           r={r}
-          stroke="#E2E8F0"
+          stroke="#EEF2F6"
           strokeWidth={stroke}
           fill="none"
         />
@@ -193,16 +251,88 @@ function ProgressRing({
           transform={`rotate(-90 ${c} ${c})`}
         />
       </Svg>
-      <View style={[styles.ringCenter, { width: size, height: size }]}>
-        <Text
-          style={[styles.ringValue, alert && styles.ringValueAlert]}
-          numberOfLines={2}
-        >
-          {valueLine}
-        </Text>
+      <View style={[styles.miniRingCenter, { width: size, height: size }]}>
+        <Icon
+          name={icon}
+          size={Math.round(size * 0.42)}
+          color={iconColor}
+        />
       </View>
-      <Text style={styles.ringLabel}>{label}</Text>
-      {subLine ? <Text style={styles.ringSub}>{subLine}</Text> : null}
+    </View>
+  );
+}
+
+type ExerciseWeekBarsProps = Readonly<{
+  values: ReadonlyArray<number>;
+  labels: ReadonlyArray<string>;
+  dayKeys: ReadonlyArray<string>;
+  goalMinutes: number;
+  todayIndex: number;
+}>;
+
+function ExerciseZigzagBg() {
+  return (
+    <Svg
+      width={112}
+      height={96}
+      style={styles.exerciseZigzagSvg}
+      pointerEvents="none"
+    >
+      <Path
+        d="M -4 72 Q 22 28 48 64 T 108 52 L 116 96 L -8 96 Z"
+        fill="#FFEDD5"
+        opacity={0.45}
+      />
+    </Svg>
+  );
+}
+
+/** Weekly move minutes as pill bars with a light dot at the top (reference UI). */
+function ExerciseWeekBars({
+  values,
+  labels,
+  dayKeys,
+  goalMinutes,
+  todayIndex,
+}: ExerciseWeekBarsProps) {
+  const maxH = 78;
+  const barW = 11;
+  const maxV = Math.max(1, goalMinutes, ...values);
+  return (
+    <View style={styles.exerciseBarsRow}>
+      {values.map((v, i) => {
+        const h = Math.max(10, Math.round((v / maxV) * maxH));
+        const isToday = i === todayIndex;
+        return (
+          <View key={dayKeys[i] ?? `move-${i}`} style={styles.exerciseBarCol}>
+            <View style={[styles.exerciseBarTrack, { height: maxH }]}>
+              <View
+                style={[
+                  styles.exerciseBarFill,
+                  {
+                    width: barW,
+                    height: h,
+                    borderRadius: barW / 2,
+                    backgroundColor: isToday
+                      ? EXERCISE_BAR_TODAY
+                      : EXERCISE_BAR,
+                  },
+                ]}
+              >
+                <View style={styles.exerciseBarDot} />
+              </View>
+            </View>
+            <Text
+              style={[
+                styles.exerciseBarLbl,
+                isToday && styles.exerciseBarLblToday,
+              ]}
+            >
+              {labels[i]}
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -359,8 +489,6 @@ export function DashboardScreen() {
     void refresh();
   }, [refresh]);
 
-  const ringSize = Math.min(108, Math.floor((winW - 18 * 2 - 24) / 3));
-
   const streakModel = useMemo(() => {
     if (!snapshot) {
       return null;
@@ -405,24 +533,37 @@ export function DashboardScreen() {
         ),
       )
     : 0;
-  const exerciseToday = EXERCISE_DUMMY[6] ?? 0;
-  const exercisePct = Math.min(
-    100,
-    Math.round((exerciseToday / EXERCISE_RING_GOAL) * 100),
-  );
+  const moveExercise = useMemo(() => {
+    if (!snapshot) {
+      return {
+        values: [] as number[],
+        labels: [] as string[],
+        dayKeys: [] as string[],
+        todayIdx: 0,
+        weekTotalMin: 0,
+        estKcalWeek: 0,
+      };
+    }
+    const mw = snapshot.mealWeek;
+    const values = mw.map((_, i) => EXERCISE_DUMMY[i] ?? 0);
+    const labels = mw.map(d => formatWeekdayShort(d.date).charAt(0));
+    const dayKeys = mw.map(d => localDayKey(d.date));
+    const todayIdx = Math.max(0, mw.length - 1);
+    const weekTotalMin = values.reduce((a, b) => a + b, 0);
+    return {
+      values,
+      labels,
+      dayKeys,
+      todayIdx,
+      weekTotalMin,
+      estKcalWeek: Math.round(weekTotalMin * 7.5),
+    };
+  }, [snapshot]);
 
-  const proteinGoal = snapshot
-    ? suggestedDailyProteinGrams(snapshot.profile)
+  const exerciseToday = snapshot
+    ? moveExercise.values[moveExercise.todayIdx] ?? 0
     : 0;
-  const proteinRem = snapshot
-    ? Math.max(
-        0,
-        Math.round((proteinGoal - snapshot.todayMacros.proteinG) * 10) / 10,
-      )
-    : 0;
-  const proteinMet = snapshot
-    ? snapshot.todayMacros.proteinG >= proteinGoal
-    : false;
+  const moveEstKcalToday = Math.round(exerciseToday * 7.5);
 
   const weightDelta =
     snapshot != null
@@ -571,85 +712,174 @@ export function DashboardScreen() {
                 />
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.ringsSectionTitle}>Today</Text>
-                <View style={styles.ringsRow}>
-                  <ProgressRing
-                    size={ringSize}
-                    pct={calPct}
-                    color={DASH_CAL}
-                    label="Calories"
-                    valueLine={`${snapshot.todayCalories}`}
-                    subLine={`/ ${snapshot.calorieTarget}`}
-                    alert={calOverEarly}
-                  />
-                  <ProgressRing
-                    size={ringSize}
-                    pct={waterPct}
-                    color={DASH_WATER}
-                    label="Water"
-                    valueLine={`${Math.round(waterPct)}%`}
-                    subLine={`${(snapshot.waterTodayMl / 1000).toFixed(1)} L`}
-                  />
-                  <ProgressRing
-                    size={ringSize}
-                    pct={exercisePct}
-                    color={DASH_EXERCISE}
-                    label="Exercise"
-                    valueLine={`${exerciseToday}`}
-                    subLine={`/ ${EXERCISE_RING_GOAL} min`}
-                  />
-                </View>
-                {calOverEarly ? (
-                  <Text style={styles.ringOverNote}>
-                    +{calOverAmt} kcal over target
-                  </Text>
-                ) : null}
-                <View style={styles.quickLinks}>
+              <Text style={styles.ringsSectionTitle}>Today</Text>
+
+              <View style={styles.metricPairRow}>
+                <View style={styles.metricTileWrap}>
                   <Pressable
                     onPress={() => navigation.navigate('Meals')}
-                    style={styles.quickLink}
+                    accessibilityRole="button"
+                    accessibilityLabel="Calories, open meals"
+                    style={({ pressed }) => [
+                      styles.card,
+                      styles.metricTile,
+                      styles.metricTileCal,
+                      styles.dashboardTwinCard,
+                      pressed && styles.cardPressed,
+                    ]}
                   >
-                    <Text style={styles.quickLinkText}>Log meal</Text>
+                    <View style={styles.dashboardTwinCardInner}>
+                      <View>
+                        <View style={styles.cardIconRow}>
+                          <MetricRingWithIcon
+                            size={DASHBOARD_METRIC_RING_SIZE}
+                            pct={calPct}
+                            color={RING_CAL}
+                            icon={calOverEarly ? 'fire-alert' : 'fire'}
+                            alert={calOverEarly}
+                          />
+                          <Text style={styles.cardEyebrow}>Calories</Text>
+                        </View>
+                        <View style={styles.metricTileAmountRow}>
+                          <Text
+                            style={[
+                              styles.metricTileAmount,
+                              calOverEarly && styles.metricTileAmountWarn,
+                            ]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.7}
+                          >
+                            {snapshot.todayCalories.toLocaleString('en-US')}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.metricTileAmountUnit,
+                              calOverEarly && styles.metricTileAmountWarn,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {' '}
+                            kcal
+                          </Text>
+                        </View>
+                        <Text
+                          style={styles.metricTileHint}
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                        >
+                          Goal{' '}
+                          {snapshot.calorieTarget.toLocaleString('en-US')} kcal ·{' '}
+                          {calPctRaw}%
+                        </Text>
+                      </View>
+                      <DashboardStatPill
+                        tone={calOverEarly ? 'calOver' : 'cal'}
+                      >
+                        {calOverEarly
+                          ? `${calOverAmt} kcal over goal`
+                          : `${Math.max(
+                              0,
+                              snapshot.calorieTarget -
+                                snapshot.todayCalories,
+                            ).toLocaleString('en-US')} kcal left`}
+                      </DashboardStatPill>
+                    </View>
                   </Pressable>
+                </View>
+
+                <View style={styles.metricTileWrap}>
                   <Pressable
                     onPress={() => navigation.navigate('Water')}
-                    style={styles.quickLink}
+                    accessibilityRole="button"
+                    accessibilityLabel="Water, open water log"
+                    style={({ pressed }) => [
+                      styles.card,
+                      styles.metricTile,
+                      styles.metricTileWater,
+                      styles.dashboardTwinCard,
+                      pressed && styles.cardPressed,
+                    ]}
                   >
-                    <Text style={styles.quickLinkText}>Add water</Text>
+                    <View style={styles.dashboardTwinCardInner}>
+                      <View>
+                        <View style={styles.cardIconRow}>
+                          <MetricRingWithIcon
+                            size={DASHBOARD_METRIC_RING_SIZE}
+                            pct={waterPct}
+                            color={RING_WATER}
+                            icon="cup-water"
+                          />
+                          <Text style={styles.cardEyebrow}>Water</Text>
+                        </View>
+                        <View style={styles.metricTileAmountRow}>
+                          <Text
+                            style={styles.metricTileAmount}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.7}
+                          >
+                            {(snapshot.waterTodayMl / 1000).toFixed(1)}
+                          </Text>
+                          <Text
+                            style={styles.metricTileAmountUnit}
+                            numberOfLines={1}
+                          >
+                            {' '}
+                            L
+                          </Text>
+                        </View>
+                        <Text
+                          style={styles.metricTileHint}
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                        >
+                          Goal {(snapshot.waterGoalMl / 1000).toFixed(1)} L ·{' '}
+                          {waterPct}%
+                        </Text>
+                      </View>
+                      <DashboardStatPill tone="water">
+                        {waterRemainingFoot(
+                          snapshot.waterGoalMl,
+                          snapshot.waterTodayMl,
+                        )}
+                      </DashboardStatPill>
+                    </View>
                   </Pressable>
                 </View>
               </View>
 
-              <View style={styles.card}>
-                <View style={styles.proteinHead}>
-                  <Icon name="food-steak" size={22} color={DASH_SLATE} />
-                  <Text style={styles.proteinTitle}>Protein</Text>
+              <View style={[styles.card, styles.todayHeroCard]}>
+                <View style={styles.cardIconRow}>
+                  <View style={styles.exerciseIconBubble}>
+                    <Icon name="run-fast" size={22} color={EXERCISE_BAR_TODAY} />
+                  </View>
+                  <Text style={styles.cardEyebrow}>Move</Text>
                 </View>
-                <Text style={styles.proteinLine}>
-                  {snapshot.todayMacros.proteinG}g / {proteinGoal}g
-                </Text>
-                {proteinMet ? (
-                  <Text style={styles.proteinDone}>Daily protein goal met</Text>
-                ) : (
-                  <Text style={styles.proteinRem}>
-                    {proteinRem}g remaining to hit your goal
-                  </Text>
-                )}
-                <View style={styles.proteinTrack}>
-                  <View
-                    style={[
-                      styles.proteinFill,
-                      {
-                        width: `${Math.min(
-                          100,
-                          (snapshot.todayMacros.proteinG /
-                            Math.max(proteinGoal, 1)) *
-                            100,
-                        )}%`,
-                      },
-                    ]}
-                  />
+                <View style={styles.exerciseBody}>
+                  <View style={styles.exerciseCopy}>
+                    <Text style={styles.todayHeroMetric}>
+                      {exerciseToday} min today
+                    </Text>
+                    <Text style={styles.todayHeroSub}>
+                      {EXERCISE_RING_GOAL} min goal · est. {moveEstKcalToday}{' '}
+                      kcal
+                    </Text>
+                    <Text style={styles.todayHeroMicro}>
+                      Week {moveExercise.weekTotalMin} min · ~
+                      {moveExercise.estKcalWeek} kcal
+                    </Text>
+                  </View>
+                  <View style={styles.exerciseChart}>
+                    <ExerciseZigzagBg />
+                    <ExerciseWeekBars
+                      values={moveExercise.values}
+                      labels={moveExercise.labels}
+                      dayKeys={moveExercise.dayKeys}
+                      goalMinutes={EXERCISE_RING_GOAL}
+                      todayIndex={moveExercise.todayIdx}
+                    />
+                  </View>
                 </View>
               </View>
 
@@ -659,64 +889,81 @@ export function DashboardScreen() {
                   style={({ pressed }) => [
                     styles.card,
                     styles.cardHalf,
+                    styles.dashboardTwinCard,
                     pressed && styles.cardPressed,
                   ]}
                 >
-                  <View style={styles.cardIconRow}>
-                    <View
-                      style={[
-                        styles.iconBubble,
-                        { backgroundColor: DASH_HEART_SOFT },
-                      ]}
-                    >
-                      <Icon name="heart-pulse" size={22} color={DASH_HEART} />
+                  <View style={styles.dashboardTwinCardInner}>
+                    <View>
+                      <View style={styles.cardIconRow}>
+                        <View
+                          style={[
+                            styles.iconBubble,
+                            { backgroundColor: DASH_HEART_SOFT },
+                          ]}
+                        >
+                          <Icon
+                            name="heart-pulse"
+                            size={22}
+                            color={DASH_HEART}
+                          />
+                        </View>
+                        <Text style={styles.cardEyebrow}>Heart rate</Text>
+                      </View>
+                      {snapshot.heartLatest ? (
+                        <>
+                          <Text style={styles.hrBig}>
+                            {snapshot.heartLatest.bpm}
+                          </Text>
+                          <Text style={styles.hrUnit}>
+                            BPM ·{' '}
+                            {formatRelativeHeartTime(
+                              snapshot.heartLatest.recordedAt,
+                            )}
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.hrEmpty}>Tap to log</Text>
+                          <Text style={styles.hrUnit}>Resting heart rate</Text>
+                        </>
+                      )}
                     </View>
-                    <Text style={styles.cardEyebrow}>Heart rate</Text>
-                  </View>
-                  {snapshot.heartLatest ? (
-                    <>
-                      <Text style={styles.hrBig}>
-                        {snapshot.heartLatest.bpm}
-                      </Text>
-                      <Text style={styles.hrUnit}>
-                        BPM ·{' '}
-                        {formatRelativeHeartTime(
-                          snapshot.heartLatest.recordedAt,
-                        )}
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.hrEmpty}>Tap to log</Text>
-                      <Text style={styles.hrUnit}>Resting heart rate</Text>
-                    </>
-                  )}
-                  <View style={styles.sparkRow}>
-                    <HeartSpark points={hrPoints} color={DASH_HEART} />
+                    <View style={styles.sparkRowTwin}>
+                      <HeartSpark points={hrPoints} color={DASH_HEART} />
+                    </View>
                   </View>
                 </Pressable>
 
-                <View style={[styles.card, styles.cardHalf]}>
-                  <View style={styles.cardIconRow}>
-                    <View
-                      style={[
-                        styles.iconBubble,
-                        { backgroundColor: '#E0E7FF' },
-                      ]}
-                    >
-                      <Icon name="scale-bathroom" size={22} color="#4F46E5" />
+                <View
+                  style={[styles.card, styles.cardHalf, styles.dashboardTwinCard]}
+                >
+                  <View style={styles.dashboardTwinCardInner}>
+                    <View>
+                      <View style={styles.cardIconRow}>
+                        <View
+                          style={[
+                            styles.iconBubble,
+                            { backgroundColor: '#E0E7FF' },
+                          ]}
+                        >
+                          <Icon
+                            name="scale-bathroom"
+                            size={22}
+                            color="#4F46E5"
+                          />
+                        </View>
+                        <Text style={styles.cardEyebrow}>Weight</Text>
+                      </View>
+                      <Text style={styles.weightBig}>
+                        {snapshot.profile.weightKg.toFixed(1)}
+                        <Text style={styles.weightUnit}> kg</Text>
+                      </Text>
+                      <Text style={styles.weightGoal}>
+                        Goal {snapshot.profile.goalWeightKg.toFixed(1)} kg
+                      </Text>
                     </View>
-                    <Text style={styles.cardEyebrow}>Weight</Text>
-                  </View>
-                  <Text style={styles.weightBig}>
-                    {snapshot.profile.weightKg.toFixed(1)}
-                    <Text style={styles.weightUnit}> kg</Text>
-                  </Text>
-                  <Text style={styles.weightGoal}>
-                    Goal {snapshot.profile.goalWeightKg.toFixed(1)} kg
-                  </Text>
-                  <View style={styles.weightPill}>
-                    <Text style={styles.weightPillText}>{weightLabel}</Text>
+                    <DashboardStatPill tone="weight">{weightLabel}</DashboardStatPill>
                   </View>
                 </View>
               </View>
@@ -887,111 +1134,199 @@ const styles = StyleSheet.create({
     color: DASH_MUTED,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 12,
+    marginBottom: 8,
+    marginTop: 2,
   },
-  ringsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  ringCol: {
-    alignItems: 'center',
+  miniRingWrap: {
     position: 'relative',
   },
-  ringCenter: {
+  miniRingCenter: {
     position: 'absolute',
     left: 0,
     top: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ringValue: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: DASH_SLATE,
-    textAlign: 'center',
-    paddingHorizontal: 4,
-  },
-  ringValueAlert: {
-    color: DASH_BAD,
-  },
-  ringLabel: {
-    marginTop: 8,
-    fontSize: 11,
-    fontWeight: '800',
-    color: DASH_MUTED,
-    textTransform: 'uppercase',
-  },
-  ringSub: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: DASH_MUTED,
-    marginTop: 2,
-  },
-  ringOverNote: {
-    marginTop: 10,
-    textAlign: 'center',
-    fontSize: 13,
-    fontWeight: '700',
-    color: DASH_BAD,
-  },
-  quickLinks: {
+  metricPairRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    alignItems: 'stretch',
+    width: '100%',
+    gap: 12,
   },
-  quickLink: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  metricTileWrap: {
+    flex: 1,
+    minWidth: 0,
   },
-  quickLinkText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: MEAL_PRIMARY,
-  },
-  proteinHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  proteinTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: DASH_SLATE,
-  },
-  proteinLine: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: DASH_SLATE,
-  },
-  proteinRem: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '600',
-    color: DASH_MUTED,
-  },
-  proteinDone: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '700',
-    color: DASH_OK,
-  },
-  proteinTrack: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#F1F5F9',
-    marginTop: 12,
+  metricTile: {
+    flex: 1,
+    width: '100%',
     overflow: 'hidden',
   },
-  proteinFill: {
-    height: '100%',
+  metricTileCal: {
+    backgroundColor: '#FFFBF7',
+    borderColor: '#FDE68A',
+  },
+  metricTileWater: {
+    backgroundColor: '#F5FAFF',
+    borderColor: '#BAE6FD',
+  },
+  metricTileAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'nowrap',
+    minWidth: 0,
+  },
+  metricTileAmount: {
+    flexShrink: 1,
+    fontSize: 28,
+    fontWeight: '800',
+    color: DASH_SLATE,
+    letterSpacing: -0.5,
+  },
+  metricTileAmountUnit: {
+    flexShrink: 0,
+    fontSize: 16,
+    fontWeight: '700',
+    color: DASH_MUTED,
+  },
+  metricTileAmountWarn: {
+    color: DASH_BAD,
+  },
+  metricTileHint: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    color: DASH_MUTED,
+    lineHeight: 18,
+  },
+  halfCardStatPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: DASH_SLATE,
+  },
+  halfCardStatPillCal: {
+    backgroundColor: '#FFEDD5',
+  },
+  halfCardStatPillCalOver: {
+    backgroundColor: '#FEE2E2',
+  },
+  halfCardStatPillWater: {
+    backgroundColor: '#E0F2FE',
+  },
+  halfCardStatPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  halfCardStatPillTextCal: {
+    color: '#C2410C',
+  },
+  halfCardStatPillTextCalOver: {
+    color: '#B91C1C',
+  },
+  halfCardStatPillTextWater: {
+    color: '#0369A1',
+  },
+  halfCardStatPillWeight: {
+    backgroundColor: '#EEF2FF',
+  },
+  halfCardStatPillTextWeight: {
+    color: '#4338CA',
+  },
+  dashboardTwinCard: {
+    minHeight: DASHBOARD_TWIN_CARD_MIN_HEIGHT,
+  },
+  dashboardTwinCardInner: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  todayHeroCard: {
+    gap: 0,
+  },
+  todayHeroMetric: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: DASH_SLATE,
+    marginTop: 4,
+  },
+  todayHeroSub: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: DASH_MUTED,
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  todayHeroMicro: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: DASH_MUTED,
+    marginTop: 6,
+  },
+  exerciseIconBubble: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exerciseBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    marginTop: 2,
+  },
+  exerciseCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  exerciseChart: {
+    width: 132,
+    minHeight: 104,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderRadius: 14,
+    position: 'relative',
+  },
+  exerciseZigzagSvg: {
+    position: 'absolute',
+    right: -6,
+    bottom: -4,
+  },
+  exerciseBarsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 5,
+    paddingBottom: 2,
+    zIndex: 1,
+  },
+  exerciseBarCol: {
+    alignItems: 'center',
+  },
+  exerciseBarTrack: {
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  exerciseBarFill: {
+    alignItems: 'center',
+    paddingTop: 4,
+    minHeight: 10,
+  },
+  exerciseBarDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFFFFF',
+  },
+  exerciseBarLbl: {
+    marginTop: 6,
+    fontSize: 10,
+    fontWeight: '700',
+    color: DASH_MUTED,
+  },
+  exerciseBarLblToday: {
+    color: EXERCISE_BAR_TODAY,
   },
   cardIconRow: {
     flexDirection: 'row',
@@ -1014,10 +1349,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   hrBig: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
     color: DASH_SLATE,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
   hrUnit: {
     fontSize: 12,
@@ -1026,13 +1361,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   hrEmpty: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: DASH_HEART,
-    marginTop: 4,
+    marginTop: 2,
   },
   sparkRow: {
     marginTop: 10,
+    alignItems: 'flex-start',
+  },
+  sparkRowTwin: {
+    marginTop: 0,
     alignItems: 'flex-start',
   },
   weightBig: {
@@ -1051,19 +1390,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: DASH_MUTED,
-  },
-  weightPill: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: '#EEF2FF',
-  },
-  weightPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4338CA',
   },
   remindersHead: {
     flexDirection: 'row',
