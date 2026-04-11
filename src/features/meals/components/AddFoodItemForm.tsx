@@ -1,24 +1,31 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { LogMealItemPayload, MealWithItems } from '../../../services/meals';
+import type { LogMealItemPayload, MealItemRow, MealWithItems } from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY, MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI, mealCard, mealTypography } from '../mealUiTheme';
 import { MEAL_TYPE_LABEL } from '../mealConstants';
 import { formatMealLogTime } from '../mealFormat';
+import { EditMealItemForm } from './EditMealItemForm';
 import { FoodSearchPanel } from './FoodSearchPanel';
 
 type AddFoodItemFormProps = Readonly<{
   activeMeal: MealWithItems | null;
+  editingItem: MealItemRow | null;
   submitting: boolean;
-  onSubmit: (item: LogMealItemPayload) => Promise<string | null>;
+  onSubmitAdd: (item: LogMealItemPayload) => Promise<string | null>;
+  onSubmitEdit: (itemId: string, item: LogMealItemPayload) => Promise<string | null>;
+  onSwitchToAddFood: () => void;
   variant?: 'standalone' | 'modal';
 }>;
 
 export function AddFoodItemForm({
   activeMeal,
+  editingItem,
   submitting,
-  onSubmit,
+  onSubmitAdd,
+  onSubmitEdit,
+  onSwitchToAddFood,
   variant = 'standalone',
 }: AddFoodItemFormProps) {
   const inModal = variant === 'modal';
@@ -60,11 +67,22 @@ export function AddFoodItemForm({
       {inModal ? null : (
         <>
           <Text style={styles.formTitle}>Add food</Text>
-          <Text style={[mealTypography.body, styles.formSub]}>Search, pick a portion, then add — values shown are for your serving.</Text>
+          <Text style={[mealTypography.body, styles.formSub]}>
+            Search, pick a portion, then add — values shown are for your serving.
+          </Text>
         </>
       )}
 
-      <FoodSearchPanel submitting={submitting} onSubmitPayload={onSubmit} />
+      {editingItem ? (
+        <EditMealItemForm
+          item={editingItem}
+          submitting={submitting}
+          onSave={(payload) => onSubmitEdit(editingItem.id, payload)}
+          onAddAnotherFood={onSwitchToAddFood}
+        />
+      ) : (
+        <FoodSearchPanel submitting={submitting} onSubmitPayload={onSubmitAdd} />
+      )}
     </View>
   );
 }

@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import {
   addMeal,
   addMealItem,
+  updateMealItem,
   deleteMeal,
   deleteMealIfEmpty,
   deleteMealItem,
@@ -56,6 +57,7 @@ export type UseMealLogScreenResult = Readonly<{
   /** Creates a meal on `selectedDay` and returns its id, or null on failure. */
   startMeal: (mealType: MealType) => Promise<string | null>;
   submitFoodItem: (mealId: string, item: LogMealItemPayload) => Promise<string | null>;
+  updateFoodItem: (itemId: string, item: LogMealItemPayload) => Promise<string | null>;
   confirmRemoveFoodItem: (item: MealItemRow, mealId: string) => void;
   confirmRemoveEmptyMeal: (mealId: string) => void;
   deletingItemId: string | null;
@@ -200,6 +202,27 @@ export function useMealLogScreen(): UseMealLogScreenResult {
     [fetchDay, selectedDay],
   );
 
+  const updateFoodItem = useCallback(
+    async (itemId: string, item: LogMealItemPayload): Promise<string | null> => {
+      if (!Number.isFinite(item.calories) || item.calories < 0) {
+        return 'Invalid calories.';
+      }
+      setItemSubmitting(true);
+      setError(null);
+      try {
+        const result = await updateMealItem(itemId, item);
+        if (!result.ok) {
+          return result.error.message;
+        }
+        await fetchDay(selectedDay, 'silent');
+        return null;
+      } finally {
+        setItemSubmitting(false);
+      }
+    },
+    [fetchDay, selectedDay],
+  );
+
   const removeFoodItemById = useCallback(
     async (itemId: string, mealId: string) => {
       setDeletingItemId(itemId);
@@ -291,6 +314,7 @@ export function useMealLogScreen(): UseMealLogScreenResult {
     refresh,
     startMeal,
     submitFoodItem,
+    updateFoodItem,
     confirmRemoveFoodItem,
     confirmRemoveEmptyMeal,
     deletingItemId,

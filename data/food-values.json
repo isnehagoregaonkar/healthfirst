@@ -1,0 +1,185 @@
+[
+    {
+      "name": "roti",
+      "category": "bread",
+      "nutrition_per_100g": {
+        "calories": 297,
+        "protein": 9,
+        "carbs": 55,
+        "fat": 3
+      },
+      "units": [
+        { "name": "1 roti", "grams": 30 },
+        { "name": "2 roti", "grams": 60 }
+      ]
+    },
+    {
+      "name": "bhakri (jowar)",
+      "category": "bread",
+      "nutrition_per_100g": {
+        "calories": 329,
+        "protein": 10,
+        "carbs": 72,
+        "fat": 3
+      },
+      "units": [
+        { "name": "1 bhakri", "grams": 50 }
+      ]
+    },
+    {
+      "name": "steamed rice",
+      "category": "grain",
+      "nutrition_per_100g": {
+        "calories": 130,
+        "protein": 2.5,
+        "carbs": 28,
+        "fat": 0.3
+      },
+      "units": [
+        { "name": "1 bowl", "grams": 150 }
+      ]
+    },
+    {
+      "name": "varan (plain dal)",
+      "category": "dal",
+      "nutrition_per_100g": {
+        "calories": 110,
+        "protein": 8,
+        "carbs": 18,
+        "fat": 1
+      },
+      "units": [
+        { "name": "1 katori", "grams": 120 }
+      ]
+    },
+    {
+      "name": "amti",
+      "category": "dal",
+      "nutrition_per_100g": {
+        "calories": 120,
+        "protein": 7,
+        "carbs": 20,
+        "fat": 2
+      },
+      "units": [
+        { "name": "1 bowl", "grams": 150 }
+      ]
+    },
+    {
+      "name": "poha",
+      "category": "breakfast",
+      "nutrition_per_100g": {
+        "calories": 180,
+        "protein": 4,
+        "carbs": 30,
+        "fat": 5
+      },
+      "units": [
+        { "name": "1 plate", "grams": 180 }
+      ]
+    },
+    {
+      "name": "upma",
+      "category": "breakfast",
+      "nutrition_per_100g": {
+        "calories": 190,
+        "protein": 5,
+        "carbs": 32,
+        "fat": 6
+      },
+      "units": [
+        { "name": "1 plate", "grams": 180 }
+      ]
+    },
+    {
+      "name": "sabzi (mixed vegetable)",
+      "category": "vegetable",
+      "nutrition_per_100g": {
+        "calories": 90,
+        "protein": 3,
+        "carbs": 10,
+        "fat": 4
+      },
+      "units": [
+        { "name": "1 serving", "grams": 100 }
+      ]
+    },
+    {
+      "name": "batata bhaji",
+      "category": "vegetable",
+      "nutrition_per_100g": {
+        "calories": 150,
+        "protein": 2,
+        "carbs": 20,
+        "fat": 7
+      },
+      "units": [
+        { "name": "1 serving", "grams": 120 }
+      ]
+    },
+    {
+      "name": "paneer sabzi",
+      "category": "vegetable",
+      "nutrition_per_100g": {
+        "calories": 220,
+        "protein": 12,
+        "carbs": 6,
+        "fat": 18
+      },
+      "units": [
+        { "name": "1 serving", "grams": 150 }
+      ]
+    },
+    {
+      "name": "chicken curry",
+      "category": "nonveg",
+      "nutrition_per_100g": {
+        "calories": 180,
+        "protein": 20,
+        "carbs": 3,
+        "fat": 10
+      },
+      "units": [
+        { "name": "1 serving", "grams": 150 }
+      ]
+    },
+    {
+      "name": "egg bhurji",
+      "category": "protein",
+      "nutrition_per_100g": {
+        "calories": 155,
+        "protein": 12,
+        "carbs": 2,
+        "fat": 11
+      },
+      "units": [
+        { "name": "1 serving", "grams": 120 }
+      ]
+    },
+    {
+      "name": "milk",
+      "category": "dairy",
+      "nutrition_per_100g": {
+        "calories": 60,
+        "protein": 3,
+        "carbs": 5,
+        "fat": 3
+      },
+      "units": [
+        { "name": "1 glass", "grams": 200 }
+      ]
+    },
+    {
+      "name": "curd",
+      "category": "dairy",
+      "nutrition_per_100g": {
+        "calories": 98,
+        "protein": 11,
+        "carbs": 3,
+        "fat": 4
+      },
+      "units": [
+        { "name": "1 bowl", "grams": 150 }
+      ]
+    }
+  ]

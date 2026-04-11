@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { LogMealItemPayload, MealType } from '../../services/meals';
+import type { LogMealItemPayload, MealItemRow, MealType } from '../../services/meals';
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import { formatDayShort, isSameLocalDay } from '../water/waterDayUtils';
@@ -43,6 +43,7 @@ export function MealTrackingScreen() {
     refresh,
     startMeal,
     submitFoodItem,
+    updateFoodItem,
     confirmRemoveFoodItem,
     confirmRemoveEmptyMeal,
     deletingItemId,
@@ -53,6 +54,7 @@ export function MealTrackingScreen() {
   const { profile, suggestedKcal, updateProfile } = useMealCalorieTarget();
 
   const [foodModalMealId, setFoodModalMealId] = useState<string | null>(null);
+  const [foodModalItemId, setFoodModalItemId] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const isViewingToday = useMemo(() => isSameLocalDay(selectedDay, new Date()), [selectedDay]);
@@ -63,12 +65,21 @@ export function MealTrackingScreen() {
     [meals, foodModalMealId],
   );
 
+  const foodModalEditingItem = useMemo((): MealItemRow | null => {
+    if (!foodModalMeal || !foodModalItemId) {
+      return null;
+    }
+    return foodModalMeal.items.find((i) => i.id === foodModalItemId) ?? null;
+  }, [foodModalMeal, foodModalItemId]);
+
   const closeFoodModal = useCallback(() => {
     setFoodModalMealId(null);
+    setFoodModalItemId(null);
   }, []);
 
-  const openFoodModalForMeal = useCallback((mealId: string) => {
+  const openMealSheet = useCallback((mealId: string, itemId: string | null) => {
     setFoodModalMealId(mealId);
+    setFoodModalItemId(itemId);
   }, []);
 
   const handleMealTypePress = useCallback(
@@ -76,12 +87,13 @@ export function MealTrackingScreen() {
       const id = await startMeal(mealType);
       if (id) {
         setFoodModalMealId(id);
+        setFoodModalItemId(null);
       }
     },
     [startMeal],
   );
 
-  const handleSubmitFood = useCallback(
+  const handleSubmitAddFood = useCallback(
     async (item: LogMealItemPayload) => {
       if (!foodModalMealId) {
         return 'No meal selected.';
@@ -90,6 +102,21 @@ export function MealTrackingScreen() {
     },
     [foodModalMealId, submitFoodItem],
   );
+
+  const handleSubmitEditFood = useCallback(
+    async (itemId: string, item: LogMealItemPayload) => {
+      const err = await updateFoodItem(itemId, item);
+      if (!err) {
+        closeFoodModal();
+      }
+      return err;
+    },
+    [updateFoodItem, closeFoodModal],
+  );
+
+  const switchModalToAddFood = useCallback(() => {
+    setFoodModalItemId(null);
+  }, []);
 
   return (
     <Screen
@@ -165,9 +192,10 @@ export function MealTrackingScreen() {
                   mealType={type}
                   meals={grouped[type]}
                   highlightedMealId={foodModalMealId}
+                  highlightedItemId={foodModalItemId}
                   deletingItemId={deletingItemId}
                   deletingMealId={deletingMealId}
-                  onSelectMeal={openFoodModalForMeal}
+                  onOpenMealSheet={openMealSheet}
                   onRemoveItem={confirmRemoveFoodItem}
                   onRemoveEmptyMeal={confirmRemoveEmptyMeal}
                 />
@@ -180,9 +208,12 @@ export function MealTrackingScreen() {
       <MealAddFoodModal
         visible={foodModalMealId !== null}
         meal={foodModalMeal}
+        editingItem={foodModalEditingItem}
         submitting={itemSubmitting}
         onClose={closeFoodModal}
-        onSubmit={handleSubmitFood}
+        onSubmitAdd={handleSubmitAddFood}
+        onSubmitEdit={handleSubmitEditFood}
+        onSwitchToAddFood={switchModalToAddFood}
       />
 
       <MealCalorieProfileModal

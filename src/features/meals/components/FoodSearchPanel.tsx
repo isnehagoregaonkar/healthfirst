@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +19,13 @@ import {
 } from '../../../services/usdaFdc';
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY } from '../mealUiTheme';
+import {
+  loadRecentFoods,
+  rememberFoodAfterLog,
+  recentFoodToPayload,
+  type StoredRecentFood,
+} from '../mealRecentFoodsStorage';
+import { STAPLE_SEARCH_SUGGESTIONS } from '../mealStapleSearchSuggestions';
 
 type FoodSearchPanelProps = Readonly<{
   submitting: boolean;
@@ -42,6 +49,24 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
   const [portionIndex, setPortionIndex] = useState(0);
   const [servingsText, setServingsText] = useState('1');
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [recents, setRecents] = useState<StoredRecentFood[]>([]);
+
+  const refreshRecents = useCallback(() => {
+    loadRecentFoods()
+      .then(setRecents)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshRecents();
+  }, [refreshRecents]);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setHits([]);
+      setSearchError(null);
+    }
+  }, [query]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), SEARCH_DEBOUNCE_MS);
@@ -122,7 +147,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
       scaled.servings === 1
         ? scaled.portionLabel
         : `${scaled.servings} × ${scaled.portionLabel}`;
-    const err = await onSubmitPayload({
+    const payload: LogMealItemPayload = {
       name: displayName,
       quantity: qty,
       calories: Math.round(scaled.kcal),
@@ -131,16 +156,62 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
       carbsG: scaled.carbs,
       fatG: scaled.fat,
       fiberG: scaled.fiber > 0 ? scaled.fiber : null,
-    });
+    };
+    const err = await onSubmitPayload(payload);
     if (err) {
       setFieldError(err);
       return;
     }
+    rememberFoodAfterLog(payload)
+      .then(() => refreshRecents())
+      .catch(() => {});
     setQuery('');
     setHits([]);
     setDetail(null);
     setServingsText('1');
-  }, [detail, scaled, onSubmitPayload]);
+  }, [detail, scaled, onSubmitPayload, refreshRecents]);
+
+  const addFromRecent = useCallback(
+    async (entry: StoredRecentFood) => {
+      if (submitting) {
+        return;
+      }
+      setFieldError(null);
+      const payload = recentFoodToPayload(entry);
+      const err = await onSubmitPayload(payload);
+      if (err) {
+        setFieldError(err);
+        return;
+      }
+      rememberFoodAfterLog(payload)
+        .then(() => refreshRecents())
+        .catch(() => {});
+    },
+    [onSubmitPayload, submitting, refreshRecents],
+  );
+
+  const applyStapleSearch = useCallback(
+    (label: (typeof STAPLE_SEARCH_SUGGESTIONS)[number]) => {
+      if (submitting || detailLoading) {
+        return;
+      }
+      setDetail(null);
+      setDetailError(null);
+      setFieldError(null);
+      const q = label.trim();
+      if (q.length < 2) {
+        return;
+      }
+      setQuery(q);
+      setDebounced(q);
+    },
+    [submitting, detailLoading],
+  );
+
+  const showQuickPickChrome = useMemo(
+    () => !detail && query.trim().length < 2,
+    [detail, query],
+  );
 
   return (
     <View style={styles.wrap}>
@@ -163,6 +234,64 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
         />
         {searching ? <ActivityIndicator style={styles.searchSpinner} color={MEAL_PRIMARY} /> : null}
       </View>
+
+      {showQuickPickChrome ? (
+        <View style={styles.quickPickBlock}>
+          {recents.length > 0 ? (
+            <View style={styles.quickSection}>
+              <Text style={styles.quickSectionTitle}>Recently added</Text>
+              <View style={styles.chipWrap}>
+                {recents.map((r, i) => (
+                  <Pressable
+                    key={`${r.savedAt}-${r.name}-${i}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add again ${r.name}`}
+                    disabled={submitting}
+                    onPress={() => addFromRecent(r).catch(() => {})}
+                    style={({ pressed }) => [
+                      styles.recentChip,
+                      submitting && styles.chipDisabled,
+                      pressed && !submitting && styles.chipPressed,
+                    ]}
+                  >
+                    <Text style={styles.recentChipTitle} numberOfLines={2}>
+                      {r.name}
+                    </Text>
+                    <Text style={styles.recentChipMeta} numberOfLines={2}>
+                      {r.quantity ? `${r.quantity} · ` : ''}
+                      {r.calories} kcal
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.quickSection}>
+            <Text style={styles.quickSectionTitle}>Quick searches</Text>
+            <View style={styles.chipWrap}>
+              {STAPLE_SEARCH_SUGGESTIONS.map((label) => (
+                <Pressable
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search ${label}`}
+                  disabled={submitting || detailLoading}
+                  onPress={() => applyStapleSearch(label)}
+                  style={({ pressed }) => [
+                    styles.stapleChip,
+                    (submitting || detailLoading) && styles.chipDisabled,
+                    pressed && !submitting && !detailLoading && styles.chipPressed,
+                  ]}
+                >
+                  <Text style={styles.stapleChipText} numberOfLines={2}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       {searchError ? (
         <Text style={styles.errorInline}>{searchError}</Text>
@@ -341,7 +470,84 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  quickPickBlock: {
+    marginTop: 12,
+    marginBottom: 6,
+    gap: 16,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickSection: {
+    gap: 10,
+  },
+  quickSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  recentChip: {
+    flexGrow: 1,
+    flexBasis: '47%',
+    minWidth: '46%',
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: INPUT_BG,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stapleChip: {
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: '28%',
+    paddingHorizontal: 8,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: INPUT_BG,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  stapleChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  recentChipTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    lineHeight: 17,
+  },
+  recentChipMeta: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    lineHeight: 15,
+  },
+  chipPressed: {
+    opacity: 0.88,
+  },
+  chipDisabled: {
+    opacity: 0.5,
   },
   searchRow: {
     flexDirection: 'row',

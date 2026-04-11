@@ -1,10 +1,16 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MealType } from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
-import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI } from '../mealUiTheme';
 import { MEAL_TYPE_LABEL, MEAL_TYPE_ORDER } from '../mealConstants';
+import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI } from '../mealUiTheme';
 
 type AddMealActionsProps = Readonly<{
   creatingMealType: MealType | null;
@@ -12,14 +18,17 @@ type AddMealActionsProps = Readonly<{
 }>;
 
 /** Single horizontal row — avoids flexWrap + flexGrow overlap bugs inside ScrollView. */
-export function AddMealActions({ creatingMealType, onAddMeal }: AddMealActionsProps) {
+export function AddMealActions({
+  creatingMealType,
+  onAddMeal,
+}: AddMealActionsProps) {
   const anyCreating = creatingMealType !== null;
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Add meal</Text>
+      <Text style={styles.title}>Add Meal</Text>
       <View style={styles.row}>
-        {MEAL_TYPE_ORDER.map((type) => {
+        {MEAL_TYPE_ORDER.map(type => {
           const busy = creatingMealType === type;
           const a = MEAL_TYPE_ACCENTS[type];
           const icon = MEAL_TYPE_MCI[type];

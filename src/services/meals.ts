@@ -183,6 +183,59 @@ export async function addMealItem(mealId: string, item: LogMealItemPayload): Pro
   return { ok: true };
 }
 
+export async function updateMealItem(itemId: string, item: LogMealItemPayload): Promise<AddItemResult> {
+  const trimmed = item.name.trim();
+  if (!trimmed) {
+    return { ok: false, error: { message: 'Food name is required' } };
+  }
+  const cal = item.calories;
+  if (!Number.isFinite(cal) || cal < 0 || cal > 50_000) {
+    return { ok: false, error: { message: 'Calories must be between 0 and 50000' } };
+  }
+
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { ok: false, error: user.error };
+  }
+
+  const row: Record<string, unknown> = {
+    name: trimmed,
+    quantity: item.quantity.trim(),
+    calories: Math.round(cal),
+    usda_fdc_id:
+      item.usdaFdcId != null && Number.isFinite(item.usdaFdcId) ? Math.round(item.usdaFdcId) : null,
+  };
+
+  if (item.proteinG != null && Number.isFinite(item.proteinG)) {
+    row.protein_g = roundMacro(item.proteinG);
+  } else {
+    row.protein_g = null;
+  }
+  if (item.carbsG != null && Number.isFinite(item.carbsG)) {
+    row.carbs_g = roundMacro(item.carbsG);
+  } else {
+    row.carbs_g = null;
+  }
+  if (item.fatG != null && Number.isFinite(item.fatG)) {
+    row.fat_g = roundMacro(item.fatG);
+  } else {
+    row.fat_g = null;
+  }
+  if (item.fiberG != null && Number.isFinite(item.fiberG)) {
+    row.fiber_g = roundMacro(item.fiberG);
+  } else {
+    row.fiber_g = null;
+  }
+
+  const { error } = await supabase.from('meal_items').update(row).eq('id', itemId.trim());
+
+  if (error) {
+    return { ok: false, error: { message: error.message, code: error.code } };
+  }
+
+  return { ok: true };
+}
+
 type DeleteResult = Readonly<{ ok: true }> | Readonly<{ ok: false; error: MealServiceError }>;
 
 export async function deleteMealItem(itemId: string): Promise<DeleteResult> {

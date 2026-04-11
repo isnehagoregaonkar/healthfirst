@@ -39,6 +39,8 @@ type MealLoggedItemCardProps = Readonly<{
   meal: MealWithItems;
   item: MealItemRow;
   selected: boolean;
+  /** Shown when selected: editing this row vs adding more foods to the meal. */
+  selectionFooter: 'add' | 'edit' | 'none';
   deleting: boolean;
   onPressCard: () => void;
   onPressRemove: () => void;
@@ -48,6 +50,7 @@ export function MealLoggedItemCard({
   meal,
   item,
   selected,
+  selectionFooter,
   deleting,
   onPressCard,
   onPressRemove,
@@ -109,10 +112,16 @@ export function MealLoggedItemCard({
       </Text>
       {macroLine ? <Text style={styles.macroDetail}>{macroLine}</Text> : null}
 
-      {selected ? (
+      {selected && selectionFooter !== 'none' ? (
         <View style={styles.selectedHint}>
-          <Icon name="check-circle" size={14} color={MEAL_PRIMARY} />
-          <Text style={styles.selectedHintText}>Adding more to this meal</Text>
+          <Icon
+            name={selectionFooter === 'edit' ? 'pencil-circle' : 'check-circle'}
+            size={14}
+            color={MEAL_PRIMARY}
+          />
+          <Text style={styles.selectedHintText}>
+            {selectionFooter === 'edit' ? 'Editing this food' : 'Adding more to this meal'}
+          </Text>
         </View>
       ) : null}
     </Pressable>

@@ -7,13 +7,29 @@ import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI, mealTypography } from '../mealUiTheme
 import { MEAL_TYPE_LABEL } from '../mealConstants';
 import { MealEmptyMealSlotCard, MealLoggedItemCard } from './MealLoggedItemCard';
 
+function itemSelectionFooter(
+  rowSelected: boolean,
+  highlightedItemId: string | null,
+  itemId: string,
+): 'add' | 'edit' | 'none' {
+  if (!rowSelected) {
+    return 'none';
+  }
+  if (highlightedItemId === itemId) {
+    return 'edit';
+  }
+  return 'add';
+}
+
 type MealTypeSectionProps = Readonly<{
   mealType: MealType;
   meals: MealWithItems[];
   highlightedMealId: string | null;
+  /** When set, sheet is editing this food line; when null with highlightedMealId, sheet is add-food mode. */
+  highlightedItemId: string | null;
   deletingItemId: string | null;
   deletingMealId: string | null;
-  onSelectMeal: (mealId: string) => void;
+  onOpenMealSheet: (mealId: string, itemId: string | null) => void;
   onRemoveItem: (item: MealItemRow, mealId: string) => void;
   onRemoveEmptyMeal: (mealId: string) => void;
 }>;
@@ -22,9 +38,10 @@ export function MealTypeSection({
   mealType,
   meals,
   highlightedMealId,
+  highlightedItemId,
   deletingItemId,
   deletingMealId,
-  onSelectMeal,
+  onOpenMealSheet,
   onRemoveItem,
   onRemoveEmptyMeal,
 }: MealTypeSectionProps) {
@@ -92,23 +109,29 @@ export function MealTypeSection({
                 <MealEmptyMealSlotCard
                   key={m.id}
                   meal={m}
-                  selected={highlightedMealId === m.id}
+                  selected={highlightedMealId === m.id && highlightedItemId === null}
                   deleting={deletingMealId === m.id}
-                  onPressCard={() => onSelectMeal(m.id)}
+                  onPressCard={() => onOpenMealSheet(m.id, null)}
                   onPressRemove={() => onRemoveEmptyMeal(m.id)}
                 />,
               ]
-            : m.items.map((it) => (
-                <MealLoggedItemCard
-                  key={it.id}
-                  meal={m}
-                  item={it}
-                  selected={highlightedMealId === m.id}
-                  deleting={deletingItemId === it.id}
-                  onPressCard={() => onSelectMeal(m.id)}
-                  onPressRemove={() => onRemoveItem(it, m.id)}
-                />
-              )),
+            :             m.items.map((it) => {
+                const rowSelected =
+                  highlightedMealId === m.id &&
+                  (highlightedItemId === null || highlightedItemId === it.id);
+                return (
+                  <MealLoggedItemCard
+                    key={it.id}
+                    meal={m}
+                    item={it}
+                    selected={rowSelected}
+                    selectionFooter={itemSelectionFooter(rowSelected, highlightedItemId, it.id)}
+                    deleting={deletingItemId === it.id}
+                    onPressCard={() => onOpenMealSheet(m.id, it.id)}
+                    onPressRemove={() => onRemoveItem(it, m.id)}
+                  />
+                );
+              }),
         )
       )}
     </View>

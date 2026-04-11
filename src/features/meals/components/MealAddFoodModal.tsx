@@ -12,25 +12,30 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MealWithItems } from '../../../services/meals';
+import type { LogMealItemPayload, MealItemRow, MealWithItems } from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
-import type { LogMealItemPayload } from '../../../services/meals';
 import { AddFoodItemForm } from './AddFoodItemForm';
 
 type MealAddFoodModalProps = Readonly<{
   visible: boolean;
   meal: MealWithItems | null;
+  editingItem: MealItemRow | null;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (item: LogMealItemPayload) => Promise<string | null>;
+  onSubmitAdd: (item: LogMealItemPayload) => Promise<string | null>;
+  onSubmitEdit: (itemId: string, item: LogMealItemPayload) => Promise<string | null>;
+  onSwitchToAddFood: () => void;
 }>;
 
 export function MealAddFoodModal({
   visible,
   meal,
+  editingItem,
   submitting,
   onClose,
-  onSubmit,
+  onSubmitAdd,
+  onSubmitEdit,
+  onSwitchToAddFood,
 }: MealAddFoodModalProps) {
   const { height: windowH } = useWindowDimensions();
   const sheetLayout = useMemo(() => {
@@ -38,6 +43,8 @@ export function MealAddFoodModal({
     const cap = Math.round(windowH * 0.92);
     return { height: Math.min(target, cap) };
   }, [windowH]);
+
+  const headerTitle = editingItem ? 'Edit food' : 'Add meal';
 
   return (
     <Modal
@@ -51,18 +58,25 @@ export function MealAddFoodModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.backdrop}
       >
-        <Pressable style={styles.scrim} accessibilityLabel="Dismiss" onPress={onClose} />
+        <Pressable
+          style={styles.scrim}
+          accessibilityLabel="Dismiss"
+          onPress={onClose}
+        />
         <View style={[styles.sheet, { height: sheetLayout.height }]}>
           <View style={styles.grabberWrap}>
             <View style={styles.grabber} />
           </View>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Add meal</Text>
+            <Text style={styles.headerTitle}>{headerTitle}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"
               onPress={onClose}
-              style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+              style={({ pressed }) => [
+                styles.closeBtn,
+                pressed && styles.closeBtnPressed,
+              ]}
             >
               <Icon name="close" size={24} color={colors.textPrimary} />
             </Pressable>
@@ -76,8 +90,11 @@ export function MealAddFoodModal({
             >
               <AddFoodItemForm
                 activeMeal={meal}
+                editingItem={editingItem}
                 submitting={submitting}
-                onSubmit={onSubmit}
+                onSubmitAdd={onSubmitAdd}
+                onSubmitEdit={onSubmitEdit}
+                onSwitchToAddFood={onSwitchToAddFood}
                 variant="modal"
               />
             </ScrollView>
