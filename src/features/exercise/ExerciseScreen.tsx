@@ -14,9 +14,11 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
+import { ExerciseDayStrip } from './components/ExerciseDayStrip';
 import { exerciseTheme as t } from './exerciseTheme';
 import { useExerciseScreen } from './hooks/useExerciseScreen';
 import type { ExerciseSessionRow } from './exerciseTypes';
+import { formatSessionClock } from './utils/exerciseDayUtils';
 
 const STEP_GOAL_DEFAULT = 10_000;
 const ACTIVITIES = [
@@ -102,12 +104,17 @@ export function ExerciseScreen() {
   const {
     loading,
     refresh,
+    selectedDay,
+    setSelectedDay,
+    isViewingToday,
+    selectedDayLabel,
     stepsToday,
     combinedHistory,
+    sessionsForSelectedDay,
     healthOk,
+    iosHealthError,
     androidStatus,
     integrationSubtitle,
-    formatSessionTime,
     openAndroidHealthSettings,
     openIosHealthSettings,
     logManual,
@@ -153,7 +160,25 @@ export function ExerciseScreen() {
           sessions you log here.
         </Text>
 
-        <StepsHero steps={stepsToday} goal={STEP_GOAL_DEFAULT} />
+        <ExerciseDayStrip selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+
+        {!isViewingToday ? (
+          <Text style={styles.pastHint}>
+            Viewing {selectedDayLabel} — workouts below are for this day only.
+          </Text>
+        ) : null}
+
+        {isViewingToday ? (
+          <StepsHero steps={stepsToday} goal={STEP_GOAL_DEFAULT} />
+        ) : (
+          <View style={styles.stepsPastCard}>
+            <Text style={styles.stepsPastEyebrow}>Steps</Text>
+            <Text style={styles.stepsPastBody}>
+              Step count syncs for today after you refresh. Scroll the dates above to browse
+              workouts from other days.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.integrationCard}>
           <View style={styles.integrationHeader}>
@@ -171,6 +196,9 @@ export function ExerciseScreen() {
             </Text>
           </View>
           <Text style={styles.integrationBody}>{integrationSubtitle}</Text>
+          {Platform.OS === 'ios' && iosHealthError ? (
+            <Text style={styles.integrationError}>{iosHealthError}</Text>
+          ) : null}
           {Platform.OS === 'android' && androidStatus === 'needs_install' ? (
             <Pressable
               onPress={() => openAndroidHealthSettings()}
@@ -209,9 +237,11 @@ export function ExerciseScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.sectionTitle}>Recent activity</Text>
+        <Text style={styles.sectionTitle}>
+          {isViewingToday ? "Today's workouts" : `Workouts · ${selectedDayLabel}`}
+        </Text>
         <Text style={styles.sectionHint}>
-          Newest first · includes health imports and manual entries
+          Newest first · same day as meals · includes health imports and manual entries
         </Text>
 
         {loading && combinedHistory.length === 0 ? (
@@ -229,15 +259,25 @@ export function ExerciseScreen() {
               Pull to refresh after granting health permissions, or tap Add workout.
             </Text>
           </View>
-        ) : (
-          combinedHistory.map(row => (
-            <HistoryCard
-              key={row.id}
-              row={row}
-              timeLabel={formatSessionTime(row.startedAt)}
-            />
-          ))
-        )}
+        ) : null}
+
+        {!loading && combinedHistory.length > 0 && sessionsForSelectedDay.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Icon name="calendar-blank-outline" size={36} color={t.muted} />
+            <Text style={styles.emptyTitle}>No workouts this day</Text>
+            <Text style={styles.emptySub}>
+              Nothing logged or imported for {selectedDayLabel}. Try another date or add a workout.
+            </Text>
+          </View>
+        ) : null}
+
+        {sessionsForSelectedDay.map(row => (
+          <HistoryCard
+            key={row.id}
+            row={row}
+            timeLabel={formatSessionClock(row.startedAt)}
+          />
+        ))}
         <View style={{ height: 24 }} />
       </ScrollView>
 
@@ -324,6 +364,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 16,
   },
+  pastHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: t.muted,
+    textAlign: 'center',
+    marginBottom: 12,
+    marginTop: 4,
+  },
   heroCard: {
     backgroundColor: t.surface,
     borderRadius: 20,
@@ -336,6 +384,28 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
     marginBottom: 14,
+  },
+  stepsPastCard: {
+    backgroundColor: t.surface,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: t.border,
+    marginBottom: 14,
+  },
+  stepsPastEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: t.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  stepsPastBody: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: t.muted,
+    lineHeight: 20,
   },
   heroTop: {
     flexDirection: 'row',
@@ -410,6 +480,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: t.muted,
     lineHeight: 19,
+  },
+  integrationError: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B91C1C',
+    lineHeight: 17,
   },
   linkBtn: {
     marginTop: 12,

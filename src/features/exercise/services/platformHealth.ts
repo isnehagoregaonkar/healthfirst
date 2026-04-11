@@ -1,4 +1,4 @@
-import { Linking, Platform } from 'react-native';
+import { Linking, NativeModules, Platform } from 'react-native';
 import type { ExerciseSessionRow } from '../exerciseTypes';
 
 export type HealthConnectStatus = 'unavailable' | 'needs_install' | 'ready';
@@ -39,6 +39,15 @@ type IosHealthKitModule = {
     o: { startDate: string; endDate: string; limit?: number },
     cb: (err: unknown, r?: { data?: IosWorkoutDict[] }) => void,
   ) => void;
+  getDailyStepCountSamples?: (
+    o: {
+      startDate: string;
+      endDate: string;
+      period?: number;
+      includeManuallyAdded?: boolean;
+    },
+    cb: (err: unknown, results?: ReadonlyArray<{ value?: number }>) => void,
+  ) => void;
   saveWorkout: (
     o: {
       type: string;
@@ -53,32 +62,55 @@ type IosHealthKitModule = {
     Permissions: Record<string, string>;
     Activities: Record<string, string>;
   };
+  isAvailable?: (
+    cb: (err: unknown, available?: boolean) => void,
+  ) => void;
 };
 
+type HkConstants = IosHealthKitModule['Constants'];
+
+let hkConstantsCache: HkConstants | null = null;
+
+function loadHealthKitConstants(): HkConstants | null {
+  if (hkConstantsCache) {
+    return hkConstantsCache;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const legacy = require('react-native-health') as { Constants?: HkConstants };
+    if (legacy.Constants?.Permissions?.Steps) {
+      hkConstantsCache = legacy.Constants;
+      return hkConstantsCache;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * Read `NativeModules.AppleHealthKit` on each call. `react-native-health` binds
+ * NativeModules at package load time; on RN 0.76+ that snapshot is often empty,
+ * so `initHealthKit` never appears unless we merge lazily.
+ */
 function getIosHealthKit(): IosHealthKitModule | null {
   if (Platform.OS !== 'ios') {
     return null;
   }
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const m = require('react-native-health') as
-      | IosHealthKitModule
-      | { default?: IosHealthKitModule };
-    const hk =
-      m != null && typeof m === 'object' && 'default' in m && m.default != null
-        ? m.default
-        : (m as IosHealthKitModule);
-    if (
-      hk &&
-      typeof hk.initHealthKit === 'function' &&
-      hk.Constants?.Permissions?.Steps
-    ) {
-      return hk;
-    }
-  } catch {
-    /* native module unavailable */
+  const constants = loadHealthKitConstants();
+  if (!constants?.Permissions?.Steps) {
+    return null;
   }
-  return null;
+  const native = NativeModules.AppleHealthKit as
+    | Partial<IosHealthKitModule>
+    | undefined;
+  if (!native || typeof native.initHealthKit !== 'function') {
+    return null;
+  }
+  return {
+    ...native,
+    Constants: constants,
+  } as IosHealthKitModule;
 }
 
 export async function openIosHealthSettings(): Promise<void> {
@@ -94,11 +126,71 @@ function dayBounds(): { start: Date; end: Date } {
   return { start, end };
 }
 
-function promisifyInitHealthKit(): Promise<boolean> {
+/** Exclusive end of local calendar day after `dayStart` (midnight next day). */
+function endOfLocalDayAfter(dayStart: Date): Date {
+  const x = new Date(dayStart);
+  x.setDate(x.getDate() + 1);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/** Upper bound for step queries: now, or end of that local day if in the past. */
+function stepSampleQueryEnd(dayStart: Date): Date {
+  const dayEnd = endOfLocalDayAfter(dayStart);
+  const now = new Date();
+  return now.getTime() < dayEnd.getTime() ? now : dayEnd;
+}
+
+function formatHealthKitInitError(err: unknown): string {
+  if (err == null) {
+    return '';
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const m = (err as { message?: string }).message;
+    if (typeof m === 'string' && m.length > 0) {
+      return m;
+    }
+  }
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
+function promisifyIsHealthDataAvailable(): Promise<boolean> {
+  return new Promise(resolve => {
+    const HealthKit = getIosHealthKit();
+    if (!HealthKit?.isAvailable) {
+      resolve(true);
+      return;
+    }
+    try {
+      HealthKit.isAvailable((err: unknown, available?: boolean) => {
+        if (err != null || available == null) {
+          resolve(true);
+        } else {
+          resolve(!!available);
+        }
+      });
+    } catch {
+      resolve(true);
+    }
+  });
+}
+
+function promisifyInitHealthKit(): Promise<{ ok: boolean; error?: string }> {
   return new Promise(resolve => {
     const HealthKit = getIosHealthKit();
     if (!HealthKit) {
-      resolve(false);
+      resolve({
+        ok: false,
+        error:
+          'Apple Health native module is missing. Run `cd ios && pod install`, then rebuild from Xcode.',
+      });
       return;
     }
     try {
@@ -111,16 +203,22 @@ function promisifyInitHealthKit(): Promise<boolean> {
               P.StepCount,
               P.Workout,
               P.ActiveEnergyBurned,
+              P.DistanceWalkingRunning,
+              P.AppleExerciseTime,
             ],
-            write: [P.Workout, P.Steps],
+            write: [P.Workout],
           },
         },
-        (err: string) => {
-          resolve(!err);
+        (err: unknown) => {
+          if (err != null) {
+            resolve({ ok: false, error: formatHealthKitInitError(err) });
+            return;
+          }
+          resolve({ ok: true });
         },
       );
-    } catch {
-      resolve(false);
+    } catch (e) {
+      resolve({ ok: false, error: formatHealthKitInitError(e) });
     }
   });
 }
@@ -135,8 +233,8 @@ function promisifyGetStepCount(day: Date): Promise<number> {
     try {
       HealthKit.getStepCount(
         { date: day.toISOString(), includeManuallyAdded: true },
-        (err: string, r: { value?: number }) => {
-          if (err || r?.value == null || Number.isNaN(r.value)) {
+        (err: unknown, r: { value?: number }) => {
+          if (err != null || r?.value == null || Number.isNaN(r.value)) {
             resolve(0);
           } else {
             resolve(Math.round(r.value));
@@ -147,6 +245,59 @@ function promisifyGetStepCount(day: Date): Promise<number> {
       resolve(0);
     }
   });
+}
+
+/** Sums 60‑minute buckets (matches Watch/iPhone step aggregation better in some cases). */
+function promisifyDailyStepBucketSum(
+  dayStart: Date,
+  queryEnd: Date,
+): Promise<number> {
+  return new Promise(resolve => {
+    const HealthKit = getIosHealthKit();
+    if (!HealthKit?.getDailyStepCountSamples) {
+      resolve(0);
+      return;
+    }
+    if (queryEnd.getTime() <= dayStart.getTime()) {
+      resolve(0);
+      return;
+    }
+    try {
+      HealthKit.getDailyStepCountSamples(
+        {
+          startDate: dayStart.toISOString(),
+          endDate: queryEnd.toISOString(),
+          period: 60,
+          includeManuallyAdded: true,
+        },
+        (err: unknown, results?: ReadonlyArray<{ value?: number }>) => {
+          if (err != null || !Array.isArray(results)) {
+            resolve(0);
+            return;
+          }
+          let sum = 0;
+          for (const row of results) {
+            const v = row?.value;
+            if (typeof v === 'number' && Number.isFinite(v)) {
+              sum += v;
+            }
+          }
+          resolve(Math.round(sum));
+        },
+      );
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
+async function resolveStepsForLocalDay(dayStart: Date): Promise<number> {
+  const fromStats = await promisifyGetStepCount(dayStart);
+  const fromBuckets = await promisifyDailyStepBucketSum(
+    dayStart,
+    stepSampleQueryEnd(dayStart),
+  );
+  return Math.max(fromStats, fromBuckets);
 }
 
 function promisifyWorkoutSamples(
@@ -253,7 +404,7 @@ function promisifyAnchoredWorkouts(
         {
           startDate: start.toISOString(),
           endDate: end.toISOString(),
-          limit: 80,
+          limit: 200,
         },
         (err: unknown, r?: { data?: IosWorkoutDict[] }) => {
           if (err || !r?.data) {
@@ -311,26 +462,53 @@ export async function fetchIosHealthSnapshot(): Promise<{
   ok: boolean;
   stepsToday: number;
   workouts: ExerciseSessionRow[];
+  errorMessage?: string;
 }> {
   if (Platform.OS !== 'ios') {
     return { ok: false, stepsToday: 0, workouts: [] };
   }
   if (!getIosHealthKit()) {
-    return { ok: false, stepsToday: 0, workouts: [] };
+    return {
+      ok: false,
+      stepsToday: 0,
+      workouts: [],
+      errorMessage:
+        'Could not load Apple Health. Rebuild the iOS app after `pod install`.',
+    };
   }
-  const ok = await promisifyInitHealthKit();
+  const available = await promisifyIsHealthDataAvailable();
+  if (!available) {
+    return {
+      ok: false,
+      stepsToday: 0,
+      workouts: [],
+      errorMessage:
+        'Health data is not available on this device (e.g. some simulators or iPad models).',
+    };
+  }
+  const init = await promisifyInitHealthKit();
+  if (!init.ok) {
+    return {
+      ok: false,
+      stepsToday: 0,
+      workouts: [],
+      errorMessage: init.error,
+    };
+  }
   const { start } = dayBounds();
-  const stepsToday = await promisifyGetStepCount(start);
+  const stepsToday = await resolveStepsForLocalDay(start);
   const histStart = new Date();
-  histStart.setDate(histStart.getDate() - 60);
+  histStart.setDate(histStart.getDate() - 90);
+  histStart.setHours(0, 0, 0, 0);
+  const queryStart = new Date(histStart.getTime() - 24 * 60 * 60 * 1000);
   const endNow = new Date();
   const [anchored, samples] = await Promise.all([
-    promisifyAnchoredWorkouts(histStart, endNow),
-    promisifyWorkoutSamples(histStart, endNow, 150),
+    promisifyAnchoredWorkouts(queryStart, endNow),
+    promisifyWorkoutSamples(queryStart, endNow, 250),
   ]);
   const merged = mergeIosWorkoutDicts(anchored, samples);
   const workouts = mapIosWorkouts(merged);
-  return { ok, stepsToday, workouts };
+  return { ok: true, stepsToday, workouts };
 }
 
 /** Android Health Connect: initialize + permissions + aggregate steps + sessions. */
@@ -444,8 +622,8 @@ export async function saveManualWorkoutToAppleHealth(
   if (Platform.OS !== 'ios') {
     return false;
   }
-  const ok = await promisifyInitHealthKit();
-  if (!ok) {
+  const init = await promisifyInitHealthKit();
+  if (!init.ok) {
     return false;
   }
   const end = new Date(startedAt.getTime() + durationMin * 60_000);

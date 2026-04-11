@@ -1,5 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
+import { formatDayShort } from '../../water/waterDayUtils';
+import {
+  filterSessionsForLocalDay,
+  isSameLocalDay,
+  startOfLocalDay,
+} from '../utils/exerciseDayUtils';
 import type { ExerciseSessionRow } from '../exerciseTypes';
 import {
   appendManualExerciseSession,
@@ -41,11 +47,15 @@ function formatSessionTime(iso: string): string {
 }
 
 export function useExerciseScreen() {
+  const [selectedDay, setSelectedDayState] = useState(() =>
+    startOfLocalDay(new Date()),
+  );
   const [loading, setLoading] = useState(false);
   const [stepsToday, setStepsToday] = useState(0);
   const [healthWorkouts, setHealthWorkouts] = useState<ExerciseSessionRow[]>([]);
   const [manualSessions, setManualSessions] = useState<ExerciseSessionRow[]>([]);
   const [healthOk, setHealthOk] = useState(false);
+  const [iosHealthError, setIosHealthError] = useState<string | null>(null);
   const [androidStatus, setAndroidStatus] = useState<
     'unavailable' | 'needs_install' | 'ready'
   >('unavailable');
@@ -59,17 +69,20 @@ export function useExerciseScreen() {
       if (Platform.OS === 'ios') {
         const snap = await fetchIosHealthSnapshot();
         setHealthOk(snap.ok);
+        setIosHealthError(snap.errorMessage ?? null);
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
         setAndroidStatus('unavailable');
       } else if (Platform.OS === 'android') {
         const snap = await fetchAndroidHealthSnapshot();
         setHealthOk(snap.ok);
+        setIosHealthError(null);
         setAndroidStatus(snap.status);
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
       } else {
         setHealthOk(false);
+        setIosHealthError(null);
         setStepsToday(0);
         setHealthWorkouts([]);
       }
@@ -83,11 +96,30 @@ export function useExerciseScreen() {
     [healthWorkouts, manualSessions],
   );
 
+  const setSelectedDay = useCallback((d: Date) => {
+    setSelectedDayState(startOfLocalDay(d));
+  }, []);
+
+  const isViewingToday = useMemo(
+    () => isSameLocalDay(selectedDay, new Date()),
+    [selectedDay],
+  );
+
+  const selectedDayLabel = useMemo(
+    () => formatDayShort(selectedDay),
+    [selectedDay],
+  );
+
+  const sessionsForSelectedDay = useMemo(
+    () => filterSessionsForLocalDay(combinedHistory, selectedDay),
+    [combinedHistory, selectedDay],
+  );
+
   const integrationSubtitle = useMemo(() => {
     if (Platform.OS === 'ios') {
       return healthOk
-        ? 'Reading steps and workouts from Apple Health.'
-        : 'Enable access in the Health permission dialog, or Settings › Health › Data Access & Devices.';
+        ? 'Reading steps and workouts from Apple Health (including Apple Watch). If counts look wrong, open Health › Data Access & Devices › HealthFirst and ensure Steps and Workouts are on.'
+        : 'Apple Health is not listed under Settings › HealthFirst—that is normal. Manage access in Settings › Health › Data Access & Devices › HealthFirst, or open Exercise here and tap Sync now to see the permission prompt.';
     }
     if (Platform.OS === 'android') {
       if (androidStatus === 'needs_install') {
@@ -133,9 +165,15 @@ export function useExerciseScreen() {
   return {
     loading,
     refresh,
+    selectedDay,
+    setSelectedDay,
+    isViewingToday,
+    selectedDayLabel,
     stepsToday,
     combinedHistory,
+    sessionsForSelectedDay,
     healthOk,
+    iosHealthError,
     androidStatus,
     integrationSubtitle,
     formatSessionTime,

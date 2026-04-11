@@ -5,7 +5,7 @@ export function ExerciseHistoryScreen() {
   return (
     <PlaceholderScreen
       title="Exercise history & streak"
-      subtitle="Workouts, consistency, and streaks."
+      subtitle="Browse workouts by day on the Exercise tab — use the horizontal date row (same idea as Meals). Streaks coming soon."
     />
   );
 }

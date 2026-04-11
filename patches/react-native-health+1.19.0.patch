@@ -1,3 +1,30 @@
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Fitness.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Fitness.m
+index a83a441..25333e8 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Fitness.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Methods_Fitness.m
+@@ -59,7 +59,8 @@
+     NSDate *startDate = [RCTAppleHealthKit dateFromOptions:input key:@"startDate" withDefault:[NSDate date]];
+     NSDate *endDate = [RCTAppleHealthKit dateFromOptions:input key:@"endDate" withDefault:[NSDate date]];
+ 
+-    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endDate options:HKQueryOptionStrictStartDate];
++    // HKQueryOptionNone: include samples overlapping the range (StrictStartDate drops edge-aligned workouts)
++    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:startDate endDate:endDate options:0];
+ 
+     HKSampleType *samplesType = [RCTAppleHealthKit quantityTypeFromName:type];
+ 
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
+index 307056d..f00d6aa 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
+@@ -122,7 +122,7 @@ NSString * const kMetadataKey = @"metadata";
+     if (startDate == nil) {
+         return nil;
+     } else {
+-        return [HKQuery predicateForSamplesWithStartDate:startDate endDate:endDate options:HKQueryOptionStrictStartDate];
++        return [HKQuery predicateForSamplesWithStartDate:startDate endDate:endDate options:0];
+     }
+ 
+ }
 diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
 index e8ddce1..e778ab3 100644
 --- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
