@@ -375,3 +375,136 @@ export async function getMealsForLocalDay(day: Date): Promise<GetMealsTodayResul
 export async function getMealsForToday(): Promise<GetMealsTodayResult> {
   return getMealsForLocalDay(new Date());
 }
+
+function addCalendarDaysMeals(d: Date, days: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + days);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function localDateKeyFromDateMeals(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function localDateKeyFromIsoMeals(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return '';
+  }
+  return localDateKeyFromDateMeals(d);
+}
+
+export type MealDaySummary = Readonly<{
+  date: Date;
+  totalCalories: number;
+  macroTotals: DayMacroTotals;
+}>;
+
+type MealRangeResult =
+  | Readonly<{ days: MealDaySummary[] }>
+  | Readonly<{ error: MealServiceError }>;
+
+/**
+ * Per-local-day calories and macro sums across `numDays` ending on `endDay` (inclusive).
+ * `days[0]` is the oldest day.
+ */
+export async function getMealDaySummariesForRange(endDay: Date, numDays: number): Promise<MealRangeResult> {
+  const n = Math.floor(numDays);
+  if (n < 1 || n > 31) {
+    return { error: { message: 'Invalid range' } };
+  }
+
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { error: user.error };
+  }
+
+  const endStart = startOfLocalDay(endDay);
+  const firstStart = addCalendarDaysMeals(endStart, -(n - 1));
+  const { startIso } = localDayBoundsFor(firstStart);
+  const { endIso } = localDayBoundsFor(endDay);
+
+  const { data: mealRows, error: mealsError } = await supabase
+    .from('meals')
+    .select('id, created_at')
+    .eq('user_id', user.userId)
+    .gte('created_at', startIso)
+    .lte('created_at', endIso);
+
+  if (mealsError) {
+    return { error: { message: mealsError.message, code: mealsError.code } };
+  }
+
+  const meals = mealRows ?? [];
+  const mealIds = meals.map((m) => String(m.id));
+  const mealIdToDayKey = new Map<string, string>();
+  for (const m of meals) {
+    const key = localDateKeyFromIsoMeals(String(m.created_at));
+    if (key) {
+      mealIdToDayKey.set(String(m.id), key);
+    }
+  }
+
+  const totalsByKey = new Map<
+    string,
+    { kcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number }
+  >();
+  for (let i = 0; i < n; i += 1) {
+    const d = addCalendarDaysMeals(firstStart, i);
+    totalsByKey.set(localDateKeyFromDateMeals(d), {
+      kcal: 0,
+      proteinG: 0,
+      carbsG: 0,
+      fatG: 0,
+      fiberG: 0,
+    });
+  }
+
+  if (mealIds.length > 0) {
+    const { data: itemRows, error: itemsError } = await supabase
+      .from('meal_items')
+      .select('meal_id, calories, protein_g, carbs_g, fat_g, fiber_g')
+      .in('meal_id', mealIds);
+
+    if (itemsError) {
+      return { error: { message: itemsError.message, code: itemsError.code } };
+    }
+
+    for (const row of itemRows ?? []) {
+      const mid = String(row.meal_id);
+      const dayKey = mealIdToDayKey.get(mid);
+      if (!dayKey || !totalsByKey.has(dayKey)) {
+        continue;
+      }
+      const bucket = totalsByKey.get(dayKey)!;
+      bucket.kcal += Number(row.calories) || 0;
+      bucket.proteinG += row.protein_g != null ? Number(row.protein_g) : 0;
+      bucket.carbsG += row.carbs_g != null ? Number(row.carbs_g) : 0;
+      bucket.fatG += row.fat_g != null ? Number(row.fat_g) : 0;
+      bucket.fiberG += row.fiber_g != null ? Number(row.fiber_g) : 0;
+    }
+  }
+
+  const days: MealDaySummary[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const d = addCalendarDaysMeals(firstStart, i);
+    const key = localDateKeyFromDateMeals(d);
+    const t = totalsByKey.get(key)!;
+    days.push({
+      date: d,
+      totalCalories: Math.round(t.kcal),
+      macroTotals: {
+        proteinG: roundMacro(t.proteinG),
+        carbsG: roundMacro(t.carbsG),
+        fatG: roundMacro(t.fatG),
+        fiberG: roundMacro(t.fiberG),
+      },
+    });
+  }
+
+  return { days };
+}
