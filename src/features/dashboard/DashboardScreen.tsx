@@ -1,18 +1,13 @@
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import Svg, {
   Circle,
@@ -25,39 +20,34 @@ import Svg, {
 } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
-import { useDrawerUserProfile } from '../../navigation/hooks/useDrawerUserProfile';
-import type { MainTabParamList } from '../../navigation/types';
-import { addHeartRateReading } from '../../services/vitals';
 import { colors } from '../../theme/tokens';
 import { MEAL_PRIMARY } from '../meals/mealUiTheme';
-import { isWaterBehindSchedule } from '../water/waterCoaching';
-import type { StreakCapsuleTone } from './components/StreakPanel';
+import { LogHeartRateModal } from './components/LogHeartRateModal';
 import { StreakPanel } from './components/StreakPanel';
-import { useDashboardData } from './hooks/useDashboardData';
-
-const DASH_SLATE = '#0F172A';
-const DASH_MUTED = '#64748B';
-const DASH_HEART = '#E11D48';
-const DASH_HEART_SOFT = '#FFE4E9';
-const DASH_WATER = '#0284C7';
-/** Ring accents for Today hero cards */
-const RING_CAL = '#F97316';
-const RING_WATER = '#06B6D4';
-const EXERCISE_BAR = '#FF7A18';
-const EXERCISE_BAR_TODAY = '#EA580C';
-const DASH_BAD = '#EF4444';
-const DASH_EXERCISE = '#8B5CF6';
-/** Preview “minutes” per day for move row until exercise ships (index 6 = today). */
-const EXERCISE_DUMMY = [18, 32, 45, 28, 52, 36, 22];
-const EXERCISE_STREAK_MIN = 25;
-const EXERCISE_RING_GOAL = 30;
+import {
+  DASH_BAD,
+  DASH_HEART,
+  DASH_HEART_SOFT,
+  DASH_MUTED,
+  DASH_SLATE,
+  DASH_WATER,
+  EXERCISE_BAR,
+  EXERCISE_BAR_TODAY,
+  RING_CAL,
+  RING_WATER,
+} from './dashboardTokens';
+import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
+import { useDashboardScreen } from './hooks/useDashboardScreen';
+import {
+  formatRelativeHeartTime,
+  greetingForNow,
+  waterRemainingFoot,
+} from './utils/dashboardFormat';
 
 /** Slight floor so calories / water tiles align with heart rate / weight half-cards. */
 const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 158;
 /** Ring diameter in calories / water dashboard tiles (matches visual weight of icon bubbles). */
 const DASHBOARD_METRIC_RING_SIZE = 52;
-
-type TabNav = BottomTabNavigationProp<MainTabParamList>;
 
 type DashboardStatPillTone = 'cal' | 'calOver' | 'water' | 'weight';
 
@@ -99,62 +89,6 @@ function DashboardStatPill({
       </Text>
     </View>
   );
-}
-
-function greetingForNow(): string {
-  const h = new Date().getHours();
-  if (h < 12) {
-    return 'Good morning';
-  }
-  if (h < 17) {
-    return 'Good afternoon';
-  }
-  return 'Good evening';
-}
-
-function formatWeekdayShort(d: Date): string {
-  return d.toLocaleDateString('en-US', { weekday: 'short' });
-}
-
-function localDayKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-
-function waterRemainingFoot(goalMl: number, todayMl: number): string {
-  const rem = Math.max(0, goalMl - todayMl);
-  if (rem <= 0) {
-    return 'Daily goal reached';
-  }
-  if (rem >= 1000) {
-    return `${(rem / 1000).toFixed(1)} L to go`;
-  }
-  return `${rem.toLocaleString('en-US')} ml to go`;
-}
-
-function formatRelativeHeartTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return '';
-  }
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) {
-    const mins = Math.floor((now.getTime() - d.getTime()) / 60_000);
-    if (mins < 1) {
-      return 'Just now';
-    }
-    if (mins < 60) {
-      return `${mins}m ago`;
-    }
-    return d.toLocaleTimeString(undefined, {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 type SparkProps = Readonly<{
@@ -337,303 +271,31 @@ function ExerciseWeekBars({
   );
 }
 
-type LogHeartRateModalProps = Readonly<{
-  visible: boolean;
-  onClose: () => void;
-  onLogged: () => void;
-}>;
-
-function LogHeartRateModal({
-  visible,
-  onClose,
-  onLogged,
-}: LogHeartRateModalProps) {
-  const [bpm, setBpm] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = useCallback(async () => {
-    setErr(null);
-    const n = Number.parseInt(bpm.replaceAll(/\s/g, ''), 10);
-    if (!Number.isFinite(n)) {
-      setErr('Enter a whole number.');
-      return;
-    }
-    setBusy(true);
-    const r = await addHeartRateReading(n);
-    setBusy(false);
-    if (!r.ok) {
-      setErr(r.error.message);
-      return;
-    }
-    setBpm('');
-    onLogged();
-    onClose();
-  }, [bpm, onClose, onLogged]);
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalRoot}>
-        <Pressable
-          style={styles.modalScrim}
-          onPress={onClose}
-          accessibilityLabel="Dismiss"
-        />
-        <View style={styles.modalCenter} pointerEvents="box-none">
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Log heart rate</Text>
-            <Text style={styles.modalHint}>Resting BPM (35–220)</Text>
-            <TextInput
-              value={bpm}
-              onChangeText={setBpm}
-              keyboardType="number-pad"
-              placeholder="e.g. 68"
-              placeholderTextColor={DASH_MUTED}
-              style={styles.modalInput}
-            />
-            {err ? <Text style={styles.modalErr}>{err}</Text> : null}
-            <View style={styles.modalActions}>
-              <Pressable onPress={onClose} style={styles.modalGhost}>
-                <Text style={styles.modalGhostText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => submit().catch(() => {})}
-                disabled={busy}
-                style={[
-                  styles.modalPrimary,
-                  busy && styles.modalPrimaryDisabled,
-                ]}
-              >
-                <Text style={styles.modalPrimaryText}>
-                  {busy ? 'Saving…' : 'Save'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-function dayHasLog(day: { mealCount: number; totalCalories: number }): boolean {
-  return day.mealCount > 0 || day.totalCalories > 0;
-}
-
-function streakToneForDay(
-  day: { mealCount: number; totalCalories: number },
-  calorieTarget: number,
-  isFuture: boolean,
-): StreakCapsuleTone {
-  if (isFuture) {
-    return 'future';
-  }
-  if (!dayHasLog(day)) {
-    return 'missed';
-  }
-  const k = day.totalCalories;
-  const target = Math.max(calorieTarget, 1);
-  if (k > target) {
-    return 'over';
-  }
-  if (k <= 0) {
-    return 'warn';
-  }
-  return 'good';
-}
-
-/** Consecutive days (from today backward) with any meal logged that day. */
-function computeMealLogStreak(
-  mealWeek: ReadonlyArray<{ mealCount: number; totalCalories: number }>,
-): number {
-  let n = 0;
-  for (let i = mealWeek.length - 1; i >= 0; i -= 1) {
-    if (dayHasLog(mealWeek[i])) {
-      n += 1;
-    } else {
-      break;
-    }
-  }
-  return n;
-}
-
-function longestMealLogRunInWeek(
-  mealWeek: ReadonlyArray<{ mealCount: number; totalCalories: number }>,
-): number {
-  let best = 0;
-  let cur = 0;
-  for (const d of mealWeek) {
-    if (dayHasLog(d)) {
-      cur += 1;
-      best = Math.max(best, cur);
-    } else {
-      cur = 0;
-    }
-  }
-  return best;
-}
-
 export function DashboardScreen() {
-  const navigation = useNavigation<TabNav>();
-  const user = useDrawerUserProfile();
-  const { snapshot, loading, error, refresh } = useDashboardData();
-  const [hrModal, setHrModal] = useState(false);
-  const { width: winW } = useWindowDimensions();
-
-  const onHrLogged = useCallback(() => {
-    void refresh();
-  }, [refresh]);
-
-  const streakModel = useMemo(() => {
-    if (!snapshot) {
-      return null;
-    }
-    const { mealWeek, calorieTarget } = snapshot;
-    const n = mealWeek.length;
-    const todayIdx = n - 1;
-    const todayDay = mealWeek[todayIdx];
-    const todayOver =
-      dayHasLog(todayDay) &&
-      todayDay.totalCalories > Math.max(calorieTarget, 1);
-
-    const capsules = mealWeek.map((day, i) => ({
-      id: localDayKey(day.date),
-      label: formatWeekdayShort(day.date),
-      isToday: i === todayIdx,
-      tone: streakToneForDay(day, calorieTarget, i > todayIdx),
-    }));
-
-    return {
-      capsules,
-      streak: computeMealLogStreak(mealWeek),
-      longest: longestMealLogRunInWeek(mealWeek),
-      todayOver,
-    };
-  }, [snapshot]);
-
-  const calPctRaw = snapshot
-    ? Math.round(
-        (snapshot.todayCalories / Math.max(snapshot.calorieTarget, 1)) * 100,
-      )
-    : 0;
-  const calOverEarly = snapshot
-    ? snapshot.todayCalories > snapshot.calorieTarget
-    : false;
-  const calPct = calOverEarly ? 100 : Math.min(100, calPctRaw);
-  const waterPct = snapshot
-    ? Math.min(
-        100,
-        Math.round(
-          (snapshot.waterTodayMl / Math.max(snapshot.waterGoalMl, 1)) * 100,
-        ),
-      )
-    : 0;
-  const moveExercise = useMemo(() => {
-    if (!snapshot) {
-      return {
-        values: [] as number[],
-        labels: [] as string[],
-        dayKeys: [] as string[],
-        todayIdx: 0,
-        weekTotalMin: 0,
-        estKcalWeek: 0,
-      };
-    }
-    const mw = snapshot.mealWeek;
-    const values = mw.map((_, i) => EXERCISE_DUMMY[i] ?? 0);
-    const labels = mw.map(d => formatWeekdayShort(d.date).charAt(0));
-    const dayKeys = mw.map(d => localDayKey(d.date));
-    const todayIdx = Math.max(0, mw.length - 1);
-    const weekTotalMin = values.reduce((a, b) => a + b, 0);
-    return {
-      values,
-      labels,
-      dayKeys,
-      todayIdx,
-      weekTotalMin,
-      estKcalWeek: Math.round(weekTotalMin * 7.5),
-    };
-  }, [snapshot]);
-
-  const exerciseToday = snapshot
-    ? moveExercise.values[moveExercise.todayIdx] ?? 0
-    : 0;
-  const moveEstKcalToday = Math.round(exerciseToday * 7.5);
-
-  const weightDelta =
-    snapshot != null
-      ? snapshot.profile.weightKg - snapshot.profile.goalWeightKg
-      : 0;
-  const weightLabel =
-    snapshot == null
-      ? ''
-      : Math.abs(weightDelta) < 0.15
-      ? 'On target'
-      : weightDelta > 0
-      ? `${weightDelta.toFixed(1)} kg to goal`
-      : `${Math.abs(weightDelta).toFixed(1)} kg above goal`;
-
-  const hrPoints = snapshot?.heartWeek.map(d => d.avgBpm) ?? [];
-
-  const reminders = useMemo(() => {
-    if (!snapshot) {
-      return [];
-    }
-    const out: {
-      key: string;
-      icon: string;
-      title: string;
-      subtitle?: string;
-      color: string;
-      onPress?: () => void;
-    }[] = [];
-
-    if (isWaterBehindSchedule(waterPct, new Date())) {
-      out.push({
-        key: 'water',
-        icon: 'cup-water',
-        title: 'Water is behind schedule',
-        subtitle: 'Catch up with a glass — tap to log water.',
-        color: DASH_WATER,
-        onPress: () => navigation.navigate('Water'),
-      });
-    }
-
-    if (snapshot.todayCalories > snapshot.calorieTarget) {
-      const over = snapshot.todayCalories - snapshot.calorieTarget;
-      out.push({
-        key: 'cal',
-        icon: 'fire-alert',
-        title: 'Over calorie target',
-        subtitle: `${over} kcal above today’s plan. Consider lighter choices tomorrow.`,
-        color: DASH_BAD,
-        onPress: () => navigation.navigate('Meals'),
-      });
-    }
-
-    const hour = new Date().getHours();
-    if (hour >= 17 && exerciseToday < EXERCISE_STREAK_MIN) {
-      out.push({
-        key: 'move',
-        icon: 'run-fast',
-        title: 'Evening movement',
-        subtitle:
-          'Exercise tracking is coming soon — a short walk still counts for today.',
-        color: DASH_EXERCISE,
-      });
-    }
-
-    return out;
-  }, [snapshot, waterPct, navigation, exerciseToday]);
-
-  const calOverAmt = snapshot
-    ? snapshot.todayCalories - snapshot.calorieTarget
-    : 0;
+  const {
+    navigation,
+    user,
+    snapshot,
+    loading,
+    error,
+    refresh,
+    hrModal,
+    setHrModal,
+    winW,
+    onHrLogged,
+    streakModel,
+    reminders,
+    calPctRaw,
+    calOverEarly,
+    calPct,
+    waterPct,
+    moveExercise,
+    exerciseToday,
+    moveEstKcalToday,
+    weightLabel,
+    hrPoints,
+    calOverAmt,
+  } = useDashboardScreen();
 
   return (
     <Screen
@@ -1431,84 +1093,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: DASH_MUTED,
     lineHeight: 18,
-  },
-  modalRoot: {
-    flex: 1,
-  },
-  modalScrim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-  },
-  modalCenter: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 22,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: DASH_SLATE,
-  },
-  modalHint: {
-    marginTop: 6,
-    fontSize: 13,
-    color: DASH_MUTED,
-    fontWeight: '600',
-  },
-  modalInput: {
-    marginTop: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-    fontWeight: '700',
-    color: DASH_SLATE,
-    backgroundColor: '#F8FAFC',
-  },
-  modalErr: {
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.error,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 18,
-  },
-  modalGhost: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  modalGhostText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: DASH_MUTED,
-  },
-  modalPrimary: {
-    paddingVertical: 12,
-    paddingHorizontal: 22,
-    borderRadius: 14,
-    backgroundColor: DASH_HEART,
-  },
-  modalPrimaryDisabled: {
-    opacity: 0.5,
-  },
-  modalPrimaryText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.surface,
   },
 });

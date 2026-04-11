@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, {
   Circle,
   Defs,
@@ -14,6 +8,8 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { DASH_MUTED as MUTED, DASH_SLATE as SLATE } from '../dashboardTokens';
+import { useStreakPanelLayout } from '../hooks/useStreakPanelLayout';
 
 /** Per-day streak strip: logged + calories vs target, or empty / future. */
 export type StreakCapsuleTone = 'future' | 'missed' | 'good' | 'warn' | 'over';
@@ -24,9 +20,6 @@ export type StreakCapsuleModel = Readonly<{
   isToday: boolean;
   tone: StreakCapsuleTone;
 }>;
-
-const SLATE = '#0F172A';
-const MUTED = '#64748B';
 const GREEN = '#22C55E';
 const GREEN_DEEP = '#15803D';
 const RED = '#DC2626';
@@ -153,17 +146,8 @@ export function StreakPanel({
   longestStreak,
   todayOver,
 }: StreakPanelProps) {
-  const { width: winW } = useWindowDimensions();
-  /** Body padding 18×2 + streak card padding 14×2 */
-  const cardW = Math.max(260, winW - 64);
-
-  const ringPct = Math.min(100, Math.round((currentStreak / 7) * 100));
-  const ringDisplayPct = currentStreak === 0 ? 6 : Math.max(12, ringPct);
-
-  const title =
-    currentStreak > 0 ? "You've been keeping track" : 'Start your streak';
-  const heroHeight = 128;
-  const ringSize = 88;
+  const { cardW, ringDisplayPct, title, heroHeight, ringSize } =
+    useStreakPanelLayout(currentStreak);
 
   return (
     <View style={styles.block}>
