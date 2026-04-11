@@ -20,7 +20,8 @@ function minutesSinceLocalMidnight(now: Date): number {
  * Rough “expected” completion by time of day (linear across waking hours).
  * Used only to nudge when viewing today.
  */
-function isBehindSchedule(percent: number, now: Date): boolean {
+/** True when today’s water % is behind a simple time-of-day pace (same rule as water screen). */
+export function isWaterBehindSchedule(percent: number, now: Date = new Date()): boolean {
   const mins = minutesSinceLocalMidnight(now);
   if (mins < 4 * 60) {
     return false;
@@ -54,7 +55,7 @@ export function getWaterCoachingLines(
     });
   }
 
-  if (isViewingToday && isBehindSchedule(p, now)) {
+  if (isViewingToday && isWaterBehindSchedule(p, now)) {
     lines.push({
       kind: 'behindSchedule',
       title: "You're behind schedule",

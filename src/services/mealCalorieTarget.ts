@@ -75,3 +75,9 @@ export async function loadMealCalorieProfile(): Promise<MealCalorieProfile> {
 export async function saveMealCalorieProfile(profile: MealCalorieProfile): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
 }
+
+/** Rough daily protein target from body weight (not medical advice). */
+export function suggestedDailyProteinGrams(profile: MealCalorieProfile): number {
+  const w = clamp(profile.weightKg, 30, 300);
+  return Math.round(Math.min(160, Math.max(50, w * 1.8)));
+}
