@@ -59,8 +59,9 @@ export function useDashboardReminders(
         icon: 'run-fast',
         title: 'Evening movement',
         subtitle:
-          'Exercise tracking is coming soon — a short walk still counts for today.',
+          'Open Exercise to log a session or sync steps from Apple Health / Health Connect.',
         color: DASH_EXERCISE,
+        onPress: () => navigation.navigate('Exercise'),
       });
     }
 

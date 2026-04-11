@@ -1,6 +1,2 @@
-import React from 'react';
-import { PlaceholderScreen } from '../../components/PlaceholderScreen';
-
-export function StepsTrackingScreen() {
-  return <PlaceholderScreen title="Steps tracking" subtitle="Daily steps and movement." />;
-}
+/** @deprecated Use `ExerciseScreen` from `features/exercise`. Kept for search / deep links. */
+export { ExerciseScreen as StepsTrackingScreen } from '../exercise/ExerciseScreen';

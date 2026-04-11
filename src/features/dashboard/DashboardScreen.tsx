@@ -494,7 +494,16 @@ export function DashboardScreen() {
                 </View>
               </View>
 
-              <View style={[styles.card, styles.todayHeroCard]}>
+              <Pressable
+                onPress={() => navigation.navigate('Exercise')}
+                accessibilityRole="button"
+                accessibilityLabel="Exercise, open exercise tab"
+                style={({ pressed }) => [
+                  styles.card,
+                  styles.todayHeroCard,
+                  pressed && styles.cardPressed,
+                ]}
+              >
                 <View style={styles.cardIconRow}>
                   <View style={styles.exerciseIconBubble}>
                     <Icon
@@ -503,7 +512,7 @@ export function DashboardScreen() {
                       color={EXERCISE_BAR_TODAY}
                     />
                   </View>
-                  <Text style={styles.cardEyebrow}>Move</Text>
+                  <Text style={styles.cardEyebrow}>Exercise</Text>
                 </View>
                 <View style={styles.exerciseBody}>
                   <View style={styles.exerciseCopy}>
@@ -530,7 +539,7 @@ export function DashboardScreen() {
                     />
                   </View>
                 </View>
-              </View>
+              </Pressable>
 
               <View style={styles.row2}>
                 <Pressable

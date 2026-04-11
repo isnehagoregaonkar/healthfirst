@@ -32,7 +32,7 @@ const ROWS: DrawerNavRow[] = [
   { id: 'MealTracking', label: 'Meal tracking', Icon: MealDrawerIcon },
   { id: 'ProgressHistory', label: 'Progress history', Icon: ProgressDrawerIcon },
   { id: 'WaterIntake', label: 'Water intake', Icon: WaterDrawerIcon },
-  { id: 'StepsTracking', label: 'Steps tracking', Icon: StepsDrawerIcon },
+  { id: 'Exercise', label: 'Exercise', Icon: StepsDrawerIcon },
   { id: 'ExerciseHistory', label: 'Exercise & streak', Icon: ExerciseDrawerIcon },
   { id: 'IntermittentFasting', label: 'Intermittent fasting', Icon: FastingDrawerIcon },
   { id: 'Reminders', label: 'Reminders', Icon: RemindersDrawerIcon },

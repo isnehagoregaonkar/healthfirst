@@ -21,7 +21,7 @@ const MAIN_NAV_BY_DESTINATION = {
   Dashboard: { screen: 'Home' },
   MealTracking: { screen: 'Meals' },
   WaterIntake: { screen: 'Water' },
-  StepsTracking: { screen: 'Steps' },
+  Exercise: { screen: 'Exercise' },
 } as const satisfies Record<MainTabDrawerDestinationId, MainNavigatorParams>;
 
 const DRAWER_SCREEN_BY_DESTINATION = {
@@ -35,7 +35,7 @@ const TAB_ROUTE_TO_DESTINATION: Record<string, DrawerDestinationId> = {
   Home: 'Dashboard',
   Meals: 'MealTracking',
   Water: 'WaterIntake',
-  Steps: 'StepsTracking',
+  Exercise: 'Exercise',
 };
 
 const DRAWER_ROUTE_TO_DESTINATION: Partial<Record<keyof RootDrawerParamList, DrawerDestinationId>> = {

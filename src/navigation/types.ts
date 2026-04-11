@@ -9,7 +9,7 @@ export type MainTabParamList = {
   Home: undefined;
   Meals: undefined;
   Water: undefined;
-  Steps: undefined;
+  Exercise: undefined;
   More: NavigatorScreenParams<MoreStackParamList>;
 };
 
@@ -26,7 +26,7 @@ export type DrawerDestinationId =
   | 'Dashboard'
   | 'MealTracking'
   | 'WaterIntake'
-  | 'StepsTracking'
+  | 'Exercise'
   | 'ProgressHistory'
   | 'ExerciseHistory'
   | 'IntermittentFasting'

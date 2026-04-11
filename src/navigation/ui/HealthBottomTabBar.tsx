@@ -16,7 +16,7 @@ const TAB_CONFIG: Record<string, TabVisual> = {
   Home: { defaultLabel: 'Home', icon: 'view-dashboard-outline' },
   Meals: { defaultLabel: 'Meals', icon: 'food-apple-outline' },
   Water: { defaultLabel: 'Water', icon: 'cup-water' },
-  Steps: { defaultLabel: 'Move', icon: 'walk' },
+  Exercise: { defaultLabel: 'Exercise', icon: 'dumbbell' },
   More: { defaultLabel: 'More', icon: 'dots-horizontal' },
 };
 
