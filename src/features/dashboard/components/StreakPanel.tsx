@@ -162,10 +162,6 @@ export function StreakPanel({
 
   const title =
     currentStreak > 0 ? "You've been keeping track" : 'Start your streak';
-  const subtitle =
-    currentStreak > 0
-      ? 'Orange flame = goal met · Amber apple = add calories to items · Red flame = over goal.'
-      : 'Log a meal each day for a streak. Hit your calorie target for the flame.';
   const heroHeight = 128;
   const ringSize = 88;
 
@@ -215,7 +211,6 @@ export function StreakPanel({
             />
             <View style={styles.heroCopy}>
               <Text style={styles.heroTitle}>{title}</Text>
-              <Text style={styles.heroSub}>{subtitle}</Text>
               {longestStreak > 0 ? (
                 <View style={styles.heroBadge}>
                   <Text style={styles.heroBadgeText}>
