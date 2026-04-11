@@ -113,9 +113,11 @@ export function ExerciseScreen() {
     sessionsForSelectedDay,
     healthOk,
     iosHealthError,
+    appleHealthReadHint,
     androidStatus,
     integrationSubtitle,
     openAndroidHealthSettings,
+    openIosHealthApp,
     openIosHealthSettings,
     logManual,
   } = useExerciseScreen();
@@ -198,6 +200,18 @@ export function ExerciseScreen() {
           <Text style={styles.integrationBody}>{integrationSubtitle}</Text>
           {Platform.OS === 'ios' && iosHealthError ? (
             <Text style={styles.integrationError}>{iosHealthError}</Text>
+          ) : null}
+          {Platform.OS === 'ios' && appleHealthReadHint ? (
+            <>
+              <Text style={styles.integrationHint}>{appleHealthReadHint}</Text>
+              <Pressable
+                onPress={() => void openIosHealthApp()}
+                style={({ pressed }) => [styles.linkBtn, pressed && styles.pressed]}
+              >
+                <Text style={styles.linkBtnText}>Open Health app</Text>
+                <Icon name="heart-pulse" size={18} color={t.stepsTint} />
+              </Pressable>
+            </>
           ) : null}
           {Platform.OS === 'android' && androidStatus === 'needs_install' ? (
             <Pressable
@@ -486,6 +500,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#B91C1C',
+    lineHeight: 17,
+  },
+  integrationHint: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B45309',
     lineHeight: 17,
   },
   linkBtn: {

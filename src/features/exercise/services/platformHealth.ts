@@ -3,6 +3,94 @@ import type { ExerciseSessionRow } from '../exerciseTypes';
 
 export type HealthConnectStatus = 'unavailable' | 'needs_install' | 'ready';
 
+/**
+ * Native `RCTResponseSenderBlock` passes one `NSArray`; the bridge usually
+ * spreads it to `(err, result)`, but some RN paths deliver a **single** argument
+ * that is the array `[err, result]`. If we treat that array as `err`, it is truthy
+ * and we incorrectly discard all HealthKit results (e.g. steps always 0).
+ */
+function unwrapHkResponseArgs(args: unknown[]): [unknown, unknown] {
+  if (args.length === 1 && Array.isArray(args[0])) {
+    const inner = args[0] as unknown[];
+    return [inner[0], inner[1]];
+  }
+  return [args[0], args[1]];
+}
+
+function hkCallbackFailed(err: unknown): boolean {
+  return err != null && err !== false;
+}
+
+/**
+ * HKAuthorizationStatus from `authorizationStatusForType:`.
+ * Apple often returns `notDetermined` for **read** types even when the user turned data on in
+ * Health → Apps — the OS does not expose read-granted vs not for privacy.
+ */
+function hkAuthStatusMeaning(code: number): string {
+  switch (code) {
+    case 0:
+      return 'notDetermined';
+    case 1:
+      return 'sharingDenied';
+    case 2:
+      return 'sharingAuthorized';
+    default:
+      return `unknown(${code})`;
+  }
+}
+
+/** Verbose Apple Health / HealthKit logs — only when `__DEV__` is true (Metro / Xcode console). */
+function hkDebugLog(tag: string, data: unknown): void {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) {
+    return;
+  }
+  try {
+    const seen = new WeakSet<object>();
+    const json = JSON.stringify(
+      data,
+      (_key, value) => {
+        if (typeof value === 'bigint') {
+          return String(value);
+        }
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value as object)) {
+            return '[Circular]';
+          }
+          seen.add(value as object);
+        }
+        return value;
+      },
+      2,
+    );
+    // eslint-disable-next-line no-console
+    console.log(`[HealthFirst][AppleHealth] ${tag}`, json);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.log(`[HealthFirst][AppleHealth] ${tag}`, data);
+  }
+}
+
+function hkDebugLogCallbackArgs(tag: string, cbArgs: unknown[]): void {
+  hkDebugLog(`${tag} — raw callback argument count`, { length: cbArgs.length });
+  cbArgs.forEach((arg, i) => {
+    hkDebugLog(`${tag} — callback arg[${i}]`, arg);
+  });
+}
+
+/** Noon local on that calendar day — stable anchor for `getStepCount` / day parsing. */
+function isoNoonUtcForLocalCalendarDay(dayStart: Date): string {
+  const d = new Date(
+    dayStart.getFullYear(),
+    dayStart.getMonth(),
+    dayStart.getDate(),
+    12,
+    0,
+    0,
+    0,
+  );
+  return d.toISOString();
+}
+
 type IosWorkoutDict = Readonly<{
   id?: string;
   activityName?: string;
@@ -22,7 +110,12 @@ type IosHealthKitModule = {
     cb: (err: string) => void,
   ) => void;
   getStepCount: (
-    o: { date?: string; startDate?: string; endDate?: string; includeManuallyAdded?: boolean },
+    o: {
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+      includeManuallyAdded?: boolean;
+    },
     cb: (err: string, r: { value?: number }) => void,
   ) => void;
   getSamples: (
@@ -38,6 +131,14 @@ type IosHealthKitModule = {
   getAnchoredWorkouts: (
     o: { startDate: string; endDate: string; limit?: number },
     cb: (err: unknown, r?: { data?: IosWorkoutDict[] }) => void,
+  ) => void;
+  /** Parallel arrays: same order as `permissions.read` / `permissions.write` in the input. Values are HKAuthorizationStatus (0–2). */
+  getAuthStatus: (
+    input: { permissions: { read: string[]; write: string[] } },
+    cb: (
+      err: unknown,
+      r?: { permissions: { read: number[]; write: number[] } },
+    ) => void,
   ) => void;
   getDailyStepCountSamples?: (
     o: {
@@ -62,9 +163,7 @@ type IosHealthKitModule = {
     Permissions: Record<string, string>;
     Activities: Record<string, string>;
   };
-  isAvailable?: (
-    cb: (err: unknown, available?: boolean) => void,
-  ) => void;
+  isAvailable?: (cb: (err: unknown, available?: boolean) => void) => void;
 };
 
 type HkConstants = IosHealthKitModule['Constants'];
@@ -77,7 +176,9 @@ function loadHealthKitConstants(): HkConstants | null {
   }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const legacy = require('react-native-health') as { Constants?: HkConstants };
+    const legacy = require('react-native-health') as {
+      Constants?: HkConstants;
+    };
     if (legacy.Constants?.Permissions?.Steps) {
       hkConstantsCache = legacy.Constants;
       return hkConstantsCache;
@@ -116,6 +217,18 @@ function getIosHealthKit(): IosHealthKitModule | null {
 export async function openIosHealthSettings(): Promise<void> {
   if (Platform.OS === 'ios') {
     await Linking.openSettings();
+  }
+}
+
+/** Opens the Health app so the user can go to Profile → Apps → HealthFirst. */
+export async function openIosHealthApp(): Promise<void> {
+  if (Platform.OS !== 'ios') {
+    return;
+  }
+  try {
+    await Linking.openURL('x-apple-health://');
+  } catch {
+    /* ignore */
   }
 }
 
@@ -169,8 +282,11 @@ function promisifyIsHealthDataAvailable(): Promise<boolean> {
       return;
     }
     try {
-      HealthKit.isAvailable((err: unknown, available?: boolean) => {
-        if (err != null || available == null) {
+      HealthKit.isAvailable((...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('isAvailable', cbArgs);
+        const [err, available] = unwrapHkResponseArgs(cbArgs);
+        hkDebugLog('isAvailable — unwrapped', { err, available });
+        if (hkCallbackFailed(err) || available == null) {
           resolve(true);
         } else {
           resolve(!!available);
@@ -180,6 +296,88 @@ function promisifyIsHealthDataAvailable(): Promise<boolean> {
       resolve(true);
     }
   });
+}
+
+function buildIosHealthKitPermissionPayload(): {
+  permissions: { read: string[]; write: string[] };
+} | null {
+  const HealthKit = getIosHealthKit();
+  if (!HealthKit) {
+    return null;
+  }
+  // Plain strings — must match react-native-health native `getReadPermFromText` keys.
+  // Do not use only ad-hoc values: some RN bridges pass non-strings and native would resolve
+  // 0 read types → HealthKit never prompts for read → all queries empty.
+  return {
+    permissions: {
+      read: [
+        HealthKit.Constants.Permissions.Steps,
+        HealthKit.Constants.Permissions.Workout,
+        HealthKit.Constants.Permissions.ActiveEnergyBurned,
+        HealthKit.Constants.Permissions.DistanceWalkingRunning,
+      ],
+      write: [HealthKit.Constants.Permissions.Workout],
+    },
+  };
+}
+
+async function logIosHealthKitRetrievedPermissions(): Promise<void> {
+  const HealthKit = getIosHealthKit();
+  const payload = buildIosHealthKitPermissionPayload();
+  if (!HealthKit?.getAuthStatus || !payload) {
+    hkDebugLog('getAuthStatus — skipped', {
+      reason: !HealthKit
+        ? 'no module'
+        : 'getAuthStatus missing on native module',
+    });
+    return;
+  }
+  try {
+    await new Promise<void>(resolve => {
+      HealthKit.getAuthStatus(payload, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('getAuthStatus', cbArgs);
+        const [err, raw] = unwrapHkResponseArgs(cbArgs) as [
+          unknown,
+          { permissions?: { read?: number[]; write?: number[] } } | undefined,
+        ];
+        if (hkCallbackFailed(err)) {
+          hkDebugLog('getAuthStatus — unwrapped err', err);
+          resolve();
+          return;
+        }
+        const readArr = raw?.permissions?.read;
+        const writeArr = raw?.permissions?.write;
+        if (!Array.isArray(readArr) || !Array.isArray(writeArr)) {
+          hkDebugLog('getAuthStatus — unexpected payload', raw);
+          resolve();
+          return;
+        }
+        const read = payload.permissions.read.map((name, i) => {
+          const code = Number(readArr[i]);
+          return {
+            permission: name,
+            hkAuthorizationStatus: Number.isFinite(code) ? code : null,
+            meaning: hkAuthStatusMeaning(Number.isFinite(code) ? code : -1),
+          };
+        });
+        const write = payload.permissions.write.map((name, i) => {
+          const code = Number(writeArr[i]);
+          return {
+            permission: name,
+            hkAuthorizationStatus: Number.isFinite(code) ? code : null,
+            meaning: hkAuthStatusMeaning(Number.isFinite(code) ? code : -1),
+          };
+        });
+        hkDebugLog(
+          'getAuthStatus — retrieved (Apple often hides read access; notDetermined ≠ “denied”)',
+          { read, write },
+        );
+        resolve();
+      });
+    });
+  } catch (e) {
+    hkDebugLog('getAuthStatus — threw', e);
+  }
 }
 
 function promisifyInitHealthKit(): Promise<{ ok: boolean; error?: string }> {
@@ -194,36 +392,33 @@ function promisifyInitHealthKit(): Promise<{ ok: boolean; error?: string }> {
       return;
     }
     try {
-      const P = HealthKit.Constants.Permissions;
-      HealthKit.initHealthKit(
-        {
-          permissions: {
-            read: [
-              P.Steps,
-              P.StepCount,
-              P.Workout,
-              P.ActiveEnergyBurned,
-              P.DistanceWalkingRunning,
-              P.AppleExerciseTime,
-            ],
-            write: [P.Workout],
-          },
-        },
-        (err: unknown) => {
-          if (err != null) {
-            resolve({ ok: false, error: formatHealthKitInitError(err) });
-            return;
-          }
-          resolve({ ok: true });
-        },
-      );
+      const permPayload = buildIosHealthKitPermissionPayload();
+      if (!permPayload) {
+        resolve({
+          ok: false,
+          error:
+            'Apple Health constants failed to load. Rebuild the iOS app after `pod install`.',
+        });
+        return;
+      }
+      hkDebugLog('initHealthKit — requesting', permPayload);
+      HealthKit.initHealthKit(permPayload, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('initHealthKit', cbArgs);
+        const [err] = unwrapHkResponseArgs(cbArgs);
+        hkDebugLog('initHealthKit — unwrapped err', err);
+        if (hkCallbackFailed(err)) {
+          resolve({ ok: false, error: formatHealthKitInitError(err) });
+          return;
+        }
+        resolve({ ok: true });
+      });
     } catch (e) {
       resolve({ ok: false, error: formatHealthKitInitError(e) });
     }
   });
 }
 
-function promisifyGetStepCount(day: Date): Promise<number> {
+function promisifyGetStepCountForDateIso(dateIso: string): Promise<number> {
   return new Promise(resolve => {
     const HealthKit = getIosHealthKit();
     if (!HealthKit) {
@@ -231,16 +426,28 @@ function promisifyGetStepCount(day: Date): Promise<number> {
       return;
     }
     try {
-      HealthKit.getStepCount(
-        { date: day.toISOString(), includeManuallyAdded: true },
-        (err: unknown, r: { value?: number }) => {
-          if (err != null || r?.value == null || Number.isNaN(r.value)) {
-            resolve(0);
-          } else {
-            resolve(Math.round(r.value));
-          }
-        },
-      );
+      const opts = { date: dateIso, includeManuallyAdded: true };
+      hkDebugLog('getStepCount — options', opts);
+      HealthKit.getStepCount(opts, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('getStepCount', cbArgs);
+        const [err, r] = unwrapHkResponseArgs(cbArgs) as [
+          unknown,
+          { value?: number } | undefined,
+        ];
+        hkDebugLog('getStepCount — unwrapped', { err, r });
+        if (
+          hkCallbackFailed(err) ||
+          r?.value == null ||
+          Number.isNaN(r.value)
+        ) {
+          hkDebugLog('getStepCount — resolved', 0);
+          resolve(0);
+        } else {
+          const n = Math.round(r.value);
+          hkDebugLog('getStepCount — resolved', n);
+          resolve(n);
+        }
+      });
     } catch {
       resolve(0);
     }
@@ -263,28 +470,92 @@ function promisifyDailyStepBucketSum(
       return;
     }
     try {
-      HealthKit.getDailyStepCountSamples(
-        {
-          startDate: dayStart.toISOString(),
-          endDate: queryEnd.toISOString(),
-          period: 60,
-          includeManuallyAdded: true,
-        },
-        (err: unknown, results?: ReadonlyArray<{ value?: number }>) => {
-          if (err != null || !Array.isArray(results)) {
-            resolve(0);
-            return;
+      const opts = {
+        startDate: dayStart.toISOString(),
+        endDate: queryEnd.toISOString(),
+        period: 60,
+        includeManuallyAdded: true,
+      };
+      hkDebugLog('getDailyStepCountSamples — options', opts);
+      HealthKit.getDailyStepCountSamples(opts, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('getDailyStepCountSamples', cbArgs);
+        const [err, results] = unwrapHkResponseArgs(cbArgs) as [
+          unknown,
+          ReadonlyArray<{ value?: number }> | undefined,
+        ];
+        hkDebugLog('getDailyStepCountSamples — unwrapped err', err);
+        if (hkCallbackFailed(err) || !Array.isArray(results)) {
+          hkDebugLog('getDailyStepCountSamples — resolved (no array)', 0);
+          resolve(0);
+          return;
+        }
+        hkDebugLog('getDailyStepCountSamples — bucket count', results.length);
+        hkDebugLog('getDailyStepCountSamples — all buckets', results);
+        let sum = 0;
+        for (const row of results) {
+          const v = row?.value;
+          if (typeof v === 'number' && Number.isFinite(v)) {
+            sum += v;
           }
-          let sum = 0;
-          for (const row of results) {
-            const v = row?.value;
-            if (typeof v === 'number' && Number.isFinite(v)) {
-              sum += v;
-            }
+        }
+        const n = Math.round(sum);
+        hkDebugLog('getDailyStepCountSamples — sum', n);
+        resolve(n);
+      });
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
+function promisifySumRawStepSamples(
+  dayStart: Date,
+  queryEnd: Date,
+): Promise<number> {
+  return new Promise(resolve => {
+    const HealthKit = getIosHealthKit();
+    if (!HealthKit?.getSamples) {
+      resolve(0);
+      return;
+    }
+    if (queryEnd.getTime() <= dayStart.getTime()) {
+      resolve(0);
+      return;
+    }
+    try {
+      const opts = {
+        type: 'StepCount',
+        startDate: dayStart.toISOString(),
+        endDate: queryEnd.toISOString(),
+        limit: 25_000,
+        ascending: false,
+      };
+      hkDebugLog('getSamples(StepCount) — options', opts);
+      HealthKit.getSamples(opts, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('getSamples(StepCount)', cbArgs);
+        const [err, results] = unwrapHkResponseArgs(cbArgs) as [
+          unknown,
+          ReadonlyArray<{ quantity?: number }> | undefined,
+        ];
+        hkDebugLog('getSamples(StepCount) — unwrapped err', err);
+        if (hkCallbackFailed(err) || !Array.isArray(results)) {
+          hkDebugLog('getSamples(StepCount) — resolved', 0);
+          resolve(0);
+          return;
+        }
+        hkDebugLog('getSamples(StepCount) — sample count', results.length);
+        hkDebugLog('getSamples(StepCount) — all samples', results);
+        let sum = 0;
+        for (const row of results) {
+          const q = row?.quantity;
+          if (typeof q === 'number' && Number.isFinite(q)) {
+            sum += q;
           }
-          resolve(Math.round(sum));
-        },
-      );
+        }
+        const n = Math.round(sum);
+        hkDebugLog('getSamples(StepCount) — sum quantity', n);
+        resolve(n);
+      });
     } catch {
       resolve(0);
     }
@@ -292,12 +563,27 @@ function promisifyDailyStepBucketSum(
 }
 
 async function resolveStepsForLocalDay(dayStart: Date): Promise<number> {
-  const fromStats = await promisifyGetStepCount(dayStart);
-  const fromBuckets = await promisifyDailyStepBucketSum(
-    dayStart,
-    stepSampleQueryEnd(dayStart),
-  );
-  return Math.max(fromStats, fromBuckets);
+  const dateIso = isoNoonUtcForLocalCalendarDay(dayStart);
+  hkDebugLog('resolveStepsForLocalDay — dayStart / noonIso', {
+    dayStart: dayStart.toISOString(),
+    dateIso,
+  });
+  const fromStats = await promisifyGetStepCountForDateIso(dateIso);
+  const qEnd = stepSampleQueryEnd(dayStart);
+  const fromBuckets = await promisifyDailyStepBucketSum(dayStart, qEnd);
+  const primary = Math.max(fromStats, fromBuckets);
+  hkDebugLog('resolveStepsForLocalDay — primary (max of stats, buckets)', {
+    fromStats,
+    fromBuckets,
+    primary,
+  });
+  if (primary > 0) {
+    hkDebugLog('resolveStepsForLocalDay — final steps (primary)', primary);
+    return primary;
+  }
+  const fromRaw = await promisifySumRawStepSamples(dayStart, qEnd);
+  hkDebugLog('resolveStepsForLocalDay — final steps (raw fallback)', fromRaw);
+  return fromRaw;
 }
 
 function promisifyWorkoutSamples(
@@ -312,22 +598,30 @@ function promisifyWorkoutSamples(
       return;
     }
     try {
-      HealthKit.getSamples(
-        {
-          type: 'Workout',
-          startDate: start.toISOString(),
-          endDate: end.toISOString(),
-          limit,
-          ascending: false,
-        },
-        (err: unknown, results?: IosWorkoutDict[]) => {
-          if (err || !Array.isArray(results)) {
-            resolve([]);
-          } else {
-            resolve(results);
-          }
-        },
-      );
+      const opts = {
+        type: 'Workout',
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        limit,
+        ascending: false,
+      };
+      hkDebugLog('getSamples(Workout) — options', opts);
+      HealthKit.getSamples(opts, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('getSamples(Workout)', cbArgs);
+        const [err, results] = unwrapHkResponseArgs(cbArgs) as [
+          unknown,
+          IosWorkoutDict[] | undefined,
+        ];
+        hkDebugLog('getSamples(Workout) — unwrapped err', err);
+        if (hkCallbackFailed(err) || !Array.isArray(results)) {
+          hkDebugLog('getSamples(Workout) — workouts', []);
+          resolve([]);
+        } else {
+          hkDebugLog('getSamples(Workout) — workout count', results.length);
+          hkDebugLog('getSamples(Workout) — all workouts (raw)', results);
+          resolve(results);
+        }
+      });
     } catch {
       resolve([]);
     }
@@ -369,8 +663,7 @@ function mergeIosWorkoutDicts(
     map.set(id, chosen);
   }
   return [...map.values()].sort(
-    (x, y) =>
-      new Date(y.end ?? 0).getTime() - new Date(x.end ?? 0).getTime(),
+    (x, y) => new Date(y.end ?? 0).getTime() - new Date(x.end ?? 0).getTime(),
   );
 }
 
@@ -400,20 +693,33 @@ function promisifyAnchoredWorkouts(
       return;
     }
     try {
-      HealthKit.getAnchoredWorkouts(
-        {
-          startDate: start.toISOString(),
-          endDate: end.toISOString(),
-          limit: 200,
-        },
-        (err: unknown, r?: { data?: IosWorkoutDict[] }) => {
-          if (err || !r?.data) {
-            resolve([]);
-          } else {
-            resolve(r.data);
-          }
-        },
-      );
+      const opts = {
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        limit: 200,
+      };
+      hkDebugLog('getAnchoredWorkouts — options', opts);
+      HealthKit.getAnchoredWorkouts(opts, (...cbArgs: unknown[]) => {
+        hkDebugLogCallbackArgs('getAnchoredWorkouts', cbArgs);
+        const [err, r] = unwrapHkResponseArgs(cbArgs) as [
+          unknown,
+          { anchor?: string; data?: IosWorkoutDict[] } | undefined,
+        ];
+        hkDebugLog('getAnchoredWorkouts — unwrapped err', err);
+        hkDebugLog(
+          'getAnchoredWorkouts — unwrapped payload keys',
+          r && typeof r === 'object' ? Object.keys(r) : r,
+        );
+        if (hkCallbackFailed(err) || !r?.data) {
+          hkDebugLog('getAnchoredWorkouts — workouts', []);
+          resolve([]);
+        } else {
+          hkDebugLog('getAnchoredWorkouts — anchor (if any)', r.anchor);
+          hkDebugLog('getAnchoredWorkouts — workout count', r.data.length);
+          hkDebugLog('getAnchoredWorkouts — all workouts (raw)', r.data);
+          resolve(r.data);
+        }
+      });
     } catch {
       resolve([]);
     }
@@ -451,7 +757,8 @@ function mapIosWorkouts(rows: IosWorkoutDict[]): ExerciseSessionRow[] {
           typeof w.calories === 'number' && w.calories > 0
             ? Math.round(w.calories)
             : undefined,
-        distanceKm: distMi > 0 ? Math.round(distMi * MILES_TO_KM * 10) / 10 : undefined,
+        distanceKm:
+          distMi > 0 ? Math.round(distMi * MILES_TO_KM * 10) / 10 : undefined,
         ...(deviceLabel ? { deviceLabel } : {}),
       };
     });
@@ -463,11 +770,24 @@ export async function fetchIosHealthSnapshot(): Promise<{
   stepsToday: number;
   workouts: ExerciseSessionRow[];
   errorMessage?: string;
+  /** Shown when HK authorizes but returns no data (read access often off). */
+  appleHealthReadHint?: string;
 }> {
   if (Platform.OS !== 'ios') {
     return { ok: false, stepsToday: 0, workouts: [] };
   }
+  hkDebugLog('fetchIosHealthSnapshot — start', {
+    time: new Date().toISOString(),
+  });
   if (!getIosHealthKit()) {
+    const nm = NativeModules.AppleHealthKit as
+      | Record<string, unknown>
+      | undefined;
+    hkDebugLog('fetchIosHealthSnapshot — getIosHealthKit() null', {
+      hasAppleHealthKitNative: nm != null,
+      nativeMethodKeys:
+        nm != null && typeof nm === 'object' ? Object.keys(nm) : [],
+    });
     return {
       ok: false,
       stepsToday: 0,
@@ -477,6 +797,10 @@ export async function fetchIosHealthSnapshot(): Promise<{
     };
   }
   const available = await promisifyIsHealthDataAvailable();
+  hkDebugLog(
+    'fetchIosHealthSnapshot — isHealthDataAvailable result',
+    available,
+  );
   if (!available) {
     return {
       ok: false,
@@ -487,6 +811,7 @@ export async function fetchIosHealthSnapshot(): Promise<{
     };
   }
   const init = await promisifyInitHealthKit();
+  hkDebugLog('fetchIosHealthSnapshot — initHealthKit result', init);
   if (!init.ok) {
     return {
       ok: false,
@@ -502,13 +827,38 @@ export async function fetchIosHealthSnapshot(): Promise<{
   histStart.setHours(0, 0, 0, 0);
   const queryStart = new Date(histStart.getTime() - 24 * 60 * 60 * 1000);
   const endNow = new Date();
+  hkDebugLog('fetchIosHealthSnapshot — workout query window', {
+    queryStart: queryStart.toISOString(),
+    endNow: endNow.toISOString(),
+  });
   const [anchored, samples] = await Promise.all([
     promisifyAnchoredWorkouts(queryStart, endNow),
     promisifyWorkoutSamples(queryStart, endNow, 250),
   ]);
   const merged = mergeIosWorkoutDicts(anchored, samples);
+  const skipped = merged.filter(w => !w.id || !w.start || !w.end);
+  hkDebugLog('fetchIosHealthSnapshot — workout merge', {
+    anchoredCount: anchored.length,
+    sampleQueryCount: samples.length,
+    mergedUniqueCount: merged.length,
+    skippedByMapperCount: skipped.length,
+    skippedRowsMissingFields: skipped,
+  });
   const workouts = mapIosWorkouts(merged);
-  return { ok: true, stepsToday, workouts };
+  hkDebugLog(
+    'fetchIosHealthSnapshot — final mapped sessions (UI rows)',
+    workouts,
+  );
+  hkDebugLog('fetchIosHealthSnapshot — done summary', {
+    ok: true,
+    stepsToday,
+    workoutSessionCount: workouts.length,
+  });
+  const appleHealthReadHint =
+    stepsToday === 0 && workouts.length === 0
+      ? 'Health connected, but Apple returned no steps or workouts. Open the Health app → your profile (photo) → Apps → HealthFirst → turn on Steps and Workouts. Apple never tells the app if read access is denied—you only see empty data.'
+      : undefined;
+  return { ok: true, stepsToday, workouts, appleHealthReadHint };
 }
 
 /** Android Health Connect: initialize + permissions + aggregate steps + sessions. */
@@ -523,7 +873,8 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
   }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const HC = require('react-native-health-connect') as typeof import('react-native-health-connect');
+    const HC =
+      require('react-native-health-connect') as typeof import('react-native-health-connect');
     const sdk = await HC.getSdkStatus();
     if (sdk !== HC.SdkAvailabilityStatus.SDK_AVAILABLE) {
       return {
@@ -582,8 +933,7 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
         const ms = new Date(endT).getTime() - new Date(startT).getTime();
         const durationMin = Math.max(1, Math.round(ms / 60_000));
         const id =
-          rec.metadata?.id ??
-          `hc-${startT}-${String(rec.exerciseType ?? 0)}`;
+          rec.metadata?.id ?? `hc-${startT}-${String(rec.exerciseType ?? 0)}`;
         return {
           id,
           source: 'health_connect' as const,
@@ -607,7 +957,8 @@ export async function openAndroidHealthSettings(): Promise<void> {
   }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const HC = require('react-native-health-connect') as typeof import('react-native-health-connect');
+    const HC =
+      require('react-native-health-connect') as typeof import('react-native-health-connect');
     HC.openHealthConnectSettings();
   } catch {
     /* ignore */
@@ -634,21 +985,23 @@ export async function saveManualWorkoutToAppleHealth(
       return;
     }
     try {
-      const type =
-        activityName.toLowerCase().includes('run')
-          ? HealthKit.Constants.Activities.Running
-          : activityName.toLowerCase().includes('cycle')
-            ? HealthKit.Constants.Activities.Cycling
-            : activityName.toLowerCase().includes('walk')
-              ? HealthKit.Constants.Activities.Walking
-              : HealthKit.Constants.Activities.Other;
+      const type = activityName.toLowerCase().includes('run')
+        ? HealthKit.Constants.Activities.Running
+        : activityName.toLowerCase().includes('cycle')
+        ? HealthKit.Constants.Activities.Cycling
+        : activityName.toLowerCase().includes('walk')
+        ? HealthKit.Constants.Activities.Walking
+        : HealthKit.Constants.Activities.Other;
       HealthKit.saveWorkout(
         {
           type,
           startDate: startedAt.toISOString(),
           endDate: end.toISOString(),
         },
-        (err: string) => resolve(!err),
+        (...cbArgs: unknown[]) => {
+          const [err] = unwrapHkResponseArgs(cbArgs);
+          resolve(!hkCallbackFailed(err));
+        },
       );
     } catch {
       resolve(false);

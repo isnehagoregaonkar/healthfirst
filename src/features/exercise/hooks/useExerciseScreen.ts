@@ -15,6 +15,7 @@ import {
   fetchAndroidHealthSnapshot,
   fetchIosHealthSnapshot,
   openAndroidHealthSettings,
+  openIosHealthApp,
   openIosHealthSettings,
   saveManualWorkoutToAppleHealth,
 } from '../services/platformHealth';
@@ -56,6 +57,9 @@ export function useExerciseScreen() {
   const [manualSessions, setManualSessions] = useState<ExerciseSessionRow[]>([]);
   const [healthOk, setHealthOk] = useState(false);
   const [iosHealthError, setIosHealthError] = useState<string | null>(null);
+  const [appleHealthReadHint, setAppleHealthReadHint] = useState<string | null>(
+    null,
+  );
   const [androidStatus, setAndroidStatus] = useState<
     'unavailable' | 'needs_install' | 'ready'
   >('unavailable');
@@ -70,6 +74,7 @@ export function useExerciseScreen() {
         const snap = await fetchIosHealthSnapshot();
         setHealthOk(snap.ok);
         setIosHealthError(snap.errorMessage ?? null);
+        setAppleHealthReadHint(snap.appleHealthReadHint ?? null);
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
         setAndroidStatus('unavailable');
@@ -77,12 +82,14 @@ export function useExerciseScreen() {
         const snap = await fetchAndroidHealthSnapshot();
         setHealthOk(snap.ok);
         setIosHealthError(null);
+        setAppleHealthReadHint(null);
         setAndroidStatus(snap.status);
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
       } else {
         setHealthOk(false);
         setIosHealthError(null);
+        setAppleHealthReadHint(null);
         setStepsToday(0);
         setHealthWorkouts([]);
       }
@@ -174,10 +181,12 @@ export function useExerciseScreen() {
     sessionsForSelectedDay,
     healthOk,
     iosHealthError,
+    appleHealthReadHint,
     androidStatus,
     integrationSubtitle,
     formatSessionTime,
     openAndroidHealthSettings,
+    openIosHealthApp,
     openIosHealthSettings,
     logManual,
   };

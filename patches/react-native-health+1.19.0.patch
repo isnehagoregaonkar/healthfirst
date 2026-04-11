@@ -12,11 +12,86 @@ index a83a441..25333e8 100644
  
      HKSampleType *samplesType = [RCTAppleHealthKit quantityTypeFromName:type];
  
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m
+index 287399f..58afa4e 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+TypesAndPermissions.m
+@@ -461,8 +461,9 @@
+     NSMutableSet *readPermSet = [NSMutableSet setWithCapacity:1];
+ 
+     for(int i=0; i<[options count]; i++) {
+-        NSString *optionKey = options[i];
+-        if (optionKey != nil){
++        id raw = options[i];
++        if (raw != nil && [raw isKindOfClass:[NSString class]]) {
++            NSString *optionKey = (NSString *)raw;
+             HKObjectType *val = [self getReadPermFromText:optionKey];
+             if (val != nil) {
+                 [readPermSet addObject:val];
+@@ -478,8 +479,9 @@
+     NSMutableSet *writePermSet = [NSMutableSet setWithCapacity:1];
+ 
+     for(int i=0; i<[options count]; i++) {
+-        NSString *optionKey = options[i];
+-        if (optionKey != nil){
++        id raw = options[i];
++        if (raw != nil && [raw isKindOfClass:[NSString class]]) {
++            NSString *optionKey = (NSString *)raw;
+             HKObjectType *val = [self getWritePermFromText:optionKey];
+             if (val != nil) {
+                 [writePermSet addObject:val];
 diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
-index 307056d..f00d6aa 100644
+index 307056d..0190479 100644
 --- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
 +++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit+Utils.m
-@@ -122,7 +122,7 @@ NSString * const kMetadataKey = @"metadata";
+@@ -67,11 +67,45 @@ NSString * const kMetadataKey = @"metadata";
+ + (NSDate *)parseISO8601DateFromString:(NSString *)date
+ {
+     @try {
++        if (date == nil || date.length == 0) {
++            return nil;
++        }
++        // JS Date.toISOString() ends with "Z". NSDateFormatter's trailing Z matches +HHMM offsets,
++        // not literal Z — without this, startDate/endDate often parse as nil and queries return nothing.
++        NSString *normalized = date;
++        if ([normalized hasSuffix:@"Z"]) {
++            normalized = [[normalized substringToIndex:normalized.length - 1] stringByAppendingString:@"+0000"];
++        }
++
+         NSDateFormatter *dateFormatter = [NSDateFormatter new];
+         NSLocale *posix = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+         dateFormatter.locale = posix;
++        dateFormatter.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
++
+         dateFormatter.dateFormat = @"yyyy'-'MM'-'dd'T'HH':'mm':'ss.SSSZ";
+-        return [dateFormatter dateFromString:date];
++        NSDate *parsed = [dateFormatter dateFromString:normalized];
++        if (parsed != nil) {
++            return parsed;
++        }
++
++        dateFormatter.dateFormat = @"yyyy'-'MM'-'dd'T'HH':'mm':'ssZ";
++        parsed = [dateFormatter dateFromString:normalized];
++        if (parsed != nil) {
++            return parsed;
++        }
++
++        if (@available(iOS 11.0, *)) {
++            NSISO8601DateFormatter *iso = [[NSISO8601DateFormatter alloc] init];
++            iso.formatOptions = NSISO8601DateFormatWithInternetDateTime | NSISO8601DateFormatWithFractionalSeconds;
++            parsed = [iso dateFromString:date];
++            if (parsed != nil) {
++                return parsed;
++            }
++            iso.formatOptions = NSISO8601DateFormatWithInternetDateTime;
++            return [iso dateFromString:date];
++        }
++
++        return nil;
+     } @catch (NSException *exception) {
+         NSLog(@"RNHealth: An error occured while trying parse ISO8601 date from string");
+         return nil;
+@@ -122,7 +156,7 @@ NSString * const kMetadataKey = @"metadata";
      if (startDate == nil) {
          return nil;
      } else {
@@ -26,7 +101,7 @@ index 307056d..f00d6aa 100644
  
  }
 diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
-index e8ddce1..e778ab3 100644
+index e8ddce1..629bbfe 100644
 --- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
 +++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
 @@ -44,15 +44,6 @@ RCT_EXPORT_MODULE();
@@ -45,7 +120,39 @@ index e8ddce1..e778ab3 100644
  - (id) init
  {
      return [super init];
-@@ -840,10 +831,10 @@ RCT_EXPORT_METHOD(getClinicalRecords:(NSDictionary *)input callback:(RCTResponse
+@@ -645,17 +636,25 @@ RCT_EXPORT_METHOD(getClinicalRecords:(NSDictionary *)input callback:(RCTResponse
+             if(writePerms != nil) {
+                 writeDataTypes = writePerms;
+             }
++
++            NSUInteger readResolved = readDataTypes ? [readDataTypes count] : 0;
++            NSUInteger writeResolved = writeDataTypes ? [writeDataTypes count] : 0;
++            NSUInteger readRequested = readPermsArray != nil ? [readPermsArray count] : 0;
++
++            if (readResolved == 0 && writeResolved == 0) {
++                callback(@[RCTMakeError(@"at least 1 read or write permission must be set in options.permissions", nil, nil)]);
++                return;
++            }
++            // JS sent read labels but none mapped to HK types (e.g. wrong types on the RN bridge) — would yield empty queries forever.
++            if (readRequested > 0 && readResolved == 0) {
++                callback(@[RCTMakeError(@"Read permission names did not map to any HealthKit types. Pass plain strings like Steps, Workout.", nil, nil)]);
++                return;
++            }
+         } else {
+             callback(@[RCTMakeError(@"permissions must be provided in the initialization options", nil, nil)]);
+             return;
+         }
+ 
+-        // make sure at least 1 read or write permission is provided
+-        if(!writeDataTypes && !readDataTypes){
+-            callback(@[RCTMakeError(@"at least 1 read or write permission must be set in options.permissions", nil, nil)]);
+-            return;
+-        }
+-
+         [self.healthStore requestAuthorizationToShareTypes:writeDataTypes readTypes:readDataTypes completion:^(BOOL success, NSError *error) {
+             if (!success) {
+                 NSString *errMsg = [NSString stringWithFormat:@"Error with HealthKit authorization: %@", error];
+@@ -840,10 +839,10 @@ RCT_EXPORT_METHOD(getClinicalRecords:(NSDictionary *)input callback:(RCTResponse
  
  - (void)emitEventInternal:(NSNotification *)notification {
    if (self.hasListeners) {
