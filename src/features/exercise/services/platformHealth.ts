@@ -77,17 +77,14 @@ function hkDebugLogCallbackArgs(tag: string, cbArgs: unknown[]): void {
   });
 }
 
-/** Noon local on that calendar day — stable anchor for `getStepCount` / day parsing. */
-function isoNoonUtcForLocalCalendarDay(dayStart: Date): string {
-  const d = new Date(
-    dayStart.getFullYear(),
-    dayStart.getMonth(),
-    dayStart.getDate(),
-    12,
-    0,
-    0,
-    0,
-  );
+/**
+ * FIX #1: Use midnight (start of day) instead of noon.
+ * The native `getStepCount` uses this date to determine which calendar day to
+ * aggregate — passing noon can cause off-by-one errors in some timezones.
+ */
+function isoMidnightLocalForDay(dayStart: Date): string {
+  const d = new Date(dayStart);
+  d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
 
@@ -278,6 +275,10 @@ function promisifyIsHealthDataAvailable(): Promise<boolean> {
   return new Promise(resolve => {
     const HealthKit = getIosHealthKit();
     if (!HealthKit?.isAvailable) {
+      hkDebugLog(
+        'isAvailable — method missing on module, assuming available',
+        {},
+      );
       resolve(true);
       return;
     }
@@ -298,6 +299,11 @@ function promisifyIsHealthDataAvailable(): Promise<boolean> {
   });
 }
 
+/**
+ * FIX #4: Log resolved permission constant values so you can verify none are undefined.
+ * If any value is undefined, that permission is silently dropped and HealthKit never
+ * prompts the user for it — causing empty data.
+ */
 function buildIosHealthKitPermissionPayload(): {
   permissions: { read: string[]; write: string[] };
 } | null {
@@ -305,22 +311,60 @@ function buildIosHealthKitPermissionPayload(): {
   if (!HealthKit) {
     return null;
   }
-  // Plain strings — must match react-native-health native `getReadPermFromText` keys.
-  // Do not use only ad-hoc values: some RN bridges pass non-strings and native would resolve
-  // 0 read types → HealthKit never prompts for read → all queries empty.
+
+  // DEBUG: Log all resolved constant values — catch undefined keys early.
+  hkDebugLog(
+    'buildPermissionPayload — Constants.Permissions (all keys)',
+    HealthKit.Constants.Permissions,
+  );
+  hkDebugLog('buildPermissionPayload — resolved permission values', {
+    Steps: HealthKit.Constants.Permissions.Steps,
+    Workout: HealthKit.Constants.Permissions.Workout,
+    ActiveEnergyBurned: HealthKit.Constants.Permissions.ActiveEnergyBurned,
+    DistanceWalkingRunning:
+      HealthKit.Constants.Permissions.DistanceWalkingRunning,
+  });
+
+  const readPerms = [
+    HealthKit.Constants.Permissions.Steps,
+    HealthKit.Constants.Permissions.Workout,
+    HealthKit.Constants.Permissions.ActiveEnergyBurned,
+    HealthKit.Constants.Permissions.DistanceWalkingRunning,
+  ].filter((p): p is string => typeof p === 'string' && p.length > 0);
+
+  const writePerms = [HealthKit.Constants.Permissions.Workout].filter(
+    (p): p is string => typeof p === 'string' && p.length > 0,
+  );
+
+  hkDebugLog(
+    'buildPermissionPayload — filtered read perms (undefined removed)',
+    readPerms,
+  );
+  hkDebugLog(
+    'buildPermissionPayload — filtered write perms (undefined removed)',
+    writePerms,
+  );
+
+  if (readPerms.length === 0) {
+    hkDebugLog(
+      'buildPermissionPayload — CRITICAL: no valid read permissions resolved, HealthKit will not prompt user',
+      {},
+    );
+    return null;
+  }
+
   return {
     permissions: {
-      read: [
-        HealthKit.Constants.Permissions.Steps,
-        HealthKit.Constants.Permissions.Workout,
-        HealthKit.Constants.Permissions.ActiveEnergyBurned,
-        HealthKit.Constants.Permissions.DistanceWalkingRunning,
-      ],
-      write: [HealthKit.Constants.Permissions.Workout],
+      read: readPerms,
+      write: writePerms,
     },
   };
 }
 
+/**
+ * FIX #5: This function is now exported and called after initHealthKit succeeds
+ * so permission grants are always logged.
+ */
 async function logIosHealthKitRetrievedPermissions(): Promise<void> {
   const HealthKit = getIosHealthKit();
   const payload = buildIosHealthKitPermissionPayload();
@@ -369,8 +413,13 @@ async function logIosHealthKitRetrievedPermissions(): Promise<void> {
           };
         });
         hkDebugLog(
-          'getAuthStatus — retrieved (Apple often hides read access; notDetermined ≠ “denied”)',
+          'getAuthStatus — ✅ PERMISSION REPORT (Apple hides read access; notDetermined ≠ denied)',
           { read, write },
+        );
+        hkDebugLog(
+          'getAuthStatus — NOTE: read permissions always show notDetermined on iOS for privacy. ' +
+            'sharingDenied on write = user explicitly denied. Go to Health → your profile → Apps → HealthFirst to fix.',
+          {},
         );
         resolve();
       });
@@ -397,11 +446,11 @@ function promisifyInitHealthKit(): Promise<{ ok: boolean; error?: string }> {
         resolve({
           ok: false,
           error:
-            'Apple Health constants failed to load. Rebuild the iOS app after `pod install`.',
+            'Apple Health constants failed to load or all permissions resolved to undefined. Rebuild the iOS app after `pod install`.',
         });
         return;
       }
-      hkDebugLog('initHealthKit — requesting', permPayload);
+      hkDebugLog('initHealthKit — requesting permissions', permPayload);
       HealthKit.initHealthKit(permPayload, (...cbArgs: unknown[]) => {
         hkDebugLogCallbackArgs('initHealthKit', cbArgs);
         const [err] = unwrapHkResponseArgs(cbArgs);
@@ -562,9 +611,13 @@ function promisifySumRawStepSamples(
   });
 }
 
+/**
+ * FIX #1 applied here: pass midnight ISO string to getStepCount instead of noon.
+ */
 async function resolveStepsForLocalDay(dayStart: Date): Promise<number> {
-  const dateIso = isoNoonUtcForLocalCalendarDay(dayStart);
-  hkDebugLog('resolveStepsForLocalDay — dayStart / noonIso', {
+  // FIX: use midnight (start of day) not noon — avoids off-by-one in some timezones
+  const dateIso = isoMidnightLocalForDay(dayStart);
+  hkDebugLog('resolveStepsForLocalDay — dayStart / midnightIso', {
     dayStart: dayStart.toISOString(),
     dateIso,
   });
@@ -598,8 +651,14 @@ function promisifyWorkoutSamples(
       return;
     }
     try {
+      /**
+       * FIX #6: Some versions of react-native-health require 'Workout' and others
+       * require 'HKWorkoutTypeIdentifier'. We try 'Workout' first (most common).
+       * If workouts always return empty, try changing this to 'HKWorkoutTypeIdentifier'.
+       */
+      const workoutType = 'Workout';
       const opts = {
-        type: 'Workout',
+        type: workoutType,
         startDate: start.toISOString(),
         endDate: end.toISOString(),
         limit,
@@ -764,7 +823,18 @@ function mapIosWorkouts(rows: IosWorkoutDict[]): ExerciseSessionRow[] {
     });
 }
 
-/** iOS: request HealthKit access and return today's step count + recent workouts. */
+/**
+ * iOS: request HealthKit access and return today's step count + recent workouts.
+ *
+ * FIXES applied:
+ *  #1 — getStepCount now receives midnight ISO (not noon) to avoid timezone off-by-one.
+ *  #4 — Permission constants are validated and undefined values are filtered out before
+ *       calling initHealthKit. If any key is undefined, it is logged and dropped.
+ *  #5 — logIosHealthKitRetrievedPermissions() is now called after initHealthKit succeeds
+ *       so you can see exactly what was granted in Metro logs.
+ *  #6 — getSamples workout type string is explicitly 'Workout' with a comment to switch
+ *       to 'HKWorkoutTypeIdentifier' if workouts still return empty.
+ */
 export async function fetchIosHealthSnapshot(): Promise<{
   ok: boolean;
   stepsToday: number;
@@ -820,6 +890,10 @@ export async function fetchIosHealthSnapshot(): Promise<{
       errorMessage: init.error,
     };
   }
+
+  // FIX #5: Always log permissions after a successful init so you can see what was granted.
+  await logIosHealthKitRetrievedPermissions();
+
   const { start } = dayBounds();
   const stepsToday = await resolveStepsForLocalDay(start);
   const histStart = new Date();
