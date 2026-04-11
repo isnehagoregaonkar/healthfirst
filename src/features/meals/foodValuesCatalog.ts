@@ -20,6 +20,29 @@ export type FoodValueEntry = Readonly<{
 
 export const FOOD_VALUES_CATALOG = rawCatalog as readonly FoodValueEntry[];
 
+/** Match a logged display name to a food-values row (for edit / portions). */
+export function findFoodValueEntryByName(name: string): FoodValueEntry | null {
+  const t = name.trim().toLowerCase();
+  if (!t) {
+    return null;
+  }
+  for (const e of FOOD_VALUES_CATALOG) {
+    if (e.name.toLowerCase() === t) {
+      return e;
+    }
+  }
+  let best: FoodValueEntry | null = null;
+  for (const e of FOOD_VALUES_CATALOG) {
+    const n = e.name.toLowerCase();
+    if (t.includes(n) || n.includes(t)) {
+      if (!best || n.length > best.name.length) {
+        best = e;
+      }
+    }
+  }
+  return best;
+}
+
 export function foodValueToPer100g(entry: FoodValueEntry): UsdaPer100g {
   const n = entry.nutrition_per_100g;
   return {

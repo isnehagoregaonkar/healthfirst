@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,11 +12,7 @@ import type { LogMealItemPayload } from '../../../services/meals';
 import {
   fetchUsdaFoodDetail,
   sanitizeLoggedQuantityLabel,
-  scaleUsdaToGrams,
   searchUsdaFoods,
-  type UsdaFoodParsed,
-  type UsdaPer100g,
-  type UsdaPortionOption,
   type UsdaSearchHit,
 } from '../../../services/usdaFdc';
 import { colors } from '../../../theme/tokens';
@@ -30,24 +25,12 @@ import {
 } from '../mealRecentFoodsStorage';
 import { STAPLE_SEARCH_SUGGESTIONS } from '../mealStapleSearchSuggestions';
 import {
-  foodValuePortionOptions,
-  foodValueToPer100g,
   formatFoodValueDisplayName,
   searchFoodValues,
   type FoodValueEntry,
 } from '../foodValuesCatalog';
-
-type DetailState =
-  | Readonly<{ kind: 'usda'; food: UsdaFoodParsed }>
-  | Readonly<{ kind: 'local'; entry: FoodValueEntry }>;
-
-function detailPer100g(d: DetailState): UsdaPer100g {
-  return d.kind === 'usda' ? d.food.per100g : foodValueToPer100g(d.entry);
-}
-
-function detailPortionOptions(d: DetailState): UsdaPortionOption[] {
-  return d.kind === 'usda' ? d.food.portionOptions : foodValuePortionOptions(d.entry);
-}
+import { computeScaledFromDetail, mealDetailPortionOptions, type MealFoodDetailState } from '../mealFoodDetailState';
+import { FoodPortionMacrosBlock } from './FoodPortionMacrosBlock';
 
 type FoodSearchPanelProps = Readonly<{
   submitting: boolean;
@@ -65,7 +48,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const [detail, setDetail] = useState<DetailState | null>(null);
+  const [detail, setDetail] = useState<MealFoodDetailState | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [portionIndex, setPortionIndex] = useState(0);
@@ -158,21 +141,10 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
     setServingsText('1');
   }, [submitting, detailLoading]);
 
-  const scaled = useMemo(() => {
-    if (!detail) {
-      return null;
-    }
-    const opts = detailPortionOptions(detail);
-    if (opts.length === 0) {
-      return null;
-    }
-    const per100g = detailPer100g(detail);
-    const p = opts[Math.min(portionIndex, opts.length - 1)] ?? opts[0];
-    const sv = Number.parseFloat(servingsText.replace(',', '.'));
-    const servings = Number.isFinite(sv) && sv > 0 ? sv : 1;
-    const grams = p.grams * servings;
-    return { ...scaleUsdaToGrams(per100g, grams), grams, servings, portionLabel: p.label };
-  }, [detail, portionIndex, servingsText]);
+  const scaled = useMemo(
+    () => (detail ? computeScaledFromDetail(detail, portionIndex, servingsText) : null),
+    [detail, portionIndex, servingsText],
+  );
 
   const handleAddFood = useCallback(async () => {
     if (!detail || !scaled) {
@@ -406,127 +378,35 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
       {detailError ? <Text style={styles.errorInline}>{detailError}</Text> : null}
 
       {detail && scaled ? (
-        <View style={styles.detailCard}>
-          <Text style={styles.detailTitle} numberOfLines={3}>
-            {detail.kind === 'usda'
+        <FoodPortionMacrosBlock
+          title={
+            detail.kind === 'usda'
               ? detail.food.description
-              : formatFoodValueDisplayName(detail.entry)}
-          </Text>
-          {detail.kind === 'usda' && detail.food.brandOwner ? (
-            <Text style={styles.detailBrand}>{detail.food.brandOwner}</Text>
-          ) : detail.kind === 'local' ? (
-            <Text style={styles.detailBrand}>
-              {detail.entry.category} · from food-values guide
-            </Text>
-          ) : null}
-
-          <Text style={styles.subLabel}>Portion</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.portionStrip}
-          >
-            {detailPortionOptions(detail).map((opt, i) => (
-              <Pressable
-                key={`${opt.label}-${opt.grams}-${i}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: portionIndex === i }}
-                onPress={() => setPortionIndex(i)}
-                style={({ pressed }) => [
-                  styles.portionChip,
-                  portionIndex === i && styles.portionChipOn,
-                  pressed && styles.portionChipPressed,
-                ]}
-              >
-                <Text
-                  style={[styles.portionChipText, portionIndex === i && styles.portionChipTextOn]}
-                  numberOfLines={2}
-                >
-                  {opt.label}
-                </Text>
-                <Text style={styles.portionGrams}>{opt.grams} g</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.subLabel}>Servings of this portion</Text>
-          <View style={styles.servingRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Decrease servings"
-              onPress={() => {
-                const v = Math.max(0.25, (Number.parseFloat(servingsText) || 1) - 0.25);
-                setServingsText(String(v));
-              }}
-              style={styles.stepBtn}
-            >
-              <Text style={styles.stepBtnText}>−</Text>
-            </Pressable>
-            <TextInput
-              value={servingsText}
-              onChangeText={setServingsText}
-              keyboardType="decimal-pad"
-              style={styles.servingInput}
-              editable={!submitting}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Increase servings"
-              onPress={() => {
-                const v = (Number.parseFloat(servingsText) || 1) + 0.25;
-                setServingsText(String(v));
-              }}
-              style={styles.stepBtn}
-            >
-              <Text style={styles.stepBtnText}>+</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.macroGrid}>
-            <View style={styles.macroCell}>
-              <Text style={styles.macroVal}>{Math.round(scaled.kcal)}</Text>
-              <Text style={styles.macroLbl}>kcal</Text>
-            </View>
-            <View style={styles.macroCell}>
-              <Text style={styles.macroVal}>{scaled.protein.toFixed(1)}</Text>
-              <Text style={styles.macroLbl}>protein g</Text>
-            </View>
-            <View style={styles.macroCell}>
-              <Text style={styles.macroVal}>{scaled.carbs.toFixed(1)}</Text>
-              <Text style={styles.macroLbl}>carbs g</Text>
-            </View>
-            <View style={styles.macroCell}>
-              <Text style={styles.macroVal}>{scaled.fat.toFixed(1)}</Text>
-              <Text style={styles.macroLbl}>fat g</Text>
-            </View>
-          </View>
-          {scaled.fiber > 0.05 ? (
-            <Text style={styles.fiberLine}>Fiber {scaled.fiber.toFixed(1)} g · {scaled.grams.toFixed(0)} g total</Text>
-          ) : (
-            <Text style={styles.fiberLineMuted}>{scaled.grams.toFixed(0)} g total weight</Text>
-          )}
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => handleAddFood().catch(() => {})}
-            disabled={submitting}
-            style={({ pressed }) => [styles.addUsdaBtn, submitting && styles.addUsdaDisabled, pressed && !submitting && styles.addUsdaPressed]}
-          >
-            <Icon name="plus" size={20} color={colors.surface} />
-            <Text style={styles.addUsdaText}>{submitting ? 'Adding…' : 'Add this food'}</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setDetail(null);
-              setDetailError(null);
-            }}
-            style={styles.clearPick}
-          >
-            <Text style={styles.clearPickText}>Choose a different food</Text>
-          </Pressable>
-        </View>
+              : formatFoodValueDisplayName(detail.entry)
+          }
+          subtitle={
+            detail.kind === 'usda' && detail.food.brandOwner
+              ? detail.food.brandOwner
+              : detail.kind === 'local'
+                ? `${detail.entry.category} · from food-values guide`
+                : null
+          }
+          portionOptions={mealDetailPortionOptions(detail)}
+          portionIndex={portionIndex}
+          onPortionIndex={setPortionIndex}
+          servingsText={servingsText}
+          onServingsText={setServingsText}
+          scaled={scaled}
+          submitting={submitting}
+          primaryLabel={submitting ? 'Adding…' : 'Add this food'}
+          primaryIcon="plus"
+          onPrimary={() => handleAddFood().catch(() => {})}
+          secondaryLabel="Choose a different food"
+          onSecondary={() => {
+            setDetail(null);
+            setDetailError(null);
+          }}
+        />
       ) : null}
 
       {fieldError ? (
@@ -716,171 +596,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  detailCard: {
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  detailTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    lineHeight: 22,
-  },
-  detailBrand: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  subLabel: {
-    marginTop: 14,
-    marginBottom: 8,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  portionStrip: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 8,
-    paddingBottom: 4,
-  },
-  portionChip: {
-    maxWidth: 140,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: INPUT_BG,
-  },
-  portionChipOn: {
-    borderColor: MEAL_PRIMARY,
-    backgroundColor: colors.primarySoft,
-  },
-  portionChipPressed: {
-    opacity: 0.9,
-  },
-  portionChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  portionChipTextOn: {
-    color: MEAL_PRIMARY,
-  },
-  portionGrams: {
-    marginTop: 4,
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  servingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  stepBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: INPUT_BG,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  stepBtnText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  servingInput: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '800',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: INPUT_BG,
-    color: colors.textPrimary,
-  },
-  macroGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 14,
-    gap: 8,
-  },
-  macroCell: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    minWidth: 0,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: INPUT_BG,
-  },
-  macroVal: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.textPrimary,
-  },
-  macroLbl: {
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-  },
-  fiberLine: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  fiberLineMuted: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    opacity: 0.8,
-  },
-  addUsdaBtn: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: MEAL_PRIMARY,
-    paddingVertical: 14,
-    borderRadius: 14,
-  },
-  addUsdaDisabled: {
-    opacity: 0.55,
-  },
-  addUsdaPressed: {
-    opacity: 0.92,
-  },
-  addUsdaText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.surface,
-  },
-  clearPick: {
-    marginTop: 12,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  clearPickText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: MEAL_PRIMARY,
   },
   errorRow: {
     flexDirection: 'row',
