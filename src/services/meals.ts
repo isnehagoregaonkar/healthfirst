@@ -401,6 +401,8 @@ function localDateKeyFromIsoMeals(iso: string): string {
 export type MealDaySummary = Readonly<{
   date: Date;
   totalCalories: number;
+  /** Meals created that local day (even if items sum to 0 kcal). */
+  mealCount: number;
   macroTotals: DayMacroTotals;
 }>;
 
@@ -464,6 +466,15 @@ export async function getMealDaySummariesForRange(endDay: Date, numDays: number)
     });
   }
 
+  const mealCountByKey = new Map<string, number>();
+  for (const m of meals) {
+    const key = localDateKeyFromIsoMeals(String(m.created_at));
+    if (!key || !totalsByKey.has(key)) {
+      continue;
+    }
+    mealCountByKey.set(key, (mealCountByKey.get(key) ?? 0) + 1);
+  }
+
   if (mealIds.length > 0) {
     const { data: itemRows, error: itemsError } = await supabase
       .from('meal_items')
@@ -497,6 +508,7 @@ export async function getMealDaySummariesForRange(endDay: Date, numDays: number)
     days.push({
       date: d,
       totalCalories: Math.round(t.kcal),
+      mealCount: mealCountByKey.get(key) ?? 0,
       macroTotals: {
         proteinG: roundMacro(t.proteinG),
         carbsG: roundMacro(t.carbsG),
