@@ -9,15 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  LinearGradient,
-  Path,
-  Rect,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Circle, Defs, Line, Path, Rect } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
@@ -30,14 +22,13 @@ import {
   DASH_HEART_SOFT,
   DASH_MUTED,
   DASH_SLATE,
-  DASH_WATER,
   EXERCISE_BAR,
   EXERCISE_BAR_TODAY,
   RING_CAL,
   RING_WATER,
 } from './dashboardTokens';
-import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
 import { useDashboardScreen } from './hooks/useDashboardScreen';
+import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
 import {
   formatRelativeHeartTime,
   greetingForNow,
@@ -186,11 +177,7 @@ function MetricRingWithIcon({
         />
       </Svg>
       <View style={[styles.miniRingCenter, { width: size, height: size }]}>
-        <Icon
-          name={icon}
-          size={Math.round(size * 0.42)}
-          color={iconColor}
-        />
+        <Icon name={icon} size={Math.round(size * 0.42)} color={iconColor} />
       </View>
     </View>
   );
@@ -321,18 +308,16 @@ export function DashboardScreen() {
             preserveAspectRatio="none"
           >
             <Defs>
-              <LinearGradient id="heroWash" x1="0" y1="0" x2="1" y2="1">
+              {/* <LinearGradient id="heroWash" x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0" stopColor="#D1FAE5" stopOpacity={0.85} />
                 <Stop offset="1" stopColor="#F8FAFC" stopOpacity={0.15} />
-              </LinearGradient>
+              </LinearGradient> */}
             </Defs>
             <Rect x={0} y={0} width={winW} height={86} fill="url(#heroWash)" />
           </Svg>
           <View style={styles.heroInner}>
-            <Text style={styles.heroKicker}>
-              {greetingForNow()}, {user?.name ?? 'there'}
-            </Text>
-            <Text style={styles.heroSub}>Goals · pull to refresh</Text>
+            <Text style={styles.heroSub}>{greetingForNow()},</Text>
+            <Text style={styles.heroKicker}>{user?.name ?? 'there'}</Text>
           </View>
         </View>
 
@@ -430,9 +415,8 @@ export function DashboardScreen() {
                           numberOfLines={2}
                           ellipsizeMode="tail"
                         >
-                          Goal{' '}
-                          {snapshot.calorieTarget.toLocaleString('en-US')} kcal ·{' '}
-                          {calPctRaw}%
+                          Goal {snapshot.calorieTarget.toLocaleString('en-US')}{' '}
+                          kcal · {calPctRaw}%
                         </Text>
                       </View>
                       <DashboardStatPill
@@ -442,8 +426,7 @@ export function DashboardScreen() {
                           ? `${calOverAmt} kcal over goal`
                           : `${Math.max(
                               0,
-                              snapshot.calorieTarget -
-                                snapshot.todayCalories,
+                              snapshot.calorieTarget - snapshot.todayCalories,
                             ).toLocaleString('en-US')} kcal left`}
                       </DashboardStatPill>
                     </View>
@@ -514,7 +497,11 @@ export function DashboardScreen() {
               <View style={[styles.card, styles.todayHeroCard]}>
                 <View style={styles.cardIconRow}>
                   <View style={styles.exerciseIconBubble}>
-                    <Icon name="run-fast" size={22} color={EXERCISE_BAR_TODAY} />
+                    <Icon
+                      name="run-fast"
+                      size={22}
+                      color={EXERCISE_BAR_TODAY}
+                    />
                   </View>
                   <Text style={styles.cardEyebrow}>Move</Text>
                 </View>
@@ -598,7 +585,11 @@ export function DashboardScreen() {
                 </Pressable>
 
                 <View
-                  style={[styles.card, styles.cardHalf, styles.dashboardTwinCard]}
+                  style={[
+                    styles.card,
+                    styles.cardHalf,
+                    styles.dashboardTwinCard,
+                  ]}
                 >
                   <View style={styles.dashboardTwinCardInner}>
                     <View>
@@ -625,7 +616,9 @@ export function DashboardScreen() {
                         Goal {snapshot.profile.goalWeightKg.toFixed(1)} kg
                       </Text>
                     </View>
-                    <DashboardStatPill tone="weight">{weightLabel}</DashboardStatPill>
+                    <DashboardStatPill tone="weight">
+                      {weightLabel}
+                    </DashboardStatPill>
                   </View>
                 </View>
               </View>
@@ -699,18 +692,18 @@ const styles = StyleSheet.create({
   },
   heroInner: {
     paddingHorizontal: 18,
-    paddingTop: 4,
+    paddingTop: 12,
     paddingBottom: 12,
     zIndex: 2,
   },
   heroKicker: {
     fontSize: 20,
     fontWeight: '800',
-    color: DASH_SLATE,
+    color: colors.primary,
     letterSpacing: -0.4,
+    marginTop: 4,
   },
   heroSub: {
-    marginTop: 2,
     fontSize: 12,
     fontWeight: '600',
     color: DASH_MUTED,
