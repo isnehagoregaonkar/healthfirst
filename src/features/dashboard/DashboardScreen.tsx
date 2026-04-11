@@ -291,10 +291,7 @@ function LogHeartRateModal({
   );
 }
 
-function dayHasLog(day: {
-  mealCount: number;
-  totalCalories: number;
-}): boolean {
+function dayHasLog(day: { mealCount: number; totalCalories: number }): boolean {
   return day.mealCount > 0 || day.totalCalories > 0;
 }
 
@@ -563,8 +560,8 @@ export function DashboardScreen() {
               <View style={styles.card}>
                 <Text style={styles.streakScreenTitle}>Streaks</Text>
                 <Text style={styles.streakScreenHint}>
-                  Any logged meal counts for the streak · colors follow calories vs
-                  your daily target
+                  Any logged meal counts for the streak · colors follow calories
+                  vs your daily target
                 </Text>
                 <StreakPanel
                   days={streakModel.capsules}

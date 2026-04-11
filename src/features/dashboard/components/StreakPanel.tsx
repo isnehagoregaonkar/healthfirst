@@ -16,12 +16,7 @@ import Svg, {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 /** Per-day streak strip: logged + calories vs target, or empty / future. */
-export type StreakCapsuleTone =
-  | 'future'
-  | 'missed'
-  | 'good'
-  | 'warn'
-  | 'over';
+export type StreakCapsuleTone = 'future' | 'missed' | 'good' | 'warn' | 'over';
 
 export type StreakCapsuleModel = Readonly<{
   id: string;
@@ -78,22 +73,13 @@ function CapsuleIcon({ tone }: Readonly<{ tone: StreakCapsuleTone }>) {
 
 function StreakDayCapsule({ label, isToday, tone }: StreakDayCapsuleProps) {
   return (
-    <View
-      style={[
-        capsuleStyles.wrap,
-        isToday && capsuleStyles.wrapToday,
-      ]}
-    >
-      <Text style={[capsuleStyles.dayLbl, isToday && capsuleStyles.dayLblToday]}>
+    <View style={[capsuleStyles.wrap, isToday && capsuleStyles.wrapToday]}>
+      <Text
+        style={[capsuleStyles.dayLbl, isToday && capsuleStyles.dayLblToday]}
+      >
         {label}
       </Text>
-      <View
-        style={[
-          capsuleStyles.circle,
-          { backgroundColor: circleBg(tone) },
-          isToday && capsuleStyles.circleToday,
-        ]}
-      >
+      <View style={[capsuleStyles.circle, { backgroundColor: circleBg(tone) }]}>
         <CapsuleIcon tone={tone} />
       </View>
     </View>
