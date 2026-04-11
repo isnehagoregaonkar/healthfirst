@@ -12,9 +12,12 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { LogMealItemPayload } from '../../../services/meals';
 import {
   fetchUsdaFoodDetail,
+  sanitizeLoggedQuantityLabel,
   scaleUsdaToGrams,
   searchUsdaFoods,
   type UsdaFoodParsed,
+  type UsdaPer100g,
+  type UsdaPortionOption,
   type UsdaSearchHit,
 } from '../../../services/usdaFdc';
 import { colors } from '../../../theme/tokens';
@@ -26,6 +29,25 @@ import {
   type StoredRecentFood,
 } from '../mealRecentFoodsStorage';
 import { STAPLE_SEARCH_SUGGESTIONS } from '../mealStapleSearchSuggestions';
+import {
+  foodValuePortionOptions,
+  foodValueToPer100g,
+  formatFoodValueDisplayName,
+  searchFoodValues,
+  type FoodValueEntry,
+} from '../foodValuesCatalog';
+
+type DetailState =
+  | Readonly<{ kind: 'usda'; food: UsdaFoodParsed }>
+  | Readonly<{ kind: 'local'; entry: FoodValueEntry }>;
+
+function detailPer100g(d: DetailState): UsdaPer100g {
+  return d.kind === 'usda' ? d.food.per100g : foodValueToPer100g(d.entry);
+}
+
+function detailPortionOptions(d: DetailState): UsdaPortionOption[] {
+  return d.kind === 'usda' ? d.food.portionOptions : foodValuePortionOptions(d.entry);
+}
 
 type FoodSearchPanelProps = Readonly<{
   submitting: boolean;
@@ -43,7 +65,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const [detail, setDetail] = useState<UsdaFoodParsed | null>(null);
+  const [detail, setDetail] = useState<DetailState | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [portionIndex, setPortionIndex] = useState(0);
@@ -104,6 +126,8 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
     };
   }, [debounced]);
 
+  const localHits = useMemo(() => searchFoodValues(debounced), [debounced]);
+
   const selectHit = useCallback(async (hit: UsdaSearchHit) => {
     setDetail(null);
     setDetailError(null);
@@ -117,41 +141,60 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
       setDetailError(r.error);
       return;
     }
-    setDetail(r.food);
+    setDetail({ kind: 'usda', food: r.food });
     const opts = r.food.portionOptions;
     const idx = opts.findIndex((o) => Math.abs(o.grams - 100) < 0.01);
     setPortionIndex(idx >= 0 ? idx : 0);
   }, []);
 
-  const scaled = (() => {
+  const selectLocalEntry = useCallback((entry: FoodValueEntry) => {
+    if (submitting || detailLoading) {
+      return;
+    }
+    setDetailError(null);
+    setFieldError(null);
+    setDetail({ kind: 'local', entry });
+    setPortionIndex(0);
+    setServingsText('1');
+  }, [submitting, detailLoading]);
+
+  const scaled = useMemo(() => {
     if (!detail) {
       return null;
     }
-    const opts = detail.portionOptions;
+    const opts = detailPortionOptions(detail);
+    if (opts.length === 0) {
+      return null;
+    }
+    const per100g = detailPer100g(detail);
     const p = opts[Math.min(portionIndex, opts.length - 1)] ?? opts[0];
     const sv = Number.parseFloat(servingsText.replace(',', '.'));
     const servings = Number.isFinite(sv) && sv > 0 ? sv : 1;
     const grams = p.grams * servings;
-    return { ...scaleUsdaToGrams(detail.per100g, grams), grams, servings, portionLabel: p.label };
-  })();
+    return { ...scaleUsdaToGrams(per100g, grams), grams, servings, portionLabel: p.label };
+  }, [detail, portionIndex, servingsText]);
 
   const handleAddFood = useCallback(async () => {
     if (!detail || !scaled) {
       return;
     }
     setFieldError(null);
-    const displayName = detail.brandOwner
-      ? `${detail.description} (${detail.brandOwner})`
-      : detail.description;
-    const qty =
+    const displayName =
+      detail.kind === 'usda'
+        ? detail.food.brandOwner
+          ? `${detail.food.description} (${detail.food.brandOwner})`
+          : detail.food.description
+        : formatFoodValueDisplayName(detail.entry);
+    const qtyRaw =
       scaled.servings === 1
         ? scaled.portionLabel
         : `${scaled.servings} × ${scaled.portionLabel}`;
+    const qty = sanitizeLoggedQuantityLabel(qtyRaw);
     const payload: LogMealItemPayload = {
       name: displayName,
       quantity: qty,
       calories: Math.round(scaled.kcal),
-      usdaFdcId: detail.fdcId,
+      usdaFdcId: detail.kind === 'usda' ? detail.food.fdcId : null,
       proteinG: scaled.protein,
       carbsG: scaled.carbs,
       fatG: scaled.fat,
@@ -240,7 +283,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
           {recents.length > 0 ? (
             <View style={styles.quickSection}>
               <Text style={styles.quickSectionTitle}>Recently added</Text>
-              <View style={styles.chipWrap}>
+              <View style={styles.recentChipColumn}>
                 {recents.map((r, i) => (
                   <Pressable
                     key={`${r.savedAt}-${r.name}-${i}`}
@@ -258,7 +301,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
                       {r.name}
                     </Text>
                     <Text style={styles.recentChipMeta} numberOfLines={2}>
-                      {r.quantity ? `${r.quantity} · ` : ''}
+                      {r.quantity ? `${sanitizeLoggedQuantityLabel(r.quantity)} · ` : ''}
                       {r.calories} kcal
                     </Text>
                   </Pressable>
@@ -269,7 +312,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
 
           <View style={styles.quickSection}>
             <Text style={styles.quickSectionTitle}>Quick searches</Text>
-            <View style={styles.chipWrap}>
+            <View style={styles.stapleWrap}>
               {STAPLE_SEARCH_SUGGESTIONS.map((label) => (
                 <Pressable
                   key={label}
@@ -283,7 +326,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
                     pressed && !submitting && !detailLoading && styles.chipPressed,
                   ]}
                 >
-                  <Text style={styles.stapleChipText} numberOfLines={2}>
+                  <Text style={styles.stapleChipText} numberOfLines={1}>
                     {label}
                   </Text>
                 </Pressable>
@@ -297,27 +340,59 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
         <Text style={styles.errorInline}>{searchError}</Text>
       ) : null}
 
-      {hits.length > 0 && !detail ? (
+      {(localHits.length > 0 || hits.length > 0) && !detail ? (
         <View style={styles.resultsBox}>
-          <Text style={styles.resultsCaption}>Matches</Text>
-          {hits.map((h) => (
-            <Pressable
-              key={h.fdcId}
-              accessibilityRole="button"
-              onPress={() => selectHit(h).catch(() => {})}
-              disabled={detailLoading || submitting}
-              style={({ pressed }) => [styles.hitRow, pressed && styles.hitPressed]}
-            >
-              <Text style={styles.hitTitle} numberOfLines={2}>
-                {h.description}
+          {localHits.length > 0 ? (
+            <>
+              <Text style={styles.resultsCaption}>Common dishes</Text>
+              {localHits.map((entry) => (
+                <Pressable
+                  key={`local-${entry.name}`}
+                  accessibilityRole="button"
+                  onPress={() => selectLocalEntry(entry)}
+                  disabled={detailLoading || submitting}
+                  style={({ pressed }) => [styles.hitRow, pressed && styles.hitPressed]}
+                >
+                  <Text style={styles.hitTitle} numberOfLines={2}>
+                    {formatFoodValueDisplayName(entry)}
+                  </Text>
+                  <Text style={styles.hitBrand} numberOfLines={1}>
+                    {entry.category} · local guide
+                  </Text>
+                </Pressable>
+              ))}
+            </>
+          ) : null}
+          {hits.length > 0 ? (
+            <>
+              <Text
+                style={[
+                  styles.resultsCaption,
+                  localHits.length > 0 ? styles.resultsCaptionSpaced : null,
+                ]}
+              >
+                {localHits.length > 0 ? 'USDA catalog' : 'Matches'}
               </Text>
-              {h.brandName ? (
-                <Text style={styles.hitBrand} numberOfLines={1}>
-                  {h.brandName}
-                </Text>
-              ) : null}
-            </Pressable>
-          ))}
+              {hits.map((h) => (
+                <Pressable
+                  key={h.fdcId}
+                  accessibilityRole="button"
+                  onPress={() => selectHit(h).catch(() => {})}
+                  disabled={detailLoading || submitting}
+                  style={({ pressed }) => [styles.hitRow, pressed && styles.hitPressed]}
+                >
+                  <Text style={styles.hitTitle} numberOfLines={2}>
+                    {h.description}
+                  </Text>
+                  {h.brandName ? (
+                    <Text style={styles.hitBrand} numberOfLines={1}>
+                      {h.brandName}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ))}
+            </>
+          ) : null}
         </View>
       ) : null}
 
@@ -333,9 +408,17 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
       {detail && scaled ? (
         <View style={styles.detailCard}>
           <Text style={styles.detailTitle} numberOfLines={3}>
-            {detail.description}
+            {detail.kind === 'usda'
+              ? detail.food.description
+              : formatFoodValueDisplayName(detail.entry)}
           </Text>
-          {detail.brandOwner ? <Text style={styles.detailBrand}>{detail.brandOwner}</Text> : null}
+          {detail.kind === 'usda' && detail.food.brandOwner ? (
+            <Text style={styles.detailBrand}>{detail.food.brandOwner}</Text>
+          ) : detail.kind === 'local' ? (
+            <Text style={styles.detailBrand}>
+              {detail.entry.category} · from food-values guide
+            </Text>
+          ) : null}
 
           <Text style={styles.subLabel}>Portion</Text>
           <ScrollView
@@ -343,7 +426,7 @@ export function FoodSearchPanel({ submitting, onSubmitPayload }: FoodSearchPanel
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.portionStrip}
           >
-            {detail.portionOptions.map((opt, i) => (
+            {detailPortionOptions(detail).map((opt, i) => (
               <Pressable
                 key={`${opt.label}-${opt.grams}-${i}`}
                 accessibilityRole="button"
@@ -497,38 +580,41 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  recentChipColumn: {
+    flexDirection: 'column',
+    gap: 8,
+  },
   recentChip: {
-    flexGrow: 1,
-    flexBasis: '47%',
-    minWidth: '46%',
-    maxWidth: '100%',
-    paddingHorizontal: 10,
+    width: '100%',
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: INPUT_BG,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  stapleWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
   stapleChip: {
-    flexGrow: 1,
-    flexBasis: '30%',
-    minWidth: '28%',
-    paddingHorizontal: 8,
-    paddingVertical: 11,
-    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 14,
     backgroundColor: INPUT_BG,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
   },
   stapleChipText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.textPrimary,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 14,
   },
   recentChipTitle: {
     fontSize: 13,
@@ -592,6 +678,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 4,
+  },
+  resultsCaptionSpaced: {
+    marginTop: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: 12,
   },
   hitRow: {
     paddingHorizontal: 14,

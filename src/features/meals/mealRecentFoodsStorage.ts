@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sanitizeLoggedQuantityLabel } from '../../services/usdaFdc';
 import type { LogMealItemPayload } from '../../services/meals';
 
 const STORAGE_KEY = '@healthfirst/meal_recent_foods_v1';
@@ -45,7 +46,7 @@ export async function loadRecentFoods(): Promise<StoredRecentFood[]> {
       }
       out.push({
         name,
-        quantity,
+        quantity: sanitizeLoggedQuantityLabel(quantity),
         calories,
         usdaFdcId: numOrNull(o.usdaFdcId),
         proteinG: numOrNull(o.proteinG),
@@ -79,6 +80,7 @@ export async function rememberFoodAfterLog(item: LogMealItemPayload): Promise<vo
     const prev = await loadRecentFoods();
     const entry: StoredRecentFood = {
       ...item,
+      quantity: sanitizeLoggedQuantityLabel(item.quantity),
       savedAt: Date.now(),
     };
     const k = dedupeKey(item);

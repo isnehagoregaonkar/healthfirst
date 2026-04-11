@@ -106,6 +106,59 @@ function resolveReferenceGrams(food: Record<string, unknown>): number {
   return 100;
 }
 
+/** FDC often puts numeric portion row IDs in `modifier`; strip those and useless phrases from labels. */
+function looksLikeFdcPortionIdToken(s: string): boolean {
+  return /^\d{5,}$/.test(s.trim());
+}
+
+function isJunkPortionFragment(s: string): boolean {
+  const t = s.trim().toLowerCase();
+  if (!t) {
+    return true;
+  }
+  if (looksLikeFdcPortionIdToken(t)) {
+    return true;
+  }
+  return (
+    t === 'undetermined' ||
+    t === 'unspecified' ||
+    t === 'not specified' ||
+    t === 'quantity not specified' ||
+    t.includes('quantity not specified')
+  );
+}
+
+function stripEmbeddedLargeIds(s: string): string {
+  return s.replace(/\b\d{5,}\b/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Turn FDC portion / household text into a short human-readable label. */
+function cleanPortionDisplayLabel(raw: string, fallbackGrams: number, maxLen: number): string {
+  const stripped = stripEmbeddedLargeIds(raw);
+  const chunks = stripped
+    .split(/\s*·\s*|\s*•\s*|,\s*/)
+    .map((x) => x.trim())
+    .filter((x) => x && !isJunkPortionFragment(x) && !looksLikeFdcPortionIdToken(x));
+  let label = chunks.join(' · ').replace(/\s+/g, ' ').trim();
+  if (!label) {
+    label = `${fallbackGrams} g`;
+  }
+  return label.length > maxLen ? `${label.slice(0, maxLen - 1)}…` : label;
+}
+
+/** Clean a saved quantity line (e.g. recents) from the same FDC noise. */
+export function sanitizeLoggedQuantityLabel(quantity: string): string {
+  const q = quantity.trim();
+  if (!q) {
+    return quantity;
+  }
+  const stripped = stripEmbeddedLargeIds(q);
+  const parts = stripped.split(/\s*·\s*|\s*•\s*/).map((x) => x.trim()).filter(Boolean);
+  const kept = parts.filter((p) => !isJunkPortionFragment(p) && !looksLikeFdcPortionIdToken(p));
+  const out = kept.join(' · ').replace(/\s+/g, ' ').trim();
+  return out || q;
+}
+
 function buildPortionOptions(food: Record<string, unknown>): UsdaPortionOption[] {
   const out: UsdaPortionOption[] = [{ label: '100 g', grams: 100 }];
 
@@ -119,19 +172,21 @@ function buildPortionOptions(food: Record<string, unknown>): UsdaPortionOption[]
       const mod = String(p.modifier ?? '').trim();
       const desc = String(p.portionDescription ?? '').trim();
       const mu = String((p.measureUnit as { name?: string } | undefined)?.name ?? '').trim();
-      const label = [mod, desc, mu].filter(Boolean).join(' · ') || `${gw} g`;
-      out.push({ label: label.length > 42 ? `${label.slice(0, 40)}…` : label, grams: gw });
+      const rough = [mod, desc, mu].filter(Boolean).join(' · ');
+      const label = cleanPortionDisplayLabel(rough || `${gw} g`, gw, 42);
+      out.push({ label, grams: gw });
     }
   }
 
   const ss = Number(food.servingSize);
   const su = String(food.servingSizeUnit ?? '').toLowerCase();
   if (Number.isFinite(ss) && ss > 0 && (su === 'g' || su === 'ml')) {
-    const label =
+    const raw =
       String(food.householdServingFullText ?? '').trim() ||
       `Serving (${ss}${su === 'ml' ? ' ml' : ' g'})`;
+    const label = cleanPortionDisplayLabel(raw, ss, 48);
     if (!out.some((o) => Math.abs(o.grams - ss) < 0.01)) {
-      out.push({ label: label.length > 48 ? `${label.slice(0, 46)}…` : label, grams: ss });
+      out.push({ label, grams: ss });
     }
   }
 
