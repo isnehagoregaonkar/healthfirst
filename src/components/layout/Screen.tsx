@@ -12,6 +12,10 @@ type ScreenProps = Readonly<{
    * so content isn’t pushed down twice).
    */
   applyTopSafeArea?: boolean;
+  /**
+   * When false, skips bottom safe-area padding (tab bar already insets; avoids a large gap above it).
+   */
+  applyBottomSafeArea?: boolean;
 }>;
 
 export function Screen({
@@ -19,20 +23,17 @@ export function Screen({
   style,
   backgroundColor = colors.background,
   applyTopSafeArea = true,
+  applyBottomSafeArea = true,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
 
+  const insetPad = {
+    paddingTop: applyTopSafeArea ? insets.top : 0,
+    paddingBottom: applyBottomSafeArea ? insets.bottom : 0,
+  };
+
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor,
-          paddingTop: applyTopSafeArea ? insets.top : 0,
-          paddingBottom: insets.bottom,
-        },
-        style,
-      ]}>
+    <View style={[styles.container, { backgroundColor }, insetPad, style]}>
       {children}
     </View>
   );

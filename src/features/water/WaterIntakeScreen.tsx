@@ -46,7 +46,7 @@ export function WaterIntakeScreen() {
   const { leftLabel, rightLabel, centerLabel, canGoNext, isViewingToday } = dateNav;
 
   return (
-    <Screen applyTopSafeArea={false}>
+    <Screen applyTopSafeArea={false} applyBottomSafeArea={false}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -597,12 +597,11 @@ const styles = StyleSheet.create({
   },
   buttonsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 10,
   },
   addButton: {
-    flexGrow: 1,
-    minWidth: '28%',
+    flex: 1,
+    minWidth: 0,
     backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 12,

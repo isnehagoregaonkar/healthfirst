@@ -5,7 +5,7 @@ import { colors } from '../../theme/tokens';
 
 export function DashboardScreen() {
   return (
-    <Screen>
+    <Screen applyBottomSafeArea={false}>
       <View style={styles.container}>
         <Text style={styles.title}>Dashboard</Text>
         <Text style={styles.subtitle}>
