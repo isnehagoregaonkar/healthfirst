@@ -17,22 +17,11 @@ import { FastingMotivationBanner } from './components/FastingMotivationBanner';
 import { FastingRemindersPanel } from './components/FastingRemindersPanel';
 import { FastingScheduleEditorModal } from './components/FastingScheduleEditorModal';
 import { FastingScheduledSection } from './components/FastingScheduledSection';
-import { FastingTimePickers } from './components/FastingTimePickers';
 import { FastingTimerSection } from './components/FastingTimerSection';
 import { useIntermittentFastingScreen } from './hooks/useIntermittentFastingScreen';
 
 export function IntermittentFastingScreen() {
   const s = useIntermittentFastingScreen();
-  let pickerTitle = '';
-  if (s.pickerTarget === 'begin') {
-    pickerTitle = 'Begin fasting reminder';
-  } else if (s.pickerTarget === 'break') {
-    pickerTitle = 'Break fast reminder';
-  } else if (s.pickerTarget === 'schedule-start') {
-    pickerTitle = 'Scheduled start fast time';
-  } else if (s.pickerTarget === 'schedule-end') {
-    pickerTitle = 'Scheduled end fast time';
-  }
 
   return (
     <Screen applyTopSafeArea={false} applyBottomSafeArea={false}>
@@ -61,18 +50,10 @@ export function IntermittentFastingScreen() {
               eatingHours={s.eatingHours}
               progressPct={s.progressPct}
             />
-            <FastingMotivationBanner line={s.motivationalLine} />
             <FastingFastLengthChips
               preferredHours={s.preferredFastHours}
               targetFastHours={s.targetFastHours}
               onSelectHours={h => void s.setTargetFastHours(h)}
-            />
-            <FastingRemindersPanel
-              reminders={s.reminders}
-              reminderError={s.reminderError}
-              onToggleEnabled={v => void s.toggleReminders(v)}
-              onOpenBeginPicker={() => s.openTimePicker('begin')}
-              onOpenBreakPicker={() => s.openTimePicker('break')}
             />
             {s.isFasting ? (
               <Pressable
@@ -91,6 +72,12 @@ export function IntermittentFastingScreen() {
                 <Text style={styles.primaryBtnText}>Start fast</Text>
               </Pressable>
             )}
+            <FastingMotivationBanner line={s.motivationalLine} />
+            <FastingRemindersPanel
+              reminders={s.reminders}
+              reminderError={s.reminderError}
+              onToggleEnabled={v => void s.toggleReminders(v)}
+            />
             <FastingScheduledSection
               scheduledFasts={s.scheduledFasts}
               onDelete={id => void s.deleteScheduledFast(id)}
@@ -104,25 +91,17 @@ export function IntermittentFastingScreen() {
         )}
       </ScrollView>
 
-      <FastingTimePickers
-        pickerTarget={s.pickerTarget}
-        iosDraft={s.iosDraft}
-        setIosDraft={s.setIosDraft}
-        pickerTitle={pickerTitle}
-        onAndroidTimePicked={d => void s.commitAndroidTime(d)}
-        onAndroidDismiss={s.dismissPicker}
-        onIosSave={() => void s.confirmIosTime()}
-        onIosCancel={s.cancelIosPicker}
-      />
-
       <FastingScheduleEditorModal
         visible={s.scheduleEditorOpen}
+        remindersEnabled={s.reminders.enabled}
+        reminderError={s.reminderError}
+        onToggleReminders={v => void s.toggleReminders(v)}
         weekdays={s.scheduleDraftWeekdays}
         onToggleWeekday={s.toggleScheduleWeekday}
         startFast={s.scheduleDraftStart}
         endFast={s.scheduleDraftEnd}
-        onOpenStartPicker={() => s.openTimePicker('schedule-start')}
-        onOpenEndPicker={() => s.openTimePicker('schedule-end')}
+        onChangeStartFast={s.onScheduleStartTimeChange}
+        onChangeEndFast={s.onScheduleEndTimeChange}
         error={s.scheduleEditorError}
         onSave={() => void s.saveScheduleDraft()}
         onCancel={s.closeScheduleEditor}

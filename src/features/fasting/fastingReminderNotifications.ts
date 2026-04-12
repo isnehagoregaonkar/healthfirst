@@ -102,6 +102,18 @@ export async function requestFastingReminderPermission(): Promise<{
   }
 }
 
+/**
+ * Call after the main shell is visible (e.g. post-splash, signed-in) so the OS permission
+ * dialog appears in context, not buried behind loading UI.
+ */
+export function scheduleFastingNotificationPermissionPrompt(
+  delayMs = 700,
+): void {
+  setTimeout(() => {
+    void requestFastingReminderPermission();
+  }, delayMs);
+}
+
 async function ensureAndroidChannel(n: NotifeeNamespace): Promise<void> {
   await n.default.createChannel({
     id: ANDROID_CHANNEL_ID,

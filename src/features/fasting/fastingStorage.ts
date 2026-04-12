@@ -13,8 +13,10 @@ const MAX_HISTORY = 50;
 
 export const DEFAULT_REMINDERS: FastingReminderSettings = {
   enabled: false,
-  beginFast: { hour: 20, minute: 0 },
-  breakFast: { hour: 12, minute: 0 },
+  /** 9 PM — begin fasting (stop eating). */
+  beginFast: { hour: 21, minute: 0 },
+  /** 9 AM — break fast. */
+  breakFast: { hour: 9, minute: 0 },
 };
 
 const DEFAULTS: FastingPersisted = {

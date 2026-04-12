@@ -5,11 +5,9 @@ import {
   requestFastingReminderPermission,
   syncFastingReminderNotifications,
 } from '../fastingReminderNotifications';
-import type { FastingTimePickerTarget, TimeOfDay } from '../fastingTypes';
+import type { TimeOfDay } from '../fastingTypes';
+import { DEFAULT_REMINDERS } from '../fastingStorage';
 import { useFasting } from '../useFasting';
-
-const DEFAULT_SCHEDULE_START: TimeOfDay = { hour: 20, minute: 0 };
-const DEFAULT_SCHEDULE_END: TimeOfDay = { hour: 12, minute: 0 };
 
 export function useIntermittentFastingScreen() {
   const fasting = useFasting();
@@ -31,18 +29,19 @@ export function useIntermittentFastingScreen() {
     deleteScheduledFast,
   } = fasting;
 
-  const [pickerTarget, setPickerTarget] = useState<FastingTimePickerTarget>(null);
-  const [iosDraft, setIosDraft] = useState(() => new Date());
   const [reminderError, setReminderError] = useState<string | null>(null);
 
   const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
   const [scheduleDraftWeekdays, setScheduleDraftWeekdays] = useState<number[]>(
     [],
   );
-  const [scheduleDraftStart, setScheduleDraftStart] =
-    useState<TimeOfDay>(DEFAULT_SCHEDULE_START);
-  const [scheduleDraftEnd, setScheduleDraftEnd] =
-    useState<TimeOfDay>(DEFAULT_SCHEDULE_END);
+  /** Default 9 PM → 9 AM; synced from `reminders` after load / when opening the editor. */
+  const [scheduleDraftStart, setScheduleDraftStart] = useState<TimeOfDay>(
+    DEFAULT_REMINDERS.beginFast,
+  );
+  const [scheduleDraftEnd, setScheduleDraftEnd] = useState<TimeOfDay>(
+    DEFAULT_REMINDERS.breakFast,
+  );
   const [scheduleEditorError, setScheduleEditorError] = useState<string | null>(
     null,
   );
@@ -84,86 +83,41 @@ export function useIntermittentFastingScreen() {
         return;
       }
       const { granted } = await requestFastingReminderPermission();
-      if (!granted) {
-        setReminderError('Allow notifications to receive fasting reminders.');
-        return;
-      }
       await patchReminders({ enabled: true });
+      if (!granted) {
+        setReminderError(
+          'Reminders are saved, but this device is blocking alerts. Allow notifications for HealthFirst in Settings to hear them.',
+        );
+      }
     },
     [patchReminders],
   );
 
-  const openTimePicker = useCallback(
-    (target: Exclude<FastingTimePickerTarget, null>) => {
-      let t: TimeOfDay;
-      if (target === 'begin') {
-        t = reminders.beginFast;
-      } else if (target === 'break') {
-        t = reminders.breakFast;
-      } else if (target === 'schedule-start') {
-        t = scheduleDraftStart;
-      } else {
-        t = scheduleDraftEnd;
-      }
-      const d = new Date();
-      d.setHours(t.hour, t.minute, 0, 0);
-      setIosDraft(d);
-      setPickerTarget(target);
-    },
-    [reminders, scheduleDraftStart, scheduleDraftEnd],
-  );
-
-  const dismissPicker = useCallback(() => setPickerTarget(null), []);
-
-  const commitAndroidTime = useCallback(
-    async (date: Date) => {
-      if (!pickerTarget) {
-        return;
-      }
+  const onScheduleStartTimeChange = useCallback(
+    (date: Date) => {
       const nextT = { hour: date.getHours(), minute: date.getMinutes() };
-      if (pickerTarget === 'begin') {
-        await patchReminders({ beginFast: nextT });
-      } else if (pickerTarget === 'break') {
-        await patchReminders({ breakFast: nextT });
-      } else if (pickerTarget === 'schedule-start') {
-        setScheduleDraftStart(nextT);
-      } else {
-        setScheduleDraftEnd(nextT);
-      }
-      setPickerTarget(null);
+      setScheduleDraftStart(nextT);
+      void patchReminders({ beginFast: nextT });
     },
-    [pickerTarget, patchReminders],
+    [patchReminders],
   );
 
-  const confirmIosTime = useCallback(async () => {
-    if (!pickerTarget) {
-      return;
-    }
-    const nextT = {
-      hour: iosDraft.getHours(),
-      minute: iosDraft.getMinutes(),
-    };
-    if (pickerTarget === 'begin') {
-      await patchReminders({ beginFast: nextT });
-    } else if (pickerTarget === 'break') {
-      await patchReminders({ breakFast: nextT });
-    } else if (pickerTarget === 'schedule-start') {
-      setScheduleDraftStart(nextT);
-    } else {
+  const onScheduleEndTimeChange = useCallback(
+    (date: Date) => {
+      const nextT = { hour: date.getHours(), minute: date.getMinutes() };
       setScheduleDraftEnd(nextT);
-    }
-    setPickerTarget(null);
-  }, [iosDraft, pickerTarget, patchReminders]);
-
-  const cancelIosPicker = dismissPicker;
+      void patchReminders({ breakFast: nextT });
+    },
+    [patchReminders],
+  );
 
   const openScheduleEditor = useCallback(() => {
     setScheduleDraftWeekdays([]);
-    setScheduleDraftStart(DEFAULT_SCHEDULE_START);
-    setScheduleDraftEnd(DEFAULT_SCHEDULE_END);
+    setScheduleDraftStart(reminders.beginFast);
+    setScheduleDraftEnd(reminders.breakFast);
     setScheduleEditorError(null);
     setScheduleEditorOpen(true);
-  }, []);
+  }, [reminders.beginFast, reminders.breakFast]);
 
   const closeScheduleEditor = useCallback(() => {
     setScheduleEditorOpen(false);
@@ -219,16 +173,8 @@ export function useIntermittentFastingScreen() {
     progressPct,
     eatingHours,
     motivationalLine,
-    pickerTarget,
-    iosDraft,
-    setIosDraft,
     reminderError,
     toggleReminders,
-    openTimePicker,
-    commitAndroidTime,
-    dismissPicker,
-    confirmIosTime,
-    cancelIosPicker,
     scheduledFasts,
     deleteScheduledFast,
     scheduleEditorOpen,
@@ -240,5 +186,7 @@ export function useIntermittentFastingScreen() {
     closeScheduleEditor,
     toggleScheduleWeekday,
     saveScheduleDraft,
+    onScheduleStartTimeChange,
+    onScheduleEndTimeChange,
   };
 }

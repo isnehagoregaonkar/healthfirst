@@ -36,11 +36,3 @@ export type FastingPersisted = Readonly<{
   reminders: FastingReminderSettings;
   scheduledFasts: ScheduledFast[];
 }>;
-
-/** Which time field the shared fasting time picker is editing. */
-export type FastingTimePickerTarget =
-  | 'begin'
-  | 'break'
-  | 'schedule-start'
-  | 'schedule-end'
-  | null;

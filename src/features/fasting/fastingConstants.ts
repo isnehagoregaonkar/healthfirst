@@ -13,3 +13,14 @@ export const WEEKDAY_SHORT_LABELS = [
   'Fri',
   'Sat',
 ] as const;
+
+/** Two-letter labels so all seven fit one row on narrow modals. */
+export const WEEKDAY_COMPACT_LABELS = [
+  'Su',
+  'Mo',
+  'Tu',
+  'We',
+  'Th',
+  'Fr',
+  'Sa',
+] as const;
