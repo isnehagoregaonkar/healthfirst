@@ -1,0 +1,32 @@
+diff --git a/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt b/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt
+index 5ec3641..cecf858 100644
+--- a/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt
++++ b/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt
+@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.cancel
+ import kotlinx.coroutines.channels.Channel
+ import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
+ 
+ object HealthConnectPermissionDelegate {
+   private val coroutineScope = CoroutineScope(Dispatchers.IO)
+@@ -42,12 +43,17 @@ object HealthConnectPermissionDelegate {
+   }
+ 
+   suspend fun launchPermissionsDialog(permissions: Set<String>): Set<String> {
+-    requestPermission.launch(permissions)
++    // ActivityResultLauncher.launch() must run on the main thread; HealthConnectManager calls this from Dispatchers.IO.
++    withContext(Dispatchers.Main) {
++      requestPermission.launch(permissions)
++    }
+     return permissionsChannel.receive()
+   }
+ 
+   suspend fun launchExerciseRouteAccessRequestDialog(recordId: String): ExerciseRoute? {
+-    requestRoutePermission.launch(recordId)
++    withContext(Dispatchers.Main) {
++      requestRoutePermission.launch(recordId)
++    }
+     return exerciseRouteChannel.receive()
+   }
+ }

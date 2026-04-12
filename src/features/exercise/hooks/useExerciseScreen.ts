@@ -12,6 +12,7 @@ import {
   loadManualExerciseSessions,
 } from '../storage/manualExerciseStorage';
 import {
+  type HealthConnectStatus,
   fetchAndroidHealthSnapshot,
   fetchIosHealthSnapshot,
   openAndroidHealthSettings,
@@ -60,9 +61,11 @@ export function useExerciseScreen() {
   const [appleHealthReadHint, setAppleHealthReadHint] = useState<string | null>(
     null,
   );
-  const [androidStatus, setAndroidStatus] = useState<
-    'unavailable' | 'needs_install' | 'ready'
-  >('unavailable');
+  const [androidStatus, setAndroidStatus] =
+    useState<HealthConnectStatus>('unavailable');
+  const [androidHealthHint, setAndroidHealthHint] = useState<string | null>(
+    null,
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -78,12 +81,14 @@ export function useExerciseScreen() {
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
         setAndroidStatus('unavailable');
+        setAndroidHealthHint(null);
       } else if (Platform.OS === 'android') {
         const snap = await fetchAndroidHealthSnapshot();
         setHealthOk(snap.ok);
         setIosHealthError(null);
         setAppleHealthReadHint(null);
         setAndroidStatus(snap.status);
+        setAndroidHealthHint(snap.androidHealthHint ?? null);
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
       } else {
@@ -92,6 +97,7 @@ export function useExerciseScreen() {
         setAppleHealthReadHint(null);
         setStepsToday(0);
         setHealthWorkouts([]);
+        setAndroidHealthHint(null);
       }
     } finally {
       setLoading(false);
@@ -132,8 +138,11 @@ export function useExerciseScreen() {
       if (androidStatus === 'needs_install') {
         return 'Health Connect is missing or needs an update. Tap below to open settings.';
       }
+      if (androidStatus === 'permission_denied') {
+        return 'Health Connect is installed but this app cannot read your data yet.';
+      }
       return healthOk
-        ? 'Reading steps and sessions from Health Connect.'
+        ? 'Reading steps and sessions from Health Connect (data from Samsung Health, Google Fit, etc. appears here only after they sync to Health Connect).'
         : 'Grant Health Connect permissions when prompted, or open Health Connect settings.';
     }
     return 'Health sync runs on iPhone and Android.';
@@ -183,6 +192,7 @@ export function useExerciseScreen() {
     iosHealthError,
     appleHealthReadHint,
     androidStatus,
+    androidHealthHint,
     integrationSubtitle,
     formatSessionTime,
     openAndroidHealthSettings,

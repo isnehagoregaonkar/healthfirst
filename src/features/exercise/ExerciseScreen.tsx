@@ -115,6 +115,7 @@ export function ExerciseScreen() {
     iosHealthError,
     appleHealthReadHint,
     androidStatus,
+    androidHealthHint,
     integrationSubtitle,
     openAndroidHealthSettings,
     openIosHealthApp,
@@ -201,6 +202,9 @@ export function ExerciseScreen() {
           {Platform.OS === 'ios' && iosHealthError ? (
             <Text style={styles.integrationError}>{iosHealthError}</Text>
           ) : null}
+          {Platform.OS === 'android' && androidHealthHint ? (
+            <Text style={styles.integrationHint}>{androidHealthHint}</Text>
+          ) : null}
           {Platform.OS === 'ios' && appleHealthReadHint ? (
             <>
               <Text style={styles.integrationHint}>{appleHealthReadHint}</Text>
@@ -213,7 +217,10 @@ export function ExerciseScreen() {
               </Pressable>
             </>
           ) : null}
-          {Platform.OS === 'android' && androidStatus === 'needs_install' ? (
+          {Platform.OS === 'android' &&
+          (androidStatus === 'needs_install' ||
+            androidStatus === 'permission_denied' ||
+            androidStatus === 'unavailable') ? (
             <Pressable
               onPress={() => openAndroidHealthSettings()}
               style={({ pressed }) => [styles.linkBtn, pressed && styles.pressed]}

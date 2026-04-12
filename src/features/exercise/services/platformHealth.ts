@@ -1,7 +1,28 @@
 import { Linking, NativeModules, Platform } from 'react-native';
 import type { ExerciseSessionRow } from '../exerciseTypes';
 
-export type HealthConnectStatus = 'unavailable' | 'needs_install' | 'ready';
+export type HealthConnectStatus =
+  | 'unavailable'
+  | 'needs_install'
+  | 'permission_denied'
+  | 'ready';
+
+function hcLog(tag: string, data: unknown): void {
+  if (__DEV__) {
+    // eslint-disable-next-line no-console
+    console.log(`[HealthFirst][HealthConnect] ${tag}`, data);
+  }
+}
+
+function healthConnectGrantIncludes(
+  granted: readonly { accessType?: string; recordType?: string }[],
+  access: 'read' | 'write',
+  recordType: string,
+): boolean {
+  return granted.some(
+    g => g.accessType === access && g.recordType === recordType,
+  );
+}
 
 /**
  * Native `RCTResponseSenderBlock` passes one `NSArray`; the bridge usually
@@ -941,6 +962,8 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
   status: HealthConnectStatus;
   stepsToday: number;
   workouts: ExerciseSessionRow[];
+  /** Shown on Exercise screen when sync fails, permissions are partial, or data may be elsewhere (e.g. Samsung Health). */
+  androidHealthHint?: string;
 }> {
   if (Platform.OS !== 'android') {
     return { ok: false, status: 'unavailable', stepsToday: 0, workouts: [] };
@@ -950,78 +973,173 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
     const HC =
       require('react-native-health-connect') as typeof import('react-native-health-connect');
     const sdk = await HC.getSdkStatus();
+    hcLog('getSdkStatus', sdk);
     if (sdk !== HC.SdkAvailabilityStatus.SDK_AVAILABLE) {
       return {
         ok: false,
         status: 'needs_install',
         stepsToday: 0,
         workouts: [],
+        androidHealthHint:
+          'Install or update Health Connect from the Play Store (on Android 14+ it is built into the system).',
       };
     }
     const inited = await HC.initialize();
+    hcLog('initialize', inited);
     if (!inited) {
-      return { ok: false, status: 'unavailable', stepsToday: 0, workouts: [] };
+      return {
+        ok: false,
+        status: 'unavailable',
+        stepsToday: 0,
+        workouts: [],
+        androidHealthHint: 'Health Connect failed to initialize. Reopen the app or reboot the device.',
+      };
     }
-    await HC.requestPermission([
-      { accessType: 'read', recordType: 'Steps' },
-      { accessType: 'read', recordType: 'ExerciseSession' },
-      { accessType: 'write', recordType: 'Steps' },
-      { accessType: 'write', recordType: 'ExerciseSession' },
-    ]);
-    const { start, end } = dayBounds();
-    const agg = await HC.aggregateRecord({
-      recordType: 'Steps',
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-      },
-    });
-    const stepsToday =
-      agg && typeof agg === 'object' && 'COUNT_TOTAL' in agg
-        ? Math.round(Number((agg as { COUNT_TOTAL: number }).COUNT_TOTAL) || 0)
-        : 0;
 
-    const histStart = new Date();
-    histStart.setDate(histStart.getDate() - 21);
-    const { records } = await HC.readRecords('ExerciseSession', {
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: histStart.toISOString(),
-        endTime: end.toISOString(),
-      },
-      ascendingOrder: false,
-      pageSize: 60,
-    });
+    const requested = [
+      { accessType: 'read' as const, recordType: 'ReadHealthDataHistory' as const },
+      { accessType: 'read' as const, recordType: 'Steps' as const },
+      { accessType: 'read' as const, recordType: 'ExerciseSession' as const },
+      { accessType: 'write' as const, recordType: 'Steps' as const },
+      { accessType: 'write' as const, recordType: 'ExerciseSession' as const },
+    ];
+    const justGranted = await HC.requestPermission(requested);
+    hcLog('requestPermission result', justGranted);
 
-    const workouts: ExerciseSessionRow[] = (records ?? []).map(
-      (rec: {
-        metadata?: { id?: string };
-        startTime: string;
-        endTime: string;
-        title?: string;
-        exerciseType?: number;
-      }) => {
-        const startT = rec.startTime;
-        const endT = rec.endTime;
-        const ms = new Date(endT).getTime() - new Date(startT).getTime();
-        const durationMin = Math.max(1, Math.round(ms / 60_000));
-        const id =
-          rec.metadata?.id ?? `hc-${startT}-${String(rec.exerciseType ?? 0)}`;
-        return {
-          id,
-          source: 'health_connect' as const,
-          title: rec.title?.trim() || 'Exercise session',
-          startedAt: startT,
-          endedAt: endT,
-          durationMin,
-        };
-      },
+    const granted = await HC.getGrantedPermissions();
+    hcLog('getGrantedPermissions', granted);
+
+    const canReadSteps = healthConnectGrantIncludes(granted, 'read', 'Steps');
+    const canReadExercise = healthConnectGrantIncludes(
+      granted,
+      'read',
+      'ExerciseSession',
     );
 
-    return { ok: true, status: 'ready', stepsToday, workouts };
-  } catch {
-    return { ok: false, status: 'unavailable', stepsToday: 0, workouts: [] };
+    if (!canReadSteps && !canReadExercise) {
+      return {
+        ok: false,
+        status: 'permission_denied',
+        stepsToday: 0,
+        workouts: [],
+        androidHealthHint:
+          'Health Connect has no read access yet. Tap Sync now and allow Steps and Exercise; then in Health Connect → App permissions → HealthFirst, ensure reads are on.',
+      };
+    }
+
+    const { start, end } = dayBounds();
+    const range = {
+      operator: 'between' as const,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+    };
+
+    let stepsToday = 0;
+    if (canReadSteps) {
+      try {
+        const agg = await HC.aggregateRecord({
+          recordType: 'Steps',
+          timeRangeFilter: range,
+        });
+        hcLog('aggregateRecord Steps', agg);
+        stepsToday =
+          agg && typeof agg === 'object' && 'COUNT_TOTAL' in agg
+            ? Math.round(Number((agg as { COUNT_TOTAL: number }).COUNT_TOTAL) || 0)
+            : 0;
+      } catch (e) {
+        hcLog('aggregateRecord Steps failed', e);
+      }
+
+      if (stepsToday === 0) {
+        try {
+          const { records: stepRows } = await HC.readRecords('Steps', {
+            timeRangeFilter: range,
+            ascendingOrder: false,
+            pageSize: 500,
+          });
+          const sum = (stepRows ?? []).reduce(
+            (acc: number, row: { count?: number }) =>
+              acc + (typeof row.count === 'number' ? row.count : 0),
+            0,
+          );
+          hcLog('readRecords Steps fallback sum', { rows: stepRows?.length ?? 0, sum });
+          stepsToday = Math.round(sum);
+        } catch (e) {
+          hcLog('readRecords Steps failed', e);
+        }
+      }
+    }
+
+    let workouts: ExerciseSessionRow[] = [];
+    if (canReadExercise) {
+      const histStart = new Date();
+      histStart.setDate(histStart.getDate() - 21);
+      try {
+        const { records } = await HC.readRecords('ExerciseSession', {
+          timeRangeFilter: {
+            operator: 'between',
+            startTime: histStart.toISOString(),
+            endTime: end.toISOString(),
+          },
+          ascendingOrder: false,
+          pageSize: 60,
+        });
+        hcLog('readRecords ExerciseSession count', records?.length ?? 0);
+
+        workouts = (records ?? []).map(
+          (rec: {
+            metadata?: { id?: string };
+            startTime: string;
+            endTime: string;
+            title?: string;
+            exerciseType?: number;
+          }) => {
+            const startT = rec.startTime;
+            const endT = rec.endTime;
+            const ms = new Date(endT).getTime() - new Date(startT).getTime();
+            const durationMin = Math.max(1, Math.round(ms / 60_000));
+            const id =
+              rec.metadata?.id ??
+              `hc-${startT}-${String(rec.exerciseType ?? 0)}`;
+            return {
+              id,
+              source: 'health_connect' as const,
+              title: rec.title?.trim() || 'Exercise session',
+              startedAt: startT,
+              endedAt: endT,
+              durationMin,
+            };
+          },
+        );
+      } catch (e) {
+        hcLog('readRecords ExerciseSession failed', e);
+      }
+    }
+
+    const samsungHint =
+      stepsToday === 0 && workouts.length === 0 && (canReadSteps || canReadExercise)
+        ? 'If you use Samsung Health: open Samsung Health → ⋮ or profile → Settings → Health Connect and allow data to sync into Health Connect. Until data appears there, this app cannot read it.'
+        : undefined;
+
+    return {
+      ok: true,
+      status: 'ready',
+      stepsToday,
+      workouts,
+      androidHealthHint: samsungHint,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    hcLog('fetchAndroidHealthSnapshot error', e);
+    // eslint-disable-next-line no-console
+    console.warn('[HealthFirst][HealthConnect] fetch failed', msg);
+    return {
+      ok: false,
+      status: 'unavailable',
+      stepsToday: 0,
+      workouts: [],
+      androidHealthHint: `Health Connect error: ${msg}`,
+    };
   }
 }
 
