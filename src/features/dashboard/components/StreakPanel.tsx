@@ -151,20 +151,22 @@ export function StreakPanel({
 
   return (
     <View style={styles.block}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stripScroll}
-      >
-        {days.map(d => (
-          <StreakDayCapsule
-            key={d.id}
-            label={d.label}
-            isToday={d.isToday}
-            tone={d.tone}
-          />
-        ))}
-      </ScrollView>
+      <View style={[styles.stripWrap, { width: cardW }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.stripScroll}
+        >
+          {days.map(d => (
+            <StreakDayCapsule
+              key={d.id}
+              label={d.label}
+              isToday={d.isToday}
+              tone={d.tone}
+            />
+          ))}
+        </ScrollView>
+      </View>
 
       <View style={[styles.heroCard, { width: cardW, height: heroHeight }]}>
         <Svg width={cardW} height={heroHeight}>
@@ -288,12 +290,16 @@ const styles = StyleSheet.create({
   block: {
     gap: 14,
   },
+  stripWrap: {
+    alignSelf: 'center',
+  },
   stripScroll: {
     paddingRight: 4,
     paddingVertical: 2,
     alignItems: 'flex-start',
   },
   heroCard: {
+    alignSelf: 'center',
     borderRadius: 22,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },

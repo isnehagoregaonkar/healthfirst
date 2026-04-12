@@ -1,7 +1,6 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
 import { ExerciseHistoryScreen } from '../features/exercise/ExerciseHistoryScreen';
-import { IntermittentFastingScreen } from '../features/fasting/IntermittentFastingScreen';
 import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { colors } from '../theme/tokens';
@@ -51,14 +50,6 @@ export function RootDrawer() {
         options={{
           ...drawerLeafScreenOptions,
           title: 'Exercise & streak',
-        }}
-      />
-      <Drawer.Screen
-        name="IntermittentFasting"
-        component={IntermittentFastingScreen}
-        options={{
-          ...drawerLeafScreenOptions,
-          title: 'Intermittent fasting',
         }}
       />
       <Drawer.Screen

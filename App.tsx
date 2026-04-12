@@ -6,8 +6,9 @@
  */
 
 import { NavigationContainer } from '@react-navigation/native';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
+import { scheduleFastingNotificationPermissionPrompt } from './src/features/fasting/fastingReminderNotifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from './src/features/auth/LoginScreen';
@@ -20,6 +21,13 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
   const { showSplash, isAuthenticated } = useAuthSession();
+
+  useEffect(() => {
+    if (showSplash || !isAuthenticated) {
+      return;
+    }
+    scheduleFastingNotificationPermissionPrompt();
+  }, [showSplash, isAuthenticated]);
 
   let mainContent: ReactNode;
   if (showSplash) {

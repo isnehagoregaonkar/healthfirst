@@ -21,4 +21,4 @@ export const tabScreenOptions = {
   headerLeftContainerStyle: { paddingLeft: 16 },
 };
 
-/** More stack uses same chrome via `screenOptions={appHeaderChrome}` */
+/** Fasting stack uses the same header chrome as tab screens (drawer menu control). */

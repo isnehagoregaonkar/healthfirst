@@ -9,13 +9,21 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, { Circle, Defs, Line, Path, Rect } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Defs,
+  Line,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
+import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { MEAL_PRIMARY } from '../meals/mealUiTheme';
 import { LogHeartRateModal } from './components/LogHeartRateModal';
-import { StreakPanel } from './components/StreakPanel';
 import {
   DASH_BAD,
   DASH_HEART,
@@ -308,10 +316,10 @@ export function DashboardScreen() {
             preserveAspectRatio="none"
           >
             <Defs>
-              {/* <LinearGradient id="heroWash" x1="0" y1="0" x2="1" y2="1">
+              <LinearGradient id="heroWash" x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0" stopColor="#D1FAE5" stopOpacity={0.85} />
                 <Stop offset="1" stopColor="#F8FAFC" stopOpacity={0.15} />
-              </LinearGradient> */}
+              </LinearGradient>
             </Defs>
             <Rect x={0} y={0} width={winW} height={86} fill="url(#heroWash)" />
           </Svg>
@@ -345,19 +353,15 @@ export function DashboardScreen() {
 
           {snapshot && streakModel ? (
             <>
-              <View style={styles.card}>
-                <Text style={styles.streakScreenTitle}>Streaks</Text>
-                <Text style={styles.streakScreenHint}>
-                  Any logged meal counts for the streak · colors follow calories
-                  vs your daily target
-                </Text>
-                <StreakPanel
-                  days={streakModel.capsules}
-                  currentStreak={streakModel.streak}
-                  longestStreak={streakModel.longest}
-                  todayOver={streakModel.todayOver}
-                />
-              </View>
+              <ScreenTopCard
+                mode="streak"
+                streak={{
+                  days: streakModel.capsules,
+                  currentStreak: streakModel.streak,
+                  longestStreak: streakModel.longest,
+                  todayOver: streakModel.todayOver,
+                }}
+              />
 
               <Text style={styles.ringsSectionTitle}>Today</Text>
 
@@ -687,13 +691,13 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   hero: {
-    minHeight: 72,
-    marginBottom: 4,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 0,
   },
   heroInner: {
     paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 6,
     zIndex: 2,
   },
   heroKicker: {
@@ -771,18 +775,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  streakScreenTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: DASH_SLATE,
-    marginBottom: 4,
-  },
-  streakScreenHint: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: DASH_MUTED,
-    marginBottom: 12,
-  },
   ringsSectionTitle: {
     fontSize: 13,
     fontWeight: '800',
@@ -790,7 +782,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 8,
-    marginTop: 2,
+    marginTop: 14,
   },
   miniRingWrap: {
     position: 'relative',

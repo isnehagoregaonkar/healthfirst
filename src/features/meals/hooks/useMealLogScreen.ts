@@ -14,7 +14,7 @@ import {
   type MealType,
   type MealWithItems,
 } from '../../../services/meals';
-import { addCalendarDays, isSameLocalDay, startOfLocalDay } from '../../water/waterDayUtils';
+import { startOfLocalDay } from '../../water/waterDayUtils';
 
 export type MealsGrouped = Readonly<Record<MealType, MealWithItems[]>>;
 export type { DayMacroTotals } from '../../../services/meals';
@@ -41,8 +41,6 @@ type FetchMode = 'initial' | 'silent' | 'pull' | 'day';
 export type UseMealLogScreenResult = Readonly<{
   selectedDay: Date;
   setSelectedDay: (d: Date) => void;
-  goPrevDay: () => void;
-  goNextDay: () => void;
   initialLoading: boolean;
   dayLoading: boolean;
   refreshing: boolean;
@@ -103,19 +101,6 @@ export function useMealLogScreen(): UseMealLogScreenResult {
 
   const setSelectedDay = useCallback((d: Date) => {
     setSelectedDayState(startOfLocalDay(d));
-  }, []);
-
-  const goPrevDay = useCallback(() => {
-    setSelectedDayState((d) => addCalendarDays(d, -1));
-  }, []);
-
-  const goNextDay = useCallback(() => {
-    setSelectedDayState((d) => {
-      if (isSameLocalDay(d, new Date())) {
-        return d;
-      }
-      return addCalendarDays(d, 1);
-    });
   }, []);
 
   const fetchDay = useCallback(
@@ -299,8 +284,6 @@ export function useMealLogScreen(): UseMealLogScreenResult {
   return {
     selectedDay,
     setSelectedDay,
-    goPrevDay,
-    goNextDay,
     initialLoading,
     dayLoading,
     refreshing,

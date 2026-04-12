@@ -9,12 +9,12 @@ type MainNavigatorParams = NavigatorScreenParams<MainTabParamList>;
 
 type MainTabDrawerDestinationId = Exclude<
   DrawerDestinationId,
-  'ProgressHistory' | 'ExerciseHistory' | 'IntermittentFasting' | 'Reminders'
+  'ProgressHistory' | 'ExerciseHistory' | 'Reminders'
 >;
 
 type LeafDrawerDestinationId = Extract<
   DrawerDestinationId,
-  'ProgressHistory' | 'ExerciseHistory' | 'IntermittentFasting' | 'Reminders'
+  'ProgressHistory' | 'ExerciseHistory' | 'Reminders'
 >;
 
 const MAIN_NAV_BY_DESTINATION = {
@@ -22,12 +22,12 @@ const MAIN_NAV_BY_DESTINATION = {
   MealTracking: { screen: 'Meals' },
   WaterIntake: { screen: 'Water' },
   StepsTracking: { screen: 'Steps' },
+  IntermittentFasting: { screen: 'Fasting', params: { screen: 'FastingHome' } },
 } as const satisfies Record<MainTabDrawerDestinationId, MainNavigatorParams>;
 
 const DRAWER_SCREEN_BY_DESTINATION = {
   ProgressHistory: 'ProgressHistory',
   ExerciseHistory: 'ExerciseHistory',
-  IntermittentFasting: 'IntermittentFasting',
   Reminders: 'Reminders',
 } as const satisfies Record<LeafDrawerDestinationId, keyof Pick<RootDrawerParamList, LeafDrawerDestinationId>>;
 
@@ -36,12 +36,12 @@ const TAB_ROUTE_TO_DESTINATION: Record<string, DrawerDestinationId> = {
   Meals: 'MealTracking',
   Water: 'WaterIntake',
   Steps: 'StepsTracking',
+  Fasting: 'IntermittentFasting',
 };
 
 const DRAWER_ROUTE_TO_DESTINATION: Partial<Record<keyof RootDrawerParamList, DrawerDestinationId>> = {
   ProgressHistory: 'ProgressHistory',
   ExerciseHistory: 'ExerciseHistory',
-  IntermittentFasting: 'IntermittentFasting',
   Reminders: 'Reminders',
 };
 
@@ -81,10 +81,6 @@ export function getActiveDestinationId(state: DrawerNavState): DrawerDestination
   const tabName = getFocusedChildName(route);
   if (!tabName) {
     return 'Dashboard';
-  }
-
-  if (tabName === 'More') {
-    return null;
   }
 
   return TAB_ROUTE_TO_DESTINATION[tabName] ?? null;
