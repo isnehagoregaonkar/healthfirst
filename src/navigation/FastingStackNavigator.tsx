@@ -17,7 +17,7 @@ export function FastingStackNavigator() {
       <Stack.Screen
         name="FastingHome"
         component={IntermittentFastingScreen}
-        options={{ title: 'Fasting' }}
+        options={{ title: 'Intermittent fasting' }}
       />
     </Stack.Navigator>
   );

@@ -56,6 +56,7 @@ export function MainTabNavigator() {
         component={FastingStackNavigator}
         options={{
           headerShown: false,
+          title: 'Intermittent fasting',
           tabBarLabel: 'Fasting',
         }}
       />

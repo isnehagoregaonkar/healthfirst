@@ -84,16 +84,11 @@ export function IntermittentFastingScreen() {
   const eatingHours = Math.max(0, 24 - targetFastHours);
 
   return (
-    <Screen backgroundColor={colors.background} applyBottomSafeArea={false}>
+    <Screen applyTopSafeArea={false} applyBottomSafeArea={false}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Fasting</Text>
-        <Text style={styles.screenSub}>
-          Track your eating window and fast length. Progress is saved on this device.
-        </Text>
-
         {loading ? (
           <View style={styles.loadRow}>
             <ActivityIndicator color={colors.primary} />
@@ -130,8 +125,7 @@ export function IntermittentFastingScreen() {
               ) : (
                 <>
                   <Text style={styles.idleBody}>
-                    Start a fast when you finish your last meal. Choose a typical fast length
-                    below (you can change it anytime).
+                    Start when you finish your last meal. Pick a fast length below anytime.
                   </Text>
                   <Text style={styles.timerHint}>
                     Target · {targetFastHours}h fast · ~{eatingHours}h eating window
@@ -140,7 +134,7 @@ export function IntermittentFastingScreen() {
               )}
             </View>
 
-            <Text style={styles.sectionLabel}>Fast length (hours)</Text>
+            <Text style={styles.sectionHeading}>Fast length</Text>
             <View style={styles.chipRow}>
               {PREFERRED_HOURS.map(h => {
                 const on = targetFastHours === h;
@@ -174,22 +168,25 @@ export function IntermittentFastingScreen() {
               </Pressable>
             )}
 
-            <Text style={styles.sectionTitle}>Recent fasts</Text>
-            <Text style={styles.sectionHint}>Last {Math.min(history.length, 50)} completed on this device</Text>
+            <Text style={[styles.sectionHeading, styles.sectionHeadingSpaced]}>
+              Recent fasts
+            </Text>
+            <Text style={styles.sectionHint}>
+              {history.length === 0
+                ? 'Completed fasts will appear here.'
+                : `Showing ${Math.min(history.length, 15)} most recent.`}
+            </Text>
             {history.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Icon name="history" size={36} color={colors.textSecondary} />
                 <Text style={styles.emptyTitle}>No completed fasts yet</Text>
-                <Text style={styles.emptySub}>
-                  When you end a fast, it will show up here with duration and goal.
-                </Text>
+                <Text style={styles.emptySub}>End a fast to see it listed with duration and goal.</Text>
               </View>
             ) : (
               history.slice(0, 15).map(row => <HistoryRow key={row.id} row={row} />)
             )}
           </>
         )}
-        <View style={{ height: 100 }} />
       </ScrollView>
     </Screen>
   );
@@ -198,21 +195,8 @@ export function IntermittentFastingScreen() {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  screenTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  screenSub: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 28,
   },
   loadRow: {
     flexDirection: 'row',
@@ -231,7 +215,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   timerHeader: {
     flexDirection: 'row',
@@ -284,19 +268,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 10,
+  sectionHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  sectionHeadingSpaced: {
+    marginTop: 14,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   chip: {
     paddingHorizontal: 16,
@@ -326,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 16,
-    marginBottom: 28,
+    marginBottom: 10,
   },
   dangerBtn: {
     flexDirection: 'row',
@@ -336,7 +321,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.error,
     paddingVertical: 16,
     borderRadius: 16,
-    marginBottom: 28,
+    marginBottom: 10,
   },
   primaryBtnText: {
     fontSize: 17,
@@ -351,17 +336,12 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.9,
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
   sectionHint: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: 12,
+    marginTop: -8,
   },
   emptyCard: {
     alignItems: 'center',
