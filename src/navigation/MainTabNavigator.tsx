@@ -5,7 +5,7 @@ import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { MealTrackingScreen } from '../features/meals/MealTrackingScreen';
 import { StepsTrackingScreen } from '../features/steps/StepsTrackingScreen';
 import { WaterIntakeScreen } from '../features/water/WaterIntakeScreen';
-import { MoreStackNavigator } from './MoreStackNavigator';
+import { FastingStackNavigator } from './FastingStackNavigator';
 import { tabScreenOptions } from './navHeaderOptions';
 import type { MainTabParamList } from './types';
 import { HealthBottomTabBar } from './ui/HealthBottomTabBar';
@@ -52,11 +52,11 @@ export function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="More"
-        component={MoreStackNavigator}
+        name="Fasting"
+        component={FastingStackNavigator}
         options={{
           headerShown: false,
-          tabBarLabel: 'More',
+          tabBarLabel: 'Fasting',
         }}
       />
     </Tab.Navigator>

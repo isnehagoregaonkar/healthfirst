@@ -17,7 +17,7 @@ const TAB_CONFIG: Record<string, TabVisual> = {
   Meals: { defaultLabel: 'Meals', icon: 'food-apple-outline' },
   Water: { defaultLabel: 'Water', icon: 'cup-water' },
   Steps: { defaultLabel: 'Move', icon: 'walk' },
-  More: { defaultLabel: 'More', icon: 'dots-horizontal' },
+  Fasting: { defaultLabel: 'Fasting', icon: 'timer-outline' },
 };
 
 type TabSlotProps = Readonly<{

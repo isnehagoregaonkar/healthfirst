@@ -1,8 +1,8 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
-/** More tab stack — reserved for future tools (not the same as drawer destinations). */
-export type MoreStackParamList = {
-  MoreHome: undefined;
+/** Bottom tab: intermittent fasting timer and history. */
+export type FastingStackParamList = {
+  FastingHome: undefined;
 };
 
 export type MainTabParamList = {
@@ -10,14 +10,13 @@ export type MainTabParamList = {
   Meals: undefined;
   Water: undefined;
   Steps: undefined;
-  More: NavigatorScreenParams<MoreStackParamList>;
+  Fasting: NavigatorScreenParams<FastingStackParamList>;
 };
 
 export type RootDrawerParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   ProgressHistory: undefined;
   ExerciseHistory: undefined;
-  IntermittentFasting: undefined;
   Reminders: undefined;
 };
 
