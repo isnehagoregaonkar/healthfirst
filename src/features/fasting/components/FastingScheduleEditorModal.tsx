@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   timeRowLabel: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '6=]00',
+    fontWeight: '800',
     color: colors.textSecondary,
   },
   timeRowValue: {

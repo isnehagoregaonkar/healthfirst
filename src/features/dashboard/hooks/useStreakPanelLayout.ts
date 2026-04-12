@@ -11,8 +11,8 @@ export function useStreakPanelLayout(currentStreak: number) {
     const ringDisplayPct = currentStreak === 0 ? 6 : Math.max(12, ringPct);
     const title =
       currentStreak > 0 ? "You've been keeping track" : 'Start your streak';
-    const heroHeight = 128;
-    const ringSize = 88;
+    const heroHeight = 108;
+    const ringSize = 76;
     return { cardW, ringDisplayPct, title, heroHeight, ringSize };
   }, [winW, currentStreak]);
 }

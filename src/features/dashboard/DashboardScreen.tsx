@@ -2,6 +2,7 @@ import React from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -44,9 +45,9 @@ import {
 } from './utils/dashboardFormat';
 
 /** Slight floor so calories / water tiles align with heart rate / weight half-cards. */
-const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 158;
-/** Ring diameter in calories / water dashboard tiles (matches visual weight of icon bubbles). */
-const DASHBOARD_METRIC_RING_SIZE = 52;
+const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 148;
+/** Ring diameter in calories / water dashboard tiles. */
+const DASHBOARD_METRIC_RING_SIZE = 44;
 
 type DashboardStatPillTone = 'cal' | 'calOver' | 'water' | 'weight';
 
@@ -197,6 +198,8 @@ type ExerciseWeekBarsProps = Readonly<{
   dayKeys: ReadonlyArray<string>;
   goalMinutes: number;
   todayIndex: number;
+  /** Default 78; lower for a shorter Move card. */
+  maxBarHeight?: number;
 }>;
 
 function ExerciseZigzagBg() {
@@ -223,8 +226,9 @@ function ExerciseWeekBars({
   dayKeys,
   goalMinutes,
   todayIndex,
+  maxBarHeight = 78,
 }: ExerciseWeekBarsProps) {
-  const maxH = 78;
+  const maxH = maxBarHeight;
   const barW = 11;
   const maxV = Math.max(1, goalMinutes, ...values);
   return (
@@ -307,12 +311,15 @@ export function DashboardScreen() {
           />
         }
         contentContainerStyle={styles.scrollContent}
+        {...(Platform.OS === 'ios'
+          ? { contentInsetAdjustmentBehavior: 'never' as const }
+          : {})}
       >
         <View style={[styles.hero, { width: winW }]}>
           <Svg
             style={StyleSheet.absoluteFill}
             width={winW}
-            height={86}
+            height={64}
             preserveAspectRatio="none"
           >
             <Defs>
@@ -321,7 +328,7 @@ export function DashboardScreen() {
                 <Stop offset="1" stopColor="#F8FAFC" stopOpacity={0.15} />
               </LinearGradient>
             </Defs>
-            <Rect x={0} y={0} width={winW} height={86} fill="url(#heroWash)" />
+            <Rect x={0} y={0} width={winW} height={64} fill="url(#heroWash)" />
           </Svg>
           <View style={styles.heroInner}>
             <Text style={styles.heroSub}>{greetingForNow()},</Text>
@@ -423,16 +430,18 @@ export function DashboardScreen() {
                           kcal · {calPctRaw}%
                         </Text>
                       </View>
-                      <DashboardStatPill
-                        tone={calOverEarly ? 'calOver' : 'cal'}
-                      >
-                        {calOverEarly
-                          ? `${calOverAmt} kcal over goal`
-                          : `${Math.max(
-                              0,
-                              snapshot.calorieTarget - snapshot.todayCalories,
-                            ).toLocaleString('en-US')} kcal left`}
-                      </DashboardStatPill>
+                      <View style={styles.metricStatPillOffset}>
+                        <DashboardStatPill
+                          tone={calOverEarly ? 'calOver' : 'cal'}
+                        >
+                          {calOverEarly
+                            ? `${calOverAmt} kcal over goal`
+                            : `${Math.max(
+                                0,
+                                snapshot.calorieTarget - snapshot.todayCalories,
+                              ).toLocaleString('en-US')} kcal left`}
+                        </DashboardStatPill>
+                      </View>
                     </View>
                   </Pressable>
                 </View>
@@ -487,23 +496,25 @@ export function DashboardScreen() {
                           {waterPct}%
                         </Text>
                       </View>
-                      <DashboardStatPill tone="water">
-                        {waterRemainingFoot(
-                          snapshot.waterGoalMl,
-                          snapshot.waterTodayMl,
-                        )}
-                      </DashboardStatPill>
+                      <View style={styles.metricStatPillOffset}>
+                        <DashboardStatPill tone="water">
+                          {waterRemainingFoot(
+                            snapshot.waterGoalMl,
+                            snapshot.waterTodayMl,
+                          )}
+                        </DashboardStatPill>
+                      </View>
                     </View>
                   </Pressable>
                 </View>
               </View>
 
-              <View style={[styles.card, styles.todayHeroCard]}>
-                <View style={styles.cardIconRow}>
+              <View style={[styles.card, styles.todayHeroCard, styles.moveCard]}>
+                <View style={[styles.cardIconRow, styles.moveCardIconRow]}>
                   <View style={styles.exerciseIconBubble}>
                     <Icon
                       name="run-fast"
-                      size={22}
+                      size={20}
                       color={EXERCISE_BAR_TODAY}
                     />
                   </View>
@@ -523,7 +534,7 @@ export function DashboardScreen() {
                       {moveExercise.estKcalWeek} kcal
                     </Text>
                   </View>
-                  <View style={styles.exerciseChart}>
+                  <View style={[styles.exerciseChart, styles.exerciseChartCompact]}>
                     <ExerciseZigzagBg />
                     <ExerciseWeekBars
                       values={moveExercise.values}
@@ -531,6 +542,7 @@ export function DashboardScreen() {
                       dayKeys={moveExercise.dayKeys}
                       goalMinutes={EXERCISE_RING_GOAL}
                       todayIndex={moveExercise.todayIdx}
+                      maxBarHeight={62}
                     />
                   </View>
                 </View>
@@ -696,8 +708,8 @@ const styles = StyleSheet.create({
   },
   heroInner: {
     paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 6,
+    paddingTop: 2,
+    paddingBottom: 4,
     zIndex: 2,
   },
   heroKicker: {
@@ -782,7 +794,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 8,
-    marginTop: 14,
+    marginTop: 8,
   },
   miniRingWrap: {
     position: 'relative',
@@ -846,6 +858,9 @@ const styles = StyleSheet.create({
     color: DASH_MUTED,
     lineHeight: 18,
   },
+  metricStatPillOffset: {
+    marginTop: 12,
+  },
   halfCardStatPill: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
@@ -890,29 +905,36 @@ const styles = StyleSheet.create({
   todayHeroCard: {
     gap: 0,
   },
+  moveCard: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  moveCardIconRow: {
+    marginBottom: 6,
+  },
   todayHeroMetric: {
     fontSize: 17,
     fontWeight: '700',
     color: DASH_SLATE,
-    marginTop: 4,
+    marginTop: 2,
   },
   todayHeroSub: {
     fontSize: 13,
     fontWeight: '600',
     color: DASH_MUTED,
-    marginTop: 8,
+    marginTop: 5,
     lineHeight: 18,
   },
   todayHeroMicro: {
     fontSize: 12,
     fontWeight: '600',
     color: DASH_MUTED,
-    marginTop: 6,
+    marginTop: 4,
   },
   exerciseIconBubble: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -920,8 +942,8 @@ const styles = StyleSheet.create({
   exerciseBody: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
-    marginTop: 2,
+    gap: 8,
+    marginTop: 0,
   },
   exerciseCopy: {
     flex: 1,
@@ -935,6 +957,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 14,
     position: 'relative',
+  },
+  exerciseChartCompact: {
+    minHeight: 86,
   },
   exerciseZigzagSvg: {
     position: 'absolute',
