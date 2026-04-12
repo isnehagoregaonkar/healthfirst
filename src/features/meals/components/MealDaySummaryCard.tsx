@@ -133,6 +133,7 @@ export function MealDaySummaryCard({
 
 const styles = StyleSheet.create({
   outer: {
+    marginTop: 12,
     marginBottom: 18,
     borderRadius: 24,
     overflow: 'hidden',

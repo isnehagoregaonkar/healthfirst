@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
+import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { formatWaterEntryTime } from './waterDayUtils';
 import { useWaterIntakeScreen } from './hooks/useWaterIntakeScreen';
@@ -23,9 +24,9 @@ const WATER_TRACK = '#E5E7EB';
 export function WaterIntakeScreen() {
   const {
     goalMl,
+    selectedDay,
+    selectDay,
     dateNav,
-    goPrevDay,
-    goNextDay,
     loading,
     error,
     totalMl,
@@ -43,7 +44,7 @@ export function WaterIntakeScreen() {
     confirmRemoveEntry,
   } = useWaterIntakeScreen();
 
-  const { leftLabel, rightLabel, centerLabel, canGoNext, isViewingToday } = dateNav;
+  const { isViewingToday } = dateNav;
 
   return (
     <Screen applyTopSafeArea={false} applyBottomSafeArea={false}>
@@ -58,47 +59,12 @@ export function WaterIntakeScreen() {
           </View>
         ) : null}
 
-        <View style={styles.dateHeader}>
-          <View style={styles.dateNav}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Go to ${leftLabel}`}
-              onPress={goPrevDay}
-              style={({ pressed }) => [styles.dateNavSide, pressed && styles.dateNavPressed]}
-            >
-              <Icon name="chevron-left" size={28} color={colors.primary} />
-              <Text style={styles.dateNavSideText} numberOfLines={2}>
-                {leftLabel}
-              </Text>
-            </Pressable>
-
-            <View style={styles.dateNavCenter}>
-              <Text style={styles.dateNavCenterText}>{centerLabel}</Text>
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Go to ${rightLabel}`}
-              onPress={goNextDay}
-              disabled={!canGoNext}
-              style={({ pressed }) => [
-                styles.dateNavSide,
-                styles.dateNavSideEnd,
-                !canGoNext && styles.dateNavDisabled,
-                pressed && canGoNext && styles.dateNavPressed,
-              ]}
-            >
-              <Text style={[styles.dateNavSideText, !canGoNext && styles.dateNavSideTextDisabled]} numberOfLines={2}>
-                {rightLabel}
-              </Text>
-              <Icon
-                name="chevron-right"
-                size={28}
-                color={canGoNext ? colors.primary : colors.border}
-              />
-            </Pressable>
-          </View>
-        </View>
+        <ScreenTopCard
+          mode="date"
+          selectedDay={selectedDay}
+          onSelectDay={selectDay}
+          stripScope="scrollablePast"
+        />
 
         <View style={styles.progressCard}>
           {loading ? (
@@ -303,14 +269,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  dateHeader: {
-    paddingTop: 4,
-    paddingBottom: 10,
-    marginBottom: 0,
-  },
   progressCard: {
     ...cardChrome,
-    marginTop: 4,
+    marginTop: 12,
     marginBottom: 14,
   },
   lastDrink: {
@@ -460,52 +421,6 @@ const styles = StyleSheet.create({
   },
   tlDeleteDisabled: {
     opacity: 0.45,
-  },
-  dateNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 52,
-    paddingHorizontal: 0,
-  },
-  dateNavSide: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  dateNavSideEnd: {
-    justifyContent: 'flex-end',
-  },
-  dateNavSideText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    lineHeight: 17,
-  },
-  dateNavSideTextDisabled: {
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  dateNavCenter: {
-    paddingHorizontal: 12,
-    minWidth: 112,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateNavCenterText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
-  },
-  dateNavDisabled: {
-    opacity: 0.85,
-  },
-  dateNavPressed: {
-    opacity: 0.75,
   },
   loadingBlock: {
     alignItems: 'center',

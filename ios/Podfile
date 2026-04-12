@@ -1,3 +1,10 @@
+# RN 0.85 omits legacy native-module code by default (RCT_REMOVE_LEGACY_ARCH=1).
+# @notifee/react-native is still a legacy bridge module; keep legacy arch in the build.
+ENV['RCT_REMOVE_LEGACY_ARCH'] = '0'
+# Prebuilt React-Core binaries often ship without legacy bridge interop; Notifee needs a core
+# built from source with legacy paths. First `pod install` + Xcode build will take longer.
+ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
+
 # Resolve react_native_pods.rb with node to allow for hoisting
 require Pod::Executable.execute_command('node', ['-p',
   'require.resolve(
@@ -13,6 +20,7 @@ if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
   use_frameworks! :linkage => linkage.to_sym
 end
+use_frameworks! :linkage => :static
 
 target 'HealthFirst' do
   config = use_native_modules!

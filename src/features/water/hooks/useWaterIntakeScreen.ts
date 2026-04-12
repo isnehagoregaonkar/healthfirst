@@ -33,9 +33,9 @@ export type WaterCompareSlice = Readonly<{
 
 export type UseWaterIntakeScreenResult = Readonly<{
   goalMl: number;
+  selectedDay: Date;
+  selectDay: (d: Date) => void;
   dateNav: ReturnType<typeof getWaterDateNavLabels>;
-  goPrevDay: () => void;
-  goNextDay: () => void;
   loading: boolean;
   error: string | null;
   totalMl: number;
@@ -70,7 +70,7 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
   const [coachingNow, setCoachingNow] = useState(() => new Date());
 
   const dateNav = useMemo(() => getWaterDateNavLabels(selectedDay), [selectedDay]);
-  const { canGoNext, isViewingToday } = dateNav;
+  const { isViewingToday } = dateNav;
 
   const percent = useMemo(
     () => clampWaterPercent(goalMl > 0 ? (totalMl / goalMl) * 100 : 0),
@@ -177,17 +177,6 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
     };
   }, [selectedDay]);
 
-  const goPrevDay = useCallback(() => {
-    setSelectedDay((d) => addCalendarDays(d, -1));
-  }, []);
-
-  const goNextDay = useCallback(() => {
-    if (!canGoNext) {
-      return;
-    }
-    setSelectedDay((d) => addCalendarDays(d, 1));
-  }, [canGoNext]);
-
   const addMl = useCallback(
     async (ml: number) => {
       if (!isViewingToday) {
@@ -256,11 +245,15 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
     [removeEntryById],
   );
 
+  const selectDay = useCallback((d: Date) => {
+    setSelectedDay(startOfLocalDay(d));
+  }, []);
+
   return {
     goalMl,
+    selectedDay,
+    selectDay,
     dateNav,
-    goPrevDay,
-    goNextDay,
     loading,
     error,
     totalMl,

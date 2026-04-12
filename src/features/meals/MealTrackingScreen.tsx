@@ -14,13 +14,13 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { LogMealItemPayload, MealItemRow, MealType } from '../../services/meals';
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
+import { ScreenTopCard } from '../../components/screenTop';
 import { formatDayShort, isSameLocalDay } from '../water/waterDayUtils';
 import { MEAL_PRIMARY } from './mealUiTheme';
 import { MEAL_TYPE_ORDER } from './mealConstants';
 import { AddMealActions } from './components/AddMealActions';
 import { MealAddFoodModal } from './components/MealAddFoodModal';
 import { MealCalorieProfileModal } from './components/MealCalorieProfileModal';
-import { MealDayStrip } from './components/MealDayStrip';
 import { MealDaySummaryCard } from './components/MealDaySummaryCard';
 import { MealTypeSection } from './components/MealTypeSection';
 import { useMealCalorieTarget } from './hooks/useMealCalorieTarget';
@@ -140,7 +140,7 @@ export function MealTrackingScreen() {
             </View>
           ) : (
             <ScrollView
-              style={styles.scroll}
+              style={styles.scrollFlex}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -167,7 +167,13 @@ export function MealTrackingScreen() {
                 </Pressable>
               ) : null}
 
-              <MealDayStrip selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+              <ScreenTopCard
+                mode="date"
+                selectedDay={selectedDay}
+                onSelectDay={setSelectedDay}
+                stripScope="scrollablePast"
+                accentColor={MEAL_PRIMARY}
+              />
 
               {!isViewingToday ? (
                 <Text style={styles.pastHint}>
@@ -260,13 +266,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  scroll: {
+  scrollFlex: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 4,
   },
   scrollContent: {
-    paddingBottom: 36,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 28,
   },
   pastHint: {
     fontSize: 13,
