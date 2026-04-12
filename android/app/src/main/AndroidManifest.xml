@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.health.WRITE_STEPS" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
       android:name=".MainApplication"
@@ -15,6 +16,9 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <meta-data
+  android:name="android.health.connect"
+  android:value="true" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
@@ -27,5 +31,6 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+      
     </application>
 </manifest>

@@ -4,3 +4,13 @@ extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autoli
 rootProject.name = 'HealthFirst'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        // Async Storage v3 ships storage-android only in this folder (not on Maven Central).
+        maven { url = uri("${settings.settingsDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo") }
+    }
+}
