@@ -12,6 +12,8 @@ import {
   loadManualExerciseSessions,
 } from '../storage/manualExerciseStorage';
 import {
+  EMPTY_HEALTH_CONNECT_INSIGHT,
+  type HealthConnectInsight,
   type HealthConnectStatus,
   fetchAndroidHealthSnapshot,
   fetchIosHealthSnapshot,
@@ -66,6 +68,8 @@ export function useExerciseScreen() {
   const [androidHealthHint, setAndroidHealthHint] = useState<string | null>(
     null,
   );
+  const [healthConnectInsight, setHealthConnectInsight] =
+    useState<HealthConnectInsight>(EMPTY_HEALTH_CONNECT_INSIGHT);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -82,8 +86,9 @@ export function useExerciseScreen() {
         setHealthWorkouts(snap.workouts);
         setAndroidStatus('unavailable');
         setAndroidHealthHint(null);
+        setHealthConnectInsight(EMPTY_HEALTH_CONNECT_INSIGHT);
       } else if (Platform.OS === 'android') {
-        const snap = await fetchAndroidHealthSnapshot();
+        const snap = await fetchAndroidHealthSnapshot(selectedDay);
         setHealthOk(snap.ok);
         setIosHealthError(null);
         setAppleHealthReadHint(null);
@@ -91,6 +96,9 @@ export function useExerciseScreen() {
         setAndroidHealthHint(snap.androidHealthHint ?? null);
         setStepsToday(snap.stepsToday);
         setHealthWorkouts(snap.workouts);
+        setHealthConnectInsight(
+          snap.healthConnectInsight ?? EMPTY_HEALTH_CONNECT_INSIGHT,
+        );
       } else {
         setHealthOk(false);
         setIosHealthError(null);
@@ -98,11 +106,12 @@ export function useExerciseScreen() {
         setStepsToday(0);
         setHealthWorkouts([]);
         setAndroidHealthHint(null);
+        setHealthConnectInsight(EMPTY_HEALTH_CONNECT_INSIGHT);
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedDay]);
 
   const combinedHistory = useMemo(
     () => mergeSessions(healthWorkouts, manualSessions),
@@ -193,6 +202,7 @@ export function useExerciseScreen() {
     appleHealthReadHint,
     androidStatus,
     androidHealthHint,
+    healthConnectInsight,
     integrationSubtitle,
     formatSessionTime,
     openAndroidHealthSettings,

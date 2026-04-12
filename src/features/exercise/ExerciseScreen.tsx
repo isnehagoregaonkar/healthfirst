@@ -31,6 +31,16 @@ const ACTIVITIES = [
   'Other',
 ] as const;
 
+function formatHydrationDayMl(ml: number): string {
+  if (ml <= 0) {
+    return 'No entries today';
+  }
+  if (ml >= 1000) {
+    return `${(ml / 1000).toFixed(1)} L`;
+  }
+  return `${Math.round(ml)} ml`;
+}
+
 function sourceLabel(source: ExerciseSessionRow['source']): string {
   switch (source) {
     case 'apple_health':
@@ -116,6 +126,7 @@ export function ExerciseScreen() {
     appleHealthReadHint,
     androidStatus,
     androidHealthHint,
+    healthConnectInsight,
     integrationSubtitle,
     openAndroidHealthSettings,
     openIosHealthApp,
@@ -131,7 +142,7 @@ export function ExerciseScreen() {
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, selectedDay]);
 
   const onSaveManual = async () => {
     const mins = Number.parseInt(durationText.replace(/\D/g, ''), 10);
@@ -173,6 +184,15 @@ export function ExerciseScreen() {
 
         {isViewingToday ? (
           <StepsHero steps={stepsToday} goal={STEP_GOAL_DEFAULT} />
+        ) : Platform.OS === 'android' ? (
+          <View style={styles.stepsPastCard}>
+            <Text style={styles.stepsPastEyebrow}>Steps · {selectedDayLabel}</Text>
+            <Text style={styles.stepsPastBody}>
+              {stepsToday > 0
+                ? `${stepsToday.toLocaleString()} steps from Health Connect for this day.`
+                : 'No step records in Health Connect for this calendar day (or they have not synced yet). Pull to refresh after Samsung / Health Connect sync.'}
+            </Text>
+          </View>
         ) : (
           <View style={styles.stepsPastCard}>
             <Text style={styles.stepsPastEyebrow}>Steps</Text>
@@ -199,6 +219,42 @@ export function ExerciseScreen() {
             </Text>
           </View>
           <Text style={styles.integrationBody}>{integrationSubtitle}</Text>
+          {Platform.OS === 'android' ? (
+            <View style={styles.hcInsightBlock}>
+              <Text style={styles.hcInsightTitle}>Other Health Connect data</Text>
+              <Text style={styles.hcInsightLine}>
+                Workout sessions (loaded):{' '}
+                {healthConnectInsight.workoutSessionsLoaded.toLocaleString()}
+              </Text>
+              <Text style={styles.hcInsightLine}>
+                Hydration (this day): {formatHydrationDayMl(healthConnectInsight.hydrationDayMl)}
+              </Text>
+              <Text style={styles.hcInsightLine}>
+                Nutrition (this day):{' '}
+                {healthConnectInsight.nutritionEntriesOnDay.toLocaleString()} entries ·{' '}
+                {healthConnectInsight.nutritionEnergyKcalOnDay.toLocaleString()} kcal
+              </Text>
+              <Text style={styles.hcInsightLine}>
+                Weight (this day):{' '}
+                {healthConnectInsight.weightKgOnDay != null
+                  ? `${healthConnectInsight.weightKgOnDay.toFixed(1)} kg`
+                  : '—'}{' '}
+                · {healthConnectInsight.weightReadingsOnDay.toLocaleString()} reading(s)
+              </Text>
+              <Text style={styles.hcInsightLine}>
+                Active calories (this day):{' '}
+                {healthConnectInsight.activeCaloriesDayKcal != null
+                  ? `${Math.round(healthConnectInsight.activeCaloriesDayKcal)} kcal`
+                  : '—'}
+              </Text>
+              <Text style={styles.hcInsightLine}>
+                Total calories burned (this day):{' '}
+                {healthConnectInsight.totalCaloriesBurnedDayKcal != null
+                  ? `${Math.round(healthConnectInsight.totalCaloriesBurnedDayKcal)} kcal`
+                  : '—'}
+              </Text>
+            </View>
+          ) : null}
           {Platform.OS === 'ios' && iosHealthError ? (
             <Text style={styles.integrationError}>{iosHealthError}</Text>
           ) : null}
@@ -501,6 +557,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: t.muted,
     lineHeight: 19,
+  },
+  hcInsightBlock: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E9D5FF',
+    gap: 6,
+  },
+  hcInsightTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: t.slate,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  hcInsightLine: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: t.muted,
+    lineHeight: 17,
   },
   integrationError: {
     marginTop: 10,

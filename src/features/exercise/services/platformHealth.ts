@@ -1,4 +1,5 @@
 import { Linking, NativeModules, Platform } from 'react-native';
+import { startOfLocalDay } from '../../water/waterDayUtils';
 import type { ExerciseSessionRow } from '../exerciseTypes';
 
 export type HealthConnectStatus =
@@ -7,10 +8,51 @@ export type HealthConnectStatus =
   | 'permission_denied'
   | 'ready';
 
+/** Summary of extra Health Connect types for one local calendar day (the day strip selection). */
+export type HealthConnectInsight = {
+  hydrationDayMl: number;
+  nutritionEntriesOnDay: number;
+  nutritionEnergyKcalOnDay: number;
+  weightKgOnDay: number | null;
+  weightReadingsOnDay: number;
+  activeCaloriesDayKcal: number | null;
+  totalCaloriesBurnedDayKcal: number | null;
+  workoutSessionsLoaded: number;
+};
+
+export const EMPTY_HEALTH_CONNECT_INSIGHT: HealthConnectInsight = {
+  hydrationDayMl: 0,
+  nutritionEntriesOnDay: 0,
+  nutritionEnergyKcalOnDay: 0,
+  weightKgOnDay: null,
+  weightReadingsOnDay: 0,
+  activeCaloriesDayKcal: null,
+  totalCaloriesBurnedDayKcal: null,
+  workoutSessionsLoaded: 0,
+};
+
+type HealthConnectModule = typeof import('react-native-health-connect');
+
 function hcLog(tag: string, data: unknown): void {
   if (__DEV__) {
     // eslint-disable-next-line no-console
     console.log(`[HealthFirst][HealthConnect] ${tag}`, data);
+  }
+}
+
+/** Pretty-print nested HC objects in Metro / adb logcat (expandable + copy-paste). */
+function hcLogJson(tag: string, data: unknown): void {
+  if (!__DEV__) {
+    return;
+  }
+  try {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[HealthFirst][HealthConnect] ${tag}\n`,
+      JSON.stringify(data, null, 2),
+    );
+  } catch {
+    hcLog(tag, data);
   }
 }
 
@@ -22,6 +64,69 @@ function healthConnectGrantIncludes(
   return granted.some(
     g => g.accessType === access && g.recordType === recordType,
   );
+}
+
+function volumeToMl(vol: unknown): number {
+  if (vol && typeof vol === 'object' && 'inMilliliters' in vol) {
+    return Math.round(
+      Number((vol as { inMilliliters: number }).inMilliliters) || 0,
+    );
+  }
+  if (vol && typeof vol === 'object' && 'value' in vol && 'unit' in vol) {
+    const v = vol as { value: number; unit: string };
+    if (v.unit === 'milliliters') {
+      return Math.round(v.value);
+    }
+    if (v.unit === 'liters') {
+      return Math.round(v.value * 1000);
+    }
+    if (v.unit === 'fluidOuncesUs') {
+      return Math.round(v.value * 29.5735);
+    }
+  }
+  return 0;
+}
+
+function massToKg(m: unknown): number | null {
+  if (m && typeof m === 'object' && 'inKilograms' in m) {
+    const n = Number((m as { inKilograms: number }).inKilograms);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function energyToKcal(e: unknown): number {
+  if (e && typeof e === 'object' && 'inKilocalories' in e) {
+    return Math.round(
+      Number((e as { inKilocalories: number }).inKilocalories) || 0,
+    );
+  }
+  return 0;
+}
+
+async function hcReadAllPages(
+  HC: HealthConnectModule,
+  recordType: 'ExerciseSession' | 'Hydration' | 'Nutrition' | 'Weight',
+  range: { operator: 'between'; startTime: string; endTime: string },
+  pageSize = 150,
+  maxPages = 40,
+): Promise<unknown[]> {
+  const out: unknown[] = [];
+  let pageToken: string | undefined;
+  let pages = 0;
+  do {
+    const res = await HC.readRecords(recordType, {
+      timeRangeFilter: range,
+      ascendingOrder: false,
+      pageSize,
+      pageToken,
+    });
+    const chunk = res.records ?? [];
+    out.push(...chunk);
+    pageToken = res.pageToken;
+    pages += 1;
+  } while (pageToken && pages < maxPages);
+  return out;
 }
 
 /**
@@ -250,10 +355,10 @@ export async function openIosHealthApp(): Promise<void> {
   }
 }
 
-function dayBounds(): { start: Date; end: Date } {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
+/** Start of local calendar day for `reference` and a sensible query end (now if that day is today, else end of that day). */
+function dayBounds(reference: Date = new Date()): { start: Date; end: Date } {
+  const start = startOfLocalDay(reference);
+  const end = stepSampleQueryEnd(start);
   return { start, end };
 }
 
@@ -956,17 +1061,28 @@ export async function fetchIosHealthSnapshot(): Promise<{
   return { ok: true, stepsToday, workouts, appleHealthReadHint };
 }
 
-/** Android Health Connect: initialize + permissions + aggregate steps + sessions. */
-export async function fetchAndroidHealthSnapshot(): Promise<{
+/**
+ * Android Health Connect: permissions, steps, long workout history, hydration, nutrition, weight, calories.
+ * @param referenceLocalDay Calendar day to aggregate (steps, calories, hydration, etc.). Use the Exercise day-strip value (start-of-day).
+ */
+export async function fetchAndroidHealthSnapshot(
+  referenceLocalDay: Date = new Date(),
+): Promise<{
   ok: boolean;
   status: HealthConnectStatus;
   stepsToday: number;
   workouts: ExerciseSessionRow[];
-  /** Shown on Exercise screen when sync fails, permissions are partial, or data may be elsewhere (e.g. Samsung Health). */
   androidHealthHint?: string;
+  healthConnectInsight: HealthConnectInsight;
 }> {
   if (Platform.OS !== 'android') {
-    return { ok: false, status: 'unavailable', stepsToday: 0, workouts: [] };
+    return {
+      ok: false,
+      status: 'unavailable',
+      stepsToday: 0,
+      workouts: [],
+      healthConnectInsight: EMPTY_HEALTH_CONNECT_INSIGHT,
+    };
   }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -980,6 +1096,7 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
         status: 'needs_install',
         stepsToday: 0,
         workouts: [],
+        healthConnectInsight: EMPTY_HEALTH_CONNECT_INSIGHT,
         androidHealthHint:
           'Install or update Health Connect from the Play Store (on Android 14+ it is built into the system).',
       };
@@ -992,7 +1109,9 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
         status: 'unavailable',
         stepsToday: 0,
         workouts: [],
-        androidHealthHint: 'Health Connect failed to initialize. Reopen the app or reboot the device.',
+        healthConnectInsight: EMPTY_HEALTH_CONNECT_INSIGHT,
+        androidHealthHint:
+          'Health Connect failed to initialize. Reopen the app or reboot the device.',
       };
     }
 
@@ -1000,6 +1119,12 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
       { accessType: 'read' as const, recordType: 'ReadHealthDataHistory' as const },
       { accessType: 'read' as const, recordType: 'Steps' as const },
       { accessType: 'read' as const, recordType: 'ExerciseSession' as const },
+      { accessType: 'read' as const, recordType: 'Hydration' as const },
+      { accessType: 'read' as const, recordType: 'Nutrition' as const },
+      { accessType: 'read' as const, recordType: 'Weight' as const },
+      { accessType: 'read' as const, recordType: 'ActiveCaloriesBurned' as const },
+      { accessType: 'read' as const, recordType: 'TotalCaloriesBurned' as const },
+      { accessType: 'read' as const, recordType: 'Distance' as const },
       { accessType: 'write' as const, recordType: 'Steps' as const },
       { accessType: 'write' as const, recordType: 'ExerciseSession' as const },
     ];
@@ -1015,19 +1140,48 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
       'read',
       'ExerciseSession',
     );
+    const canReadHydration = healthConnectGrantIncludes(
+      granted,
+      'read',
+      'Hydration',
+    );
+    const canReadNutrition = healthConnectGrantIncludes(
+      granted,
+      'read',
+      'Nutrition',
+    );
+    const canReadWeight = healthConnectGrantIncludes(granted, 'read', 'Weight');
+    const canReadActiveCal = healthConnectGrantIncludes(
+      granted,
+      'read',
+      'ActiveCaloriesBurned',
+    );
+    const canReadTotalCal = healthConnectGrantIncludes(
+      granted,
+      'read',
+      'TotalCaloriesBurned',
+    );
 
-    if (!canReadSteps && !canReadExercise) {
+    const canReadAny =
+      canReadSteps ||
+      canReadExercise ||
+      canReadHydration ||
+      canReadNutrition ||
+      canReadWeight;
+
+    if (!canReadAny) {
       return {
         ok: false,
         status: 'permission_denied',
         stepsToday: 0,
         workouts: [],
+        healthConnectInsight: EMPTY_HEALTH_CONNECT_INSIGHT,
         androidHealthHint:
-          'Health Connect has no read access yet. Tap Sync now and allow Steps and Exercise; then in Health Connect → App permissions → HealthFirst, ensure reads are on.',
+          'Health Connect has no read access yet. Tap Sync now and allow at least one category (e.g. Steps or Exercise).',
       };
     }
 
-    const { start, end } = dayBounds();
+    const { start, end } = dayBounds(referenceLocalDay);
     const range = {
       operator: 'between' as const,
       startTime: start.toISOString(),
@@ -1036,13 +1190,14 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
 
     let stepsToday = 0;
     if (canReadSteps) {
+      let stepsFromAgg = 0;
       try {
         const agg = await HC.aggregateRecord({
           recordType: 'Steps',
           timeRangeFilter: range,
         });
         hcLog('aggregateRecord Steps', agg);
-        stepsToday =
+        stepsFromAgg =
           agg && typeof agg === 'object' && 'COUNT_TOTAL' in agg
             ? Math.round(Number((agg as { COUNT_TOTAL: number }).COUNT_TOTAL) || 0)
             : 0;
@@ -1050,76 +1205,234 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
         hcLog('aggregateRecord Steps failed', e);
       }
 
-      if (stepsToday === 0) {
-        try {
-          const { records: stepRows } = await HC.readRecords('Steps', {
-            timeRangeFilter: range,
-            ascendingOrder: false,
-            pageSize: 500,
-          });
-          const sum = (stepRows ?? []).reduce(
-            (acc: number, row: { count?: number }) =>
-              acc + (typeof row.count === 'number' ? row.count : 0),
-            0,
-          );
-          hcLog('readRecords Steps fallback sum', { rows: stepRows?.length ?? 0, sum });
-          stepsToday = Math.round(sum);
-        } catch (e) {
-          hcLog('readRecords Steps failed', e);
-        }
+      let stepsFromRecords = 0;
+      try {
+        const { records: stepRows } = await HC.readRecords('Steps', {
+          timeRangeFilter: range,
+          ascendingOrder: false,
+          pageSize: 500,
+        });
+        const sum = (stepRows ?? []).reduce(
+          (acc: number, row: { count?: number }) =>
+            acc + (typeof row.count === 'number' ? row.count : 0),
+          0,
+        );
+        hcLog('readRecords Steps sum', { rows: stepRows?.length ?? 0, sum });
+        hcLogJson('raw Steps records (first 8)', (stepRows ?? []).slice(0, 8));
+        stepsFromRecords = Math.round(sum);
+      } catch (e) {
+        hcLog('readRecords Steps failed', e);
       }
+      stepsToday = Math.max(stepsFromAgg, stepsFromRecords);
     }
 
     let workouts: ExerciseSessionRow[] = [];
     if (canReadExercise) {
       const histStart = new Date();
-      histStart.setDate(histStart.getDate() - 21);
+      histStart.setDate(histStart.getDate() - 365);
+      const histEnd = new Date();
       try {
-        const { records } = await HC.readRecords('ExerciseSession', {
-          timeRangeFilter: {
+        const rawSessions = await hcReadAllPages(
+          HC,
+          'ExerciseSession',
+          {
             operator: 'between',
             startTime: histStart.toISOString(),
-            endTime: end.toISOString(),
+            endTime: histEnd.toISOString(),
           },
-          ascendingOrder: false,
-          pageSize: 60,
-        });
-        hcLog('readRecords ExerciseSession count', records?.length ?? 0);
+          150,
+          50,
+        );
+        hcLog('readRecords ExerciseSession total (paginated)', rawSessions.length);
+        hcLogJson(
+          'raw ExerciseSession records (first 5)',
+          rawSessions.slice(0, 5),
+        );
 
-        workouts = (records ?? []).map(
-          (rec: {
+        workouts = rawSessions.map((raw: unknown) => {
+          const rec = raw as {
             metadata?: { id?: string };
             startTime: string;
             endTime: string;
             title?: string;
             exerciseType?: number;
-          }) => {
-            const startT = rec.startTime;
-            const endT = rec.endTime;
-            const ms = new Date(endT).getTime() - new Date(startT).getTime();
-            const durationMin = Math.max(1, Math.round(ms / 60_000));
-            const id =
-              rec.metadata?.id ??
-              `hc-${startT}-${String(rec.exerciseType ?? 0)}`;
-            return {
-              id,
-              source: 'health_connect' as const,
-              title: rec.title?.trim() || 'Exercise session',
-              startedAt: startT,
-              endedAt: endT,
-              durationMin,
-            };
-          },
-        );
+          };
+          const startT = rec.startTime;
+          const endT = rec.endTime;
+          const ms = new Date(endT).getTime() - new Date(startT).getTime();
+          const durationMin = Math.max(1, Math.round(ms / 60_000));
+          const id =
+            rec.metadata?.id ??
+            `hc-${startT}-${String(rec.exerciseType ?? 0)}`;
+          return {
+            id,
+            source: 'health_connect' as const,
+            title: rec.title?.trim() || 'Exercise session',
+            startedAt: startT,
+            endedAt: endT,
+            durationMin,
+          };
+        });
       } catch (e) {
         hcLog('readRecords ExerciseSession failed', e);
       }
     }
 
+    const insight: HealthConnectInsight = { ...EMPTY_HEALTH_CONNECT_INSIGHT };
+    insight.workoutSessionsLoaded = workouts.length;
+
+    let hydrationDayMl = 0;
+    if (canReadHydration) {
+      try {
+        const hAgg = await HC.aggregateRecord({
+          recordType: 'Hydration',
+          timeRangeFilter: range,
+        });
+        if (hAgg && typeof hAgg === 'object' && 'VOLUME_TOTAL' in hAgg) {
+          hydrationDayMl = volumeToMl(
+            (hAgg as { VOLUME_TOTAL: unknown }).VOLUME_TOTAL,
+          );
+        }
+        hcLog('aggregateRecord Hydration', hAgg);
+      } catch (e) {
+        hcLog('aggregateRecord Hydration failed', e);
+      }
+      if (hydrationDayMl === 0) {
+        try {
+          const rows = await hcReadAllPages(HC, 'Hydration', range, 100, 10);
+          hcLogJson('raw Hydration records (first 8)', rows.slice(0, 8));
+          hydrationDayMl = rows.reduce(
+            (acc: number, row: unknown) =>
+              acc + volumeToMl((row as { volume?: unknown }).volume),
+            0,
+          );
+          hcLog('readRecords Hydration day sum ml', hydrationDayMl);
+        } catch (e) {
+          hcLog('readRecords Hydration failed', e);
+        }
+      }
+    }
+    insight.hydrationDayMl = hydrationDayMl;
+
+    if (canReadNutrition) {
+      try {
+        const nutRows = await hcReadAllPages(HC, 'Nutrition', range, 120, 20);
+        insight.nutritionEntriesOnDay = nutRows.length;
+        let kcalDay = 0;
+        for (const row of nutRows) {
+          kcalDay += energyToKcal((row as { energy?: unknown }).energy);
+        }
+        insight.nutritionEnergyKcalOnDay = kcalDay;
+        hcLogJson('raw Nutrition records (first 5)', nutRows.slice(0, 5));
+        hcLog('Nutrition summary (selected day)', {
+          entries: insight.nutritionEntriesOnDay,
+          kcal: kcalDay,
+        });
+      } catch (e) {
+        hcLog('readRecords Nutrition failed', e);
+      }
+    }
+
+    if (canReadWeight) {
+      try {
+        const wRows = await hcReadAllPages(HC, 'Weight', range, 80, 10);
+        insight.weightReadingsOnDay = wRows.length;
+        let latest: { t: number; kg: number } | null = null;
+        for (const row of wRows) {
+          const tStr = (row as { time?: string }).time;
+          const kg = massToKg((row as { weight?: unknown }).weight);
+          if (!tStr || kg == null) {
+            continue;
+          }
+          const t = new Date(tStr).getTime();
+          if (!latest || t > latest.t) {
+            latest = { t, kg };
+          }
+        }
+        insight.weightKgOnDay = latest ? Math.round(latest.kg * 10) / 10 : null;
+        hcLogJson('raw Weight records (first 5)', wRows.slice(0, 5));
+        hcLog('Weight summary (selected day)', {
+          samples: wRows.length,
+          kgOnDay: insight.weightKgOnDay,
+        });
+      } catch (e) {
+        hcLog('readRecords Weight failed', e);
+      }
+    }
+
+    if (canReadActiveCal) {
+      try {
+        const aAgg = await HC.aggregateRecord({
+          recordType: 'ActiveCaloriesBurned',
+          timeRangeFilter: range,
+        });
+        if (
+          aAgg &&
+          typeof aAgg === 'object' &&
+          'ACTIVE_CALORIES_TOTAL' in aAgg
+        ) {
+          insight.activeCaloriesDayKcal = energyToKcal(
+            (aAgg as { ACTIVE_CALORIES_TOTAL: unknown }).ACTIVE_CALORIES_TOTAL,
+          );
+        }
+        hcLog('aggregateRecord ActiveCaloriesBurned', aAgg);
+      } catch (e) {
+        hcLog('aggregateRecord ActiveCaloriesBurned failed', e);
+      }
+    }
+
+    if (canReadTotalCal) {
+      try {
+        const tAgg = await HC.aggregateRecord({
+          recordType: 'TotalCaloriesBurned',
+          timeRangeFilter: range,
+        });
+        if (tAgg && typeof tAgg === 'object' && 'ENERGY_TOTAL' in tAgg) {
+          insight.totalCaloriesBurnedDayKcal = energyToKcal(
+            (tAgg as { ENERGY_TOTAL: unknown }).ENERGY_TOTAL,
+          );
+        }
+        hcLog('aggregateRecord TotalCaloriesBurned', tAgg);
+      } catch (e) {
+        hcLog('aggregateRecord TotalCaloriesBurned failed', e);
+      }
+    }
+
+    const anyData =
+      stepsToday > 0 ||
+      workouts.length > 0 ||
+      insight.hydrationDayMl > 0 ||
+      insight.nutritionEntriesOnDay > 0 ||
+      insight.weightKgOnDay != null ||
+      (insight.activeCaloriesDayKcal ?? 0) > 0 ||
+      (insight.totalCaloriesBurnedDayKcal ?? 0) > 0;
+
     const samsungHint =
-      stepsToday === 0 && workouts.length === 0 && (canReadSteps || canReadExercise)
-        ? 'If you use Samsung Health: open Samsung Health → ⋮ or profile → Settings → Health Connect and allow data to sync into Health Connect. Until data appears there, this app cannot read it.'
+      !anyData && canReadAny
+        ? 'Permissions are on, but Health Connect has no data for this app yet. In Samsung Health: enable sync to Health Connect for Steps, Exercise, Hydration, Nutrition, and Weight. Open the Health Connect app and confirm those types show data before syncing here again.'
         : undefined;
+
+    hcLogJson('snapshot — aggregated result (what the app uses)', {
+      ok: true,
+      status: 'ready' as const,
+      referenceLocalDayStart: start.toISOString(),
+      stepsForSelectedDay: stepsToday,
+      workoutCount: workouts.length,
+      workoutsMappedPreview: workouts.slice(0, 10),
+      healthConnectInsight: insight,
+      readFlags: {
+        canReadSteps,
+        canReadExercise,
+        canReadHydration,
+        canReadNutrition,
+        canReadWeight,
+        canReadActiveCal,
+        canReadTotalCal,
+      },
+      aggregateDayRange: { start: range.startTime, end: range.endTime },
+      anyData,
+      androidHealthHint: samsungHint ?? null,
+    });
 
     return {
       ok: true,
@@ -1127,6 +1440,7 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
       stepsToday,
       workouts,
       androidHealthHint: samsungHint,
+      healthConnectInsight: insight,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -1138,6 +1452,7 @@ export async function fetchAndroidHealthSnapshot(): Promise<{
       status: 'unavailable',
       stepsToday: 0,
       workouts: [],
+      healthConnectInsight: EMPTY_HEALTH_CONNECT_INSIGHT,
       androidHealthHint: `Health Connect error: ${msg}`,
     };
   }
