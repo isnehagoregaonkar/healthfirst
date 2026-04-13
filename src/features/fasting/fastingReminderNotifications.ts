@@ -1,9 +1,6 @@
-import {
-  NativeModules,
-  PermissionsAndroid,
-  Platform,
-} from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getNotifee } from '../../services/notifeeLazy';
 import type { FastingReminderSettings, TimeOfDay } from './fastingTypes';
 import { fastWindowMinutes } from './fastingScheduleDuration';
 
@@ -16,53 +13,6 @@ type NotifeeNamespace = typeof import('@notifee/react-native');
 type PendingFastingStart = Readonly<{
   durationMin: number | null;
 }>;
-
-let cachedNotifee: NotifeeNamespace | null | undefined;
-
-/** Notifee only works if the legacy native module is registered on the bridge. */
-function isNotifeeNativePresent(): boolean {
-  try {
-    return NativeModules.NotifeeApiModule != null;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Do not `require('@notifee/react-native')` unless the native module exists. Loading the JS
- * package without native code causes the first API call to throw ("Notifee native module not found"),
- * and that error can surface as an uncaught redbox even inside try/catch in some RN/Hermes paths.
- */
-function getNotifee(): NotifeeNamespace | null {
-  if (cachedNotifee === null) {
-    return null;
-  }
-  if (cachedNotifee !== undefined) {
-    return cachedNotifee;
-  }
-  if (!isNotifeeNativePresent()) {
-    cachedNotifee = null;
-    if (__DEV__) {
-      console.warn(
-        '[fasting] Notifee native module is not linked (NativeModules.NotifeeApiModule is missing). Reminders are off. iOS: set RCT_USE_PREBUILT_RNCORE=0 in Podfile, pod install, clean build — prebuilt RN 0.85 often omits legacy bridge modules.',
-      );
-    }
-    return null;
-  }
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cachedNotifee = require('@notifee/react-native') as NotifeeNamespace;
-  } catch (e) {
-    cachedNotifee = null;
-    if (__DEV__) {
-      console.warn(
-        '[fasting] Failed to load @notifee/react-native JavaScript package.',
-        e,
-      );
-    }
-  }
-  return cachedNotifee;
-}
 
 export function nextDailyTriggerMillis(hour: number, minute: number): number {
   const now = new Date();

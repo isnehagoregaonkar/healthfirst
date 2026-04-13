@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, {
   Circle,
@@ -149,14 +149,26 @@ export function StreakPanel({
 }: StreakPanelProps) {
   const { cardW, ringDisplayPct, title, heroHeight, ringSize } =
     useStreakPanelLayout(currentStreak);
+  const stripRef = useRef<ScrollView>(null);
+
+  /** Week strip is ordered Mon → today; scroll so the latest day stays on-screen. */
+  const scrollLatestDayIntoView = useCallback(() => {
+    stripRef.current?.scrollToEnd({ animated: false });
+  }, []);
+
+  useEffect(() => {
+    scrollLatestDayIntoView();
+  }, [days, scrollLatestDayIntoView]);
 
   return (
     <View style={styles.block}>
       <View style={[styles.stripWrap, { width: cardW }]}>
         <ScrollView
+          ref={stripRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.stripScroll}
+          onContentSizeChange={scrollLatestDayIntoView}
         >
           {days.map(d => (
             <StreakDayCapsule
