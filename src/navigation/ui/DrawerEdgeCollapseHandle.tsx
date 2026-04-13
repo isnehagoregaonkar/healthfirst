@@ -1,4 +1,4 @@
-import { useDrawerProgress } from '@react-navigation/drawer';
+import { useDrawerProgress, useDrawerStatus } from '@react-navigation/drawer';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
@@ -47,6 +47,9 @@ type DrawerEdgeCollapseHandleProps = Readonly<{
 
 export function DrawerEdgeCollapseHandle({ onPress, top }: DrawerEdgeCollapseHandleProps) {
   const progress = useDrawerProgress();
+  const drawerStatus = useDrawerStatus();
+  /** Android still hit-tests opacity-0 views; this tab would sit over the header menu otherwise. */
+  const pointerEvents = drawerStatus === 'open' ? 'box-none' : 'none';
 
   const animatedStyle = useAnimatedStyle(() => {
     const p = progress.value;
@@ -63,7 +66,7 @@ export function DrawerEdgeCollapseHandle({ onPress, top }: DrawerEdgeCollapseHan
 
   return (
     <Animated.View
-      pointerEvents="box-none"
+      pointerEvents={pointerEvents}
       style={[
         styles.anchor,
         {
