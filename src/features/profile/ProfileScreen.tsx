@@ -259,6 +259,11 @@ export function ProfileScreen() {
         setInitialDisplayName(displayName.trim());
       }
       Alert.alert('Saved', 'Your profile has been updated.');
+    } catch (e) {
+      Alert.alert(
+        'Could not sync',
+        e instanceof Error ? e.message : 'Check your connection and try again.',
+      );
     } finally {
       setSaving(false);
     }
