@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PREFERRED_FAST_HOURS } from '../fastingConstants';
 import { FASTING_MOTIVATION_LINES } from '../fastingMotivation';
 import {
+  fireFastingReminderEnabledTest,
   requestFastingReminderPermission,
   syncFastingReminderNotifications,
 } from '../fastingReminderNotifications';
@@ -84,7 +85,9 @@ export function useIntermittentFastingScreen() {
       }
       const { granted } = await requestFastingReminderPermission();
       await patchReminders({ enabled: true });
-      if (!granted) {
+      if (granted) {
+        await fireFastingReminderEnabledTest();
+      } else {
         setReminderError(
           'Reminders are saved, but this device is blocking alerts. Allow notifications for HealthFirst in Settings to hear them.',
         );

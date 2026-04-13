@@ -118,7 +118,7 @@ async function ensureAndroidChannel(n: NotifeeNamespace): Promise<void> {
   await n.default.createChannel({
     id: ANDROID_CHANNEL_ID,
     name: 'Fasting reminders',
-    importance: n.AndroidImportance.DEFAULT,
+    importance: n.AndroidImportance.HIGH,
     vibration: true,
   });
 }
@@ -138,6 +138,10 @@ function scheduleOne(
       body,
       android: {
         channelId: ANDROID_CHANNEL_ID,
+        pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: 'default',
       },
     },
     {
@@ -186,6 +190,34 @@ export async function syncFastingReminderNotifications(
   } catch (e) {
     if (__DEV__) {
       console.warn('[fasting] Failed to sync reminder notifications.', e);
+    }
+  }
+}
+
+export async function fireFastingReminderEnabledTest(): Promise<void> {
+  const n = getNotifee();
+  if (!n) {
+    return;
+  }
+  try {
+    if (Platform.OS === 'android') {
+      await ensureAndroidChannel(n);
+    }
+    await n.default.displayNotification({
+      id: 'fasting-reminder-enabled-test',
+      title: 'Fasting reminders are on',
+      body: 'You will get alerts at your selected start and end times.',
+      android: {
+        channelId: ANDROID_CHANNEL_ID,
+        pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: 'default',
+      },
+    });
+  } catch (e) {
+    if (__DEV__) {
+      console.warn('[fasting] Failed to show reminder test notification.', e);
     }
   }
 }
