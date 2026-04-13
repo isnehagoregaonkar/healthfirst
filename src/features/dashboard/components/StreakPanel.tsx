@@ -8,6 +8,7 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { colors } from '../../../theme/tokens';
 import { DASH_MUTED as MUTED, DASH_SLATE as SLATE } from '../dashboardTokens';
 import { useStreakPanelLayout } from '../hooks/useStreakPanelLayout';
 
@@ -20,8 +21,8 @@ export type StreakCapsuleModel = Readonly<{
   isToday: boolean;
   tone: StreakCapsuleTone;
 }>;
-const GREEN = '#22C55E';
-const GREEN_DEEP = '#15803D';
+const GREEN = colors.primary;
+const GREEN_DEEP = colors.primary;
 const RED = '#DC2626';
 const RED_DEEP = '#B91C1C';
 const TRACK = '#E2E8F0';
@@ -244,11 +245,11 @@ const capsuleStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   wrapToday: {
-    borderColor: '#86EFAC',
+    borderColor: colors.primary,
     borderWidth: 1.5,
   },
   dayLblToday: {
-    color: GREEN_DEEP,
+    color: colors.primary,
     fontWeight: '800',
   },
   circleToday: {
@@ -267,13 +268,13 @@ const ringStyles = StyleSheet.create({
     top: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 6,
+    paddingBottom: 4,
   },
   num: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     color: SLATE,
-    lineHeight: 30,
+    lineHeight: 26,
   },
   days: {
     fontSize: 11,
@@ -288,7 +289,7 @@ const ringStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   block: {
-    gap: 14,
+    gap: 10,
   },
   stripWrap: {
     alignSelf: 'center',
@@ -311,19 +312,19 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 16,
-    gap: 14,
+    paddingLeft: 14,
+    paddingRight: 14,
+    gap: 10,
   },
   heroCopy: {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 4,
+    gap: 4,
+    paddingVertical: 2,
   },
   heroTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: SLATE,
     letterSpacing: -0.2,
@@ -336,9 +337,9 @@ const styles = StyleSheet.create({
   },
   heroBadge: {
     alignSelf: 'flex-start',
-    marginTop: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    marginTop: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: 'rgba(34, 197, 94, 0.16)',
   },

@@ -86,7 +86,6 @@ function WheelColumn({
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         onMomentumScrollEnd={onScrollEnd}
-        onScrollEndDrag={onScrollEnd}
         contentContainerStyle={styles.wheelContent}
         {...(Platform.OS === 'android' ? { overScrollMode: 'never' as const } : {})}
       >

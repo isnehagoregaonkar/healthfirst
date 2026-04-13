@@ -12,6 +12,10 @@ import {
   loadFastingState,
   saveFastingState,
 } from './fastingStorage';
+import {
+  cancelBreakNotification,
+  scheduleBreakNotificationForStartedFast,
+} from './fastingReminderNotifications';
 
 function sessionOverlapsLocalDay(session: FastingSession, day: Date): boolean {
   const dayStart = startOfLocalDay(day).getTime();
@@ -98,7 +102,7 @@ export function useFasting() {
     });
   }, []);
 
-  const startFast = useCallback(async () => {
+  const startFast = useCallback(async (options?: { breakAfterMin?: number }) => {
     const s = await loadFastingState();
     if (s.activeFastStartedAt) {
       return;
@@ -109,6 +113,13 @@ export function useFasting() {
       ...s,
       activeFastStartedAt: started,
     });
+    if (s.reminders.enabled) {
+      const breakAfterMin =
+        options?.breakAfterMin != null
+          ? Math.max(1, Math.round(options.breakAfterMin))
+          : Math.round(s.targetFastHours * 60);
+      await scheduleBreakNotificationForStartedFast(breakAfterMin / 60);
+    }
   }, []);
 
   const patchReminders = useCallback(
@@ -186,6 +197,7 @@ export function useFasting() {
       activeFastStartedAt: null,
       history: nextHistory,
     });
+    await cancelBreakNotification();
   }, []);
 
   return {
