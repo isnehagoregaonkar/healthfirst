@@ -8,6 +8,7 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { colors } from '../../../theme/tokens';
 import { DASH_MUTED as MUTED, DASH_SLATE as SLATE } from '../dashboardTokens';
 import { useStreakPanelLayout } from '../hooks/useStreakPanelLayout';
 
@@ -20,8 +21,8 @@ export type StreakCapsuleModel = Readonly<{
   isToday: boolean;
   tone: StreakCapsuleTone;
 }>;
-const GREEN = '#22C55E';
-const GREEN_DEEP = '#15803D';
+const GREEN = colors.primary;
+const GREEN_DEEP = colors.primary;
 const RED = '#DC2626';
 const RED_DEEP = '#B91C1C';
 const TRACK = '#E2E8F0';
@@ -244,11 +245,11 @@ const capsuleStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   wrapToday: {
-    borderColor: '#86EFAC',
+    borderColor: colors.primary,
     borderWidth: 1.5,
   },
   dayLblToday: {
-    color: GREEN_DEEP,
+    color: colors.primary,
     fontWeight: '800',
   },
   circleToday: {

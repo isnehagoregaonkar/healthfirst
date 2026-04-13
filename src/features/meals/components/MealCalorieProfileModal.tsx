@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,7 +12,10 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MealCalorieProfile, MealCalorieSex } from '../../../services/mealCalorieTarget';
+import type {
+  MealCalorieProfile,
+  MealCalorieSex,
+} from '../../../services/mealCalorieTarget';
 import { colors } from '../../../theme/tokens';
 import { MEAL_PRIMARY } from '../mealUiTheme';
 
@@ -53,7 +57,10 @@ export function MealCalorieProfileModal({
     const h = Number.parseFloat(heightCm.replace(',', '.'));
     const a = Number.parseInt(age.replace(/\s/g, ''), 10);
     if (!Number.isFinite(w) || w < 30 || w > 300) {
-      Alert.alert('Check weight', 'Enter current weight between 30 and 300 kg.');
+      Alert.alert(
+        'Check weight',
+        'Enter current weight between 30 and 300 kg.',
+      );
       return;
     }
     if (!Number.isFinite(g) || g < 30 || g > 300) {
@@ -68,6 +75,7 @@ export function MealCalorieProfileModal({
       Alert.alert('Check age', 'Enter age between 14 and 100.');
       return;
     }
+    Keyboard.dismiss();
     setSaving(true);
     try {
       await onSave({
@@ -84,12 +92,21 @@ export function MealCalorieProfileModal({
   }, [weightKg, goalKg, heightCm, age, sex, onSave, onClose]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.backdrop}
       >
-        <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Dismiss" />
+        <Pressable
+          style={styles.scrim}
+          onPress={onClose}
+          accessibilityLabel="Dismiss"
+        />
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>Calorie target</Text>
@@ -97,14 +114,18 @@ export function MealCalorieProfileModal({
               accessibilityRole="button"
               accessibilityLabel="Close"
               onPress={onClose}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && styles.iconBtnPressed,
+              ]}
             >
               <Icon name="close" size={22} color={colors.textPrimary} />
             </Pressable>
           </View>
           <Text style={styles.blurb}>
-            We estimate your suggested intake from weight, goal, height, age, and sex (Mifflin–St Jeor +
-            activity). This isn&apos;t medical advice.
+            We estimate your suggested intake from weight, goal, height, age,
+            and sex (Mifflin–St Jeor + activity). This isn&apos;t medical
+            advice.
           </Text>
 
           <Text style={styles.label}>Current weight (kg)</Text>
@@ -115,6 +136,9 @@ export function MealCalorieProfileModal({
             placeholder="72"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
+            returnKeyType="done"
+            blurOnSubmit
+            onSubmitEditing={Keyboard.dismiss}
           />
 
           <Text style={styles.label}>Goal weight (kg)</Text>
@@ -125,6 +149,9 @@ export function MealCalorieProfileModal({
             placeholder="68"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
+            returnKeyType="done"
+            blurOnSubmit
+            onSubmitEditing={Keyboard.dismiss}
           />
 
           <Text style={styles.label}>Height (cm)</Text>
@@ -135,6 +162,9 @@ export function MealCalorieProfileModal({
             placeholder="170"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
+            returnKeyType="done"
+            blurOnSubmit
+            onSubmitEditing={Keyboard.dismiss}
           />
 
           <Text style={styles.label}>Age</Text>
@@ -145,11 +175,14 @@ export function MealCalorieProfileModal({
             placeholder="32"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
+            returnKeyType="done"
+            blurOnSubmit
+            onSubmitEditing={Keyboard.dismiss}
           />
 
           <Text style={styles.label}>Sex (for BMR)</Text>
           <View style={styles.sexRow}>
-            {(['female', 'male'] as const).map((s) => (
+            {(['female', 'male'] as const).map(s => (
               <Pressable
                 key={s}
                 accessibilityRole="button"
@@ -172,7 +205,11 @@ export function MealCalorieProfileModal({
             accessibilityRole="button"
             disabled={saving}
             onPress={() => handleSave().catch(() => {})}
-            style={({ pressed }) => [styles.saveBtn, saving && styles.saveDisabled, pressed && !saving && styles.savePressed]}
+            style={({ pressed }) => [
+              styles.saveBtn,
+              saving && styles.saveDisabled,
+              pressed && !saving && styles.savePressed,
+            ]}
           >
             <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
           </Pressable>
@@ -272,6 +309,25 @@ const styles = StyleSheet.create({
   },
   segTextOn: {
     color: MEAL_PRIMARY,
+  },
+  dismissKeyboardBtn: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: colors.primarySoft,
+  },
+  dismissKeyboardBtnPressed: {
+    opacity: 0.9,
+  },
+  dismissKeyboardTxt: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: MEAL_PRIMARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   saveBtn: {
     marginTop: 22,

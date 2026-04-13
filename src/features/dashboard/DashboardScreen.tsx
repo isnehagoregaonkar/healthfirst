@@ -16,6 +16,7 @@ import { Screen } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { MEAL_PRIMARY } from '../meals/mealUiTheme';
+import { MealCalorieProfileModal } from '../meals/components/MealCalorieProfileModal';
 import { LogHeartRateModal } from './components/LogHeartRateModal';
 import {
   DASH_BAD,
@@ -30,10 +31,7 @@ import {
 } from './dashboardTokens';
 import { useDashboardScreen } from './hooks/useDashboardScreen';
 import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
-import {
-  formatRelativeHeartTime,
-  waterRemainingFoot,
-} from './utils/dashboardFormat';
+import { formatRelativeHeartTime, waterRemainingFoot } from './utils/dashboardFormat';
 
 /** Slight floor so calories / water tiles align with heart rate / weight half-cards. */
 const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 148;
@@ -264,15 +262,16 @@ function ExerciseWeekBars({
 export function DashboardScreen() {
   const {
     navigation,
-    user,
     snapshot,
     loading,
     error,
     refresh,
     hrModal,
     setHrModal,
-    winW,
+    weightModal,
+    setWeightModal,
     onHrLogged,
+    onWeightSaved,
     streakModel,
     reminders,
     calPctRaw,
@@ -595,11 +594,15 @@ export function DashboardScreen() {
                   </View>
                 </Pressable>
 
-                <View
-                  style={[
+                <Pressable
+                  onPress={() => setWeightModal(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Weight, update current and goal weight"
+                  style={({ pressed }) => [
                     styles.card,
                     styles.cardHalf,
                     styles.dashboardTwinCard,
+                    pressed && styles.cardPressed,
                   ]}
                 >
                   <View style={styles.dashboardTwinCardInner}>
@@ -631,7 +634,7 @@ export function DashboardScreen() {
                       {weightLabel}
                     </DashboardStatPill>
                   </View>
-                </View>
+                </Pressable>
               </View>
 
               {reminders.length > 0 ? (
@@ -688,6 +691,12 @@ export function DashboardScreen() {
         visible={hrModal}
         onClose={() => setHrModal(false)}
         onLogged={onHrLogged}
+      />
+      <MealCalorieProfileModal
+        visible={weightModal}
+        profile={snapshot?.profile ?? null}
+        onClose={() => setWeightModal(false)}
+        onSave={onWeightSaved}
       />
     </Screen>
   );

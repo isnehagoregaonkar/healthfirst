@@ -4,6 +4,10 @@ import { useCallback, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useDrawerUserProfile } from '../../../navigation/hooks/useDrawerUserProfile';
 import type { MainTabParamList } from '../../../navigation/types';
+import {
+  saveMealCalorieProfile,
+  type MealCalorieProfile,
+} from '../../../services/mealCalorieTarget';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardReminders } from './useDashboardReminders';
 import { useDashboardStreakModel } from './useDashboardStreakModel';
@@ -16,11 +20,20 @@ export function useDashboardScreen() {
   const user = useDrawerUserProfile();
   const { snapshot, loading, error, refresh } = useDashboardData();
   const [hrModal, setHrModal] = useState(false);
+  const [weightModal, setWeightModal] = useState(false);
   const { width: winW } = useWindowDimensions();
 
   const onHrLogged = useCallback(() => {
     void refresh();
   }, [refresh]);
+
+  const onWeightSaved = useCallback(
+    async (profile: MealCalorieProfile) => {
+      await saveMealCalorieProfile(profile);
+      await refresh();
+    },
+    [refresh],
+  );
 
   const streakModel = useDashboardStreakModel(snapshot);
   const todayMetrics = useDashboardTodayMetrics(snapshot);
@@ -40,8 +53,11 @@ export function useDashboardScreen() {
     refresh,
     hrModal,
     setHrModal,
+    weightModal,
+    setWeightModal,
     winW,
     onHrLogged,
+    onWeightSaved,
     streakModel,
     reminders,
     ...todayMetrics,
