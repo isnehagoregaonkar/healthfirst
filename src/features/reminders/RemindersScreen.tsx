@@ -11,11 +11,11 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
+import type { TimeOfDay } from '../fasting/fastingTypes';
 import { ReminderTimePickerModal } from './ReminderTimePickerModal';
 import { useRemindersScreen } from './hooks/useRemindersScreen';
 import { formatReminderTime } from './remindersTimeFormat';
 import { WATER_REMINDER_SLOT_COUNT } from './remindersWaterConstants';
-import type { TimeOfDay } from '../fasting/fastingTypes';
 
 type TimeEdit =
   | { key: 'water'; index: number }
@@ -31,9 +31,7 @@ export function RemindersScreen() {
       return { hour: 9, minute: 0 };
     }
     if (timeEdit.key === 'water') {
-      return (
-        s.general.water.times[timeEdit.index] ?? { hour: 9, minute: 0 }
-      );
+      return s.general.water.times[timeEdit.index] ?? { hour: 9, minute: 0 };
     }
     if (timeEdit.key === 'meal') {
       return s.general.meals[timeEdit.slot];
@@ -48,13 +46,21 @@ export function RemindersScreen() {
       return 'Time';
     }
     if (timeEdit.key === 'water') {
-      return `Water reminder ${timeEdit.index + 1} of ${WATER_REMINDER_SLOT_COUNT}`;
+      return `Water reminder ${
+        timeEdit.index + 1
+      } of ${WATER_REMINDER_SLOT_COUNT}`;
     }
     if (timeEdit.key === 'meal') {
-      const labels = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' } as const;
+      const labels = {
+        breakfast: 'Breakfast',
+        lunch: 'Lunch',
+        dinner: 'Dinner',
+      } as const;
       return `${labels[timeEdit.slot]} reminder`;
     }
-    return timeEdit.slot === 'begin' ? 'Start fast reminder' : 'Break fast reminder';
+    return timeEdit.slot === 'begin'
+      ? 'Start fast reminder'
+      : 'Break fast reminder';
   }, [timeEdit]);
 
   const onSaveTime = useCallback(
@@ -78,7 +84,7 @@ export function RemindersScreen() {
 
   if (s.loading) {
     return (
-      <Screen>
+      <Screen applyTopSafeArea={false}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading reminders…</Text>
@@ -98,8 +104,9 @@ export function RemindersScreen() {
           <View style={styles.warnBanner}>
             <Icon name="bell-off-outline" size={22} color="#B45309" />
             <Text style={styles.warnText}>
-              Push reminders need the Notifee native module. Use a full dev build (not a JS-only
-              bundle) after installing pods so scheduled alerts can fire.
+              Push reminders need the Notifee native module. Use a full dev
+              build (not a JS-only bundle) after installing pods so scheduled
+              alerts can fire.
             </Text>
           </View>
         )}
@@ -112,70 +119,35 @@ export function RemindersScreen() {
         ) : null}
 
         <Text style={styles.lead}>
-          Turn on nudges for water, meals, and fasting. Times use your phone's local clock.
+          Turn on nudges for water, meals, and fasting. Times use your phone's
+          local clock.
         </Text>
-
-        {/* Water */}
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <View style={[styles.iconBubble, { backgroundColor: '#E0F2FE' }]}>
-              <Icon name="cup-water" size={22} color="#0284C7" />
-            </View>
-            <View style={styles.cardHeadText}>
-              <Text style={styles.cardTitle}>Water</Text>
-              <Text style={styles.cardSub}>
-                {WATER_REMINDER_SLOT_COUNT} daytime nudges — set each time below
-              </Text>
-            </View>
-            <Switch
-              accessibilityLabel="Water reminders"
-              value={s.general.water.enabled}
-              onValueChange={v => s.setWaterEnabled(v).catch(() => {})}
-              trackColor={{ false: colors.border, true: colors.primarySoft }}
-              thumbColor={s.general.water.enabled ? colors.primary : colors.surface}
-            />
-          </View>
-          {Array.from({ length: WATER_REMINDER_SLOT_COUNT }, (_, index) => {
-            const t = s.general.water.times[index] ?? { hour: 12, minute: 0 };
-            const isLast = index === WATER_REMINDER_SLOT_COUNT - 1;
-            return (
-              <Pressable
-                key={`water-${index}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Change water reminder ${index + 1} time`}
-                disabled={!s.general.water.enabled}
-                onPress={() => setTimeEdit({ key: 'water', index })}
-                style={({ pressed }) => [
-                  styles.timeRow,
-                  isLast && styles.timeRowLast,
-                  !s.general.water.enabled && styles.timeRowDisabled,
-                  pressed && s.general.water.enabled && styles.timeRowPressed,
-                ]}
-              >
-                <Text style={styles.timeRowLabel}>Reminder {index + 1}</Text>
-                <Text style={styles.timeRowValue}>{formatReminderTime(t)}</Text>
-                <Icon name="chevron-right" size={20} color={colors.textSecondary} />
-              </Pressable>
-            );
-          })}
-        </View>
 
         {/* Meals */}
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <View style={[styles.iconBubble, { backgroundColor: colors.primarySoft }]}>
+            <View
+              style={[
+                styles.iconBubble,
+                { backgroundColor: colors.primarySoft },
+              ]}
+            >
               <Icon name="food-apple" size={22} color={colors.primary} />
             </View>
             <View style={styles.cardHeadText}>
               <Text style={styles.cardTitle}>Meal tracking</Text>
-              <Text style={styles.cardSub}>Breakfast, lunch, and dinner nudges</Text>
+              <Text style={styles.cardSub}>
+                Breakfast, lunch, and dinner nudges
+              </Text>
             </View>
             <Switch
               accessibilityLabel="Meal reminders"
               value={s.general.meals.enabled}
               onValueChange={v => s.setMealsEnabled(v).catch(() => {})}
               trackColor={{ false: colors.border, true: colors.primarySoft }}
-              thumbColor={s.general.meals.enabled ? colors.primary : colors.surface}
+              thumbColor={
+                s.general.meals.enabled ? colors.primary : colors.surface
+              }
             />
           </View>
           {(
@@ -201,7 +173,11 @@ export function RemindersScreen() {
               <Text style={styles.timeRowValue}>
                 {formatReminderTime(s.general.meals[slot])}
               </Text>
-              <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+              <Icon
+                name="chevron-right"
+                size={20}
+                color={colors.textSecondary}
+              />
             </Pressable>
           ))}
         </View>
@@ -223,7 +199,9 @@ export function RemindersScreen() {
               value={s.fastingReminders.enabled}
               onValueChange={v => s.setFastingEnabled(v).catch(() => {})}
               trackColor={{ false: colors.border, true: colors.primarySoft }}
-              thumbColor={s.fastingReminders.enabled ? colors.primary : colors.surface}
+              thumbColor={
+                s.fastingReminders.enabled ? colors.primary : colors.surface
+              }
             />
           </View>
           <Pressable
@@ -260,9 +238,59 @@ export function RemindersScreen() {
             <Icon name="chevron-right" size={20} color={colors.textSecondary} />
           </Pressable>
           <Text style={styles.hint}>
-            The break-fast notification is scheduled when you start a fast, using your eating
-            window length.
+            The break-fast notification is scheduled when you start a fast,
+            using your eating window length.
           </Text>
+        </View>
+        {/* Water */}
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <View style={[styles.iconBubble, { backgroundColor: '#E0F2FE' }]}>
+              <Icon name="cup-water" size={22} color="#0284C7" />
+            </View>
+            <View style={styles.cardHeadText}>
+              <Text style={styles.cardTitle}>Water</Text>
+              <Text style={styles.cardSub}>
+                {WATER_REMINDER_SLOT_COUNT} daytime nudges — set each time below
+              </Text>
+            </View>
+            <Switch
+              accessibilityLabel="Water reminders"
+              value={s.general.water.enabled}
+              onValueChange={v => s.setWaterEnabled(v).catch(() => {})}
+              trackColor={{ false: colors.border, true: colors.primarySoft }}
+              thumbColor={
+                s.general.water.enabled ? colors.primary : colors.surface
+              }
+            />
+          </View>
+          {Array.from({ length: WATER_REMINDER_SLOT_COUNT }, (_, index) => {
+            const t = s.general.water.times[index] ?? { hour: 12, minute: 0 };
+            const isLast = index === WATER_REMINDER_SLOT_COUNT - 1;
+            return (
+              <Pressable
+                key={`water-${index}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Change water reminder ${index + 1} time`}
+                disabled={!s.general.water.enabled}
+                onPress={() => setTimeEdit({ key: 'water', index })}
+                style={({ pressed }) => [
+                  styles.timeRow,
+                  isLast && styles.timeRowLast,
+                  !s.general.water.enabled && styles.timeRowDisabled,
+                  pressed && s.general.water.enabled && styles.timeRowPressed,
+                ]}
+              >
+                <Text style={styles.timeRowLabel}>Reminder {index + 1}</Text>
+                <Text style={styles.timeRowValue}>{formatReminderTime(t)}</Text>
+                <Icon
+                  name="chevron-right"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -280,7 +308,7 @@ export function RemindersScreen() {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 28,
   },
   centered: {

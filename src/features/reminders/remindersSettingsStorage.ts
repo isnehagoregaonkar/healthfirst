@@ -65,7 +65,7 @@ function parseWater(raw: unknown): WaterReminderSettings {
     };
   }
 
-  // Legacy: single `time` field — migrate to nine default daytime slots.
+  // Legacy: single `time` field — migrate to default daytime slots.
   if (o.time != null && typeof o.time === 'object') {
     return {
       enabled,

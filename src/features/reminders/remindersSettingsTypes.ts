@@ -2,7 +2,7 @@ import type { TimeOfDay } from '../fasting/fastingTypes';
 
 export type WaterReminderSettings = Readonly<{
   enabled: boolean;
-  /** Exactly nine daytime reminder times (local). */
+  /** Exactly eight daytime reminder times (local). */
   times: readonly TimeOfDay[];
 }>;
 

@@ -4,8 +4,8 @@ import { nextDailyTriggerMillis } from '../fasting/fastingReminderNotifications'
 import type { TimeOfDay } from '../fasting/fastingTypes';
 import type { GeneralRemindersPersisted } from './remindersSettingsTypes';
 import {
+  WATER_NOTIF_CANCEL_THROUGH_INDEX,
   WATER_NOTIF_ID_LEGACY,
-  WATER_REMINDER_SLOT_COUNT,
   waterNotifId,
 } from './remindersWaterConstants';
 
@@ -55,7 +55,7 @@ function scheduleDaily(
 
 function allWaterNotifIdsToCancel(): string[] {
   const ids = [WATER_NOTIF_ID_LEGACY];
-  for (let i = 0; i < WATER_REMINDER_SLOT_COUNT; i += 1) {
+  for (let i = 0; i <= WATER_NOTIF_CANCEL_THROUGH_INDEX; i += 1) {
     ids.push(waterNotifId(i));
   }
   return ids;
