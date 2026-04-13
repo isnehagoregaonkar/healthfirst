@@ -893,5 +893,294 @@
         { "name": "2 slices", "grams": 60 },
         { "name": "100 g", "grams": 100 }
       ]
+    },
+    {
+      "name": "pani puri",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 180, "protein": 4, "carbs": 30, "fat": 5 },
+      "units": [
+        { "name": "1 pani puri", "grams": 25 },
+        { "name": "6 pani puri (1 plate)", "grams": 150, "default": true },
+        { "name": "10 pani puri", "grams": 250 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "vada pav",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 290, "protein": 6, "carbs": 40, "fat": 12 },
+      "units": [
+        { "name": "1 vada pav", "grams": 120, "default": true },
+        { "name": "2 vada pav", "grams": 240 },
+        { "name": "1/2 vada pav", "grams": 60 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "sev puri",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 180, "protein": 4, "carbs": 25, "fat": 8 },
+      "units": [
+        { "name": "1 plate (6 pcs)", "grams": 150, "default": true },
+        { "name": "1 piece", "grams": 25 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "dahi puri",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 180, "protein": 5, "carbs": 25, "fat": 6 },
+      "units": [
+        { "name": "1 plate (6 pcs)", "grams": 150, "default": true },
+        { "name": "1 piece", "grams": 25 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "ragda patties",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 200, "protein": 6, "carbs": 30, "fat": 6 },
+      "units": [
+        { "name": "1 plate", "grams": 200, "default": true },
+        { "name": "1/2 plate", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "aloo tikki chaat",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 220, "protein": 5, "carbs": 30, "fat": 9 },
+      "units": [
+        { "name": "1 plate", "grams": 200, "default": true },
+        { "name": "1 tikki", "grams": 80 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "pav bhaji",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 220, "protein": 6, "carbs": 30, "fat": 9 },
+      "units": [
+        { "name": "1 plate (2 pav)", "grams": 250, "default": true },
+        { "name": "1 pav", "grams": 50 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "bhel puri",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 150, "protein": 4, "carbs": 30, "fat": 2 },
+      "units": [
+        { "name": "1 plate", "grams": 150, "default": true },
+        { "name": "1/2 plate", "grams": 75 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "samosa",
+      "category": "snack",
+      "nutrition_per_100g": { "calories": 300, "protein": 5, "carbs": 35, "fat": 18 },
+      "units": [
+        { "name": "1 samosa", "grams": 100, "default": true },
+        { "name": "2 samosa", "grams": 200 },
+        { "name": "1/2 samosa", "grams": 50 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "kachori",
+      "category": "snack",
+      "nutrition_per_100g": { "calories": 320, "protein": 6, "carbs": 40, "fat": 18 },
+      "units": [
+        { "name": "1 kachori", "grams": 100, "default": true },
+        { "name": "2 kachori", "grams": 200 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "bread pakora",
+      "category": "snack",
+      "nutrition_per_100g": { "calories": 280, "protein": 7, "carbs": 30, "fat": 15 },
+      "units": [
+        { "name": "1 piece", "grams": 120, "default": true },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "frankie roll",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 250, "protein": 8, "carbs": 30, "fat": 10 },
+      "units": [
+        { "name": "1 roll", "grams": 180, "default": true },
+        { "name": "1/2 roll", "grams": 90 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "shawarma",
+      "category": "street food",
+      "nutrition_per_100g": { "calories": 220, "protein": 12, "carbs": 20, "fat": 10 },
+      "units": [
+        { "name": "1 wrap", "grams": 200, "default": true },
+        { "name": "1/2 wrap", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "veg burger",
+      "category": "fast food",
+      "nutrition_per_100g": { "calories": 250, "protein": 7, "carbs": 30, "fat": 10 },
+      "units": [
+        { "name": "1 burger", "grams": 150, "default": true },
+        { "name": "1/2 burger", "grams": 75 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "pizza (veg)",
+      "category": "fast food",
+      "nutrition_per_100g": { "calories": 266, "protein": 11, "carbs": 33, "fat": 10 },
+      "units": [
+        { "name": "1 slice", "grams": 120, "default": true },
+        { "name": "2 slices", "grams": 240 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "dal rice",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 140, "protein": 5, "carbs": 25, "fat": 2 },
+      "units": [
+        { "name": "1 plate", "grams": 300, "default": true },
+        { "name": "1/2 plate", "grams": 150 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "roti sabzi",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 180, "protein": 6, "carbs": 25, "fat": 6 },
+      "units": [
+        { "name": "2 roti + sabzi", "grams": 250, "default": true },
+        { "name": "1 roti + sabzi", "grams": 150 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "khichdi",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 120, "protein": 4, "carbs": 20, "fat": 2 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "curd rice",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 140, "protein": 4, "carbs": 22, "fat": 4 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "paneer (raw cubes)",
+      "category": "protein",
+      "nutrition_per_100g": { "calories": 265, "protein": 18, "carbs": 1, "fat": 20 },
+      "units": [
+        { "name": "100 g", "grams": 100, "default": true },
+        { "name": "50 g", "grams": 50 }
+      ]
+    },
+    {
+      "name": "tofu",
+      "category": "protein",
+      "nutrition_per_100g": { "calories": 76, "protein": 8, "carbs": 2, "fat": 4 },
+      "units": [
+        { "name": "100 g", "grams": 100, "default": true },
+        { "name": "50 g", "grams": 50 }
+      ]
+    },
+    {
+      "name": "grilled chicken",
+      "category": "protein",
+      "nutrition_per_100g": { "calories": 165, "protein": 31, "carbs": 0, "fat": 4 },
+      "units": [
+        { "name": "1 serving", "grams": 150, "default": true },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "boiled chicken",
+      "category": "protein",
+      "nutrition_per_100g": { "calories": 150, "protein": 28, "carbs": 0, "fat": 3 },
+      "units": [
+        { "name": "1 serving", "grams": 150, "default": true },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "tea with sugar",
+      "category": "beverage",
+      "nutrition_per_100g": { "calories": 60, "protein": 1, "carbs": 10, "fat": 2 },
+      "units": [
+        { "name": "1 cup", "grams": 150, "default": true },
+        { "name": "1/2 cup", "grams": 75 }
+      ]
+    },
+    {
+      "name": "black coffee",
+      "category": "beverage",
+      "nutrition_per_100g": { "calories": 5, "protein": 0.3, "carbs": 1, "fat": 0 },
+      "units": [
+        { "name": "1 cup", "grams": 150, "default": true }
+      ]
+    },
+    {
+      "name": "orange juice",
+      "category": "beverage",
+      "nutrition_per_100g": { "calories": 45, "protein": 0.7, "carbs": 10, "fat": 0.2 },
+      "units": [
+        { "name": "1 glass", "grams": 250, "default": true },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "sugar",
+      "category": "ingredient",
+      "nutrition_per_100g": { "calories": 387, "protein": 0, "carbs": 100, "fat": 0 },
+      "units": [
+        { "name": "1 tsp", "grams": 5, "default": true },
+        { "name": "1 tbsp", "grams": 15 }
+      ]
+    },
+    {
+      "name": "butter",
+      "category": "ingredient",
+      "nutrition_per_100g": { "calories": 717, "protein": 1, "carbs": 0, "fat": 81 },
+      "units": [
+        { "name": "1 tsp", "grams": 5, "default": true },
+        { "name": "1 tbsp", "grams": 15 }
+      ]
+    },
+    {
+      "name": "toast with butter",
+      "category": "breakfast",
+      "nutrition_per_100g": { "calories": 300, "protein": 6, "carbs": 35, "fat": 15 },
+      "units": [
+        { "name": "2 slices", "grams": 80, "default": true },
+        { "name": "1 slice", "grams": 40 }
+      ]
+    },
+    {
+      "name": "biscuits",
+      "category": "snack",
+      "nutrition_per_100g": { "calories": 480, "protein": 6, "carbs": 65, "fat": 20 },
+      "units": [
+        { "name": "2 biscuits", "grams": 30, "default": true },
+        { "name": "4 biscuits", "grams": 60 }
+      ]
     }
 ]
