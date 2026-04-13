@@ -39,9 +39,9 @@ type RGB = Readonly<{ r: number; g: number; b: number }>;
 function hexToRgb(hex: string): RGB {
   const h = hex.replace('#', '');
   return {
-    r: parseInt(h.slice(0, 2), 16),
-    g: parseInt(h.slice(2, 4), 16),
-    b: parseInt(h.slice(4, 6), 16),
+    r: Number.parseInt(h.slice(0, 2), 16),
+    g: Number.parseInt(h.slice(2, 4), 16),
+    b: Number.parseInt(h.slice(4, 6), 16),
   };
 }
 
@@ -118,13 +118,13 @@ const PALETTE_STOPS: ReadonlyArray<Readonly<{ t: number } & DropletPalette>> = [
   },
   {
     t: 1,
-    deep: '#047857',
-    mid: '#059669',
-    light: '#6EE7B7',
-    surface: '#D1FAE5',
-    outline: '#34D399',
-    accent: '#059669',
-    deepOverlay: '#064E3B',
+    deep: '#0C4A6E',
+    mid: '#0284C7',
+    light: '#7DD3FC',
+    surface: '#E0F2FE',
+    outline: '#38BDF8',
+    accent: '#0284C7',
+    deepOverlay: '#082F49',
   },
 ];
 

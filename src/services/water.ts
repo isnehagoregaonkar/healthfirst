@@ -219,19 +219,24 @@ export async function deleteWaterIntake(entryId: string): Promise<DeleteWaterRes
     return { ok: false, error: user.error };
   }
 
-  const { data, error } = await supabase
+  const { error, count } = await supabase
     .from('water_intakes')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id', trimmed)
-    .eq('user_id', user.userId)
-    .select('id');
+    .eq('user_id', user.userId);
 
   if (error) {
     return { ok: false, error: { message: error.message, code: error.code } };
   }
 
-  if (!data?.length) {
-    return { ok: false, error: { message: 'Entry not found' } };
+  if ((count ?? 0) < 1) {
+    return {
+      ok: false,
+      error: {
+        message:
+          'Could not delete this entry. If this keeps happening, apply the water delete policy migration in Supabase.',
+      },
+    };
   }
 
   return { ok: true };

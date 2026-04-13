@@ -11,7 +11,6 @@ import {
 } from '../../../services/water';
 import { getWaterCoachingLines } from '../waterCoaching';
 import {
-  addCalendarDays,
   clampWaterPercent,
   formatDayShort,
   formatWaterEntryTime,
@@ -98,8 +97,11 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
     if (weekTotals.length < 2) {
       return null;
     }
-    const prev = weekTotals[weekTotals.length - 2];
-    const current = weekTotals[weekTotals.length - 1];
+    const prev = weekTotals.at(-2);
+    const current = weekTotals.at(-1);
+    if (!prev || !current) {
+      return null;
+    }
     return {
       prev,
       current,
@@ -208,18 +210,31 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
     async (entryId: string) => {
       setDeletingId(entryId);
       setError(null);
+      const beforeEntries = entries;
+      const beforeTotal = totalMl;
+      const removed = entries.find(e => e.id === entryId);
+      const removedMl = removed?.amountMl ?? 0;
+      // Optimistic UI: remove immediately so row does not appear to persist.
+      setEntries(prev => prev.filter(e => e.id !== entryId));
+      setTotalMl(Math.max(0, beforeTotal - removedMl));
       try {
         const result = await deleteWaterIntake(entryId);
         if (!result.ok) {
+          setEntries(beforeEntries);
+          setTotalMl(beforeTotal);
           setError(result.error.message);
           return;
         }
-        await syncDayAndWeek();
+        const ok = await syncDayAndWeek();
+        if (!ok) {
+          // Keep optimistic delete if backend succeeded; avoid "reappearing" rows.
+          setError('Entry removed, but refresh failed. Pull to refresh.');
+        }
       } finally {
         setDeletingId(null);
       }
     },
-    [syncDayAndWeek],
+    [entries, syncDayAndWeek, totalMl],
   );
 
   const confirmRemoveEntry = useCallback(
