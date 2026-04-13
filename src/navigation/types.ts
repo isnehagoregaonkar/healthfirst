@@ -15,6 +15,7 @@ export type MainTabParamList = {
 
 export type RootDrawerParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
+  Profile: undefined;
   ProgressHistory: undefined;
   ExerciseHistory: undefined;
   Reminders: undefined;
@@ -29,4 +30,5 @@ export type DrawerDestinationId =
   | 'ProgressHistory'
   | 'ExerciseHistory'
   | 'IntermittentFasting'
-  | 'Reminders';
+  | 'Reminders'
+  | 'Profile';

@@ -9,7 +9,7 @@ import {
   createNavigationContainerRef,
   NavigationContainer,
 } from '@react-navigation/native';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import {
   scheduleFastingNotificationPermissionPrompt,
@@ -33,7 +33,7 @@ function App() {
     useState(false);
   const { showSplash, isAuthenticated } = useAuthSession();
 
-  const navigateToFastingTab = () => {
+  const navigateToFastingTab = useCallback(() => {
     if (!isAuthenticated) {
       return;
     }
@@ -45,7 +45,7 @@ function App() {
       screen: 'Fasting',
       params: { screen: 'FastingHome' },
     });
-  };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (showSplash || !isAuthenticated) {
@@ -58,7 +58,7 @@ function App() {
     return () => {
       unsub();
     };
-  }, [showSplash, isAuthenticated]);
+  }, [showSplash, isAuthenticated, navigateToFastingTab]);
 
   let mainContent: ReactNode;
   if (showSplash) {

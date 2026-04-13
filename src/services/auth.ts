@@ -35,3 +35,20 @@ export const signIn = async (email: string, password: string) => {
 export const signOut = async () => {
   return await supabase.auth.signOut();
 };
+
+export async function updateAuthDisplayName(name: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const trimmed = name.trim();
+  if (trimmed.length < 1) {
+    return { ok: false, message: 'Enter a display name.' };
+  }
+  if (trimmed.length > 80) {
+    return { ok: false, message: 'Display name must be 80 characters or less.' };
+  }
+  const { error } = await supabase.auth.updateUser({
+    data: { name: trimmed },
+  });
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+  return { ok: true };
+}

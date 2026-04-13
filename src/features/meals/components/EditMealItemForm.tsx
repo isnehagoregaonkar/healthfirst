@@ -109,7 +109,7 @@ export function EditMealItemForm({
     return () => {
       cancelled = true;
     };
-  }, [item.id, item.usdaFdcId, item.name, item.calories, item.proteinG]);
+  }, [item]);
 
   const scaled = useMemo(
     () => (detail ? computeScaledFromDetail(detail, portionIndex, servingsText) : null),

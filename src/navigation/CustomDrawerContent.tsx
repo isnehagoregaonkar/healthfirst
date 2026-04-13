@@ -1,10 +1,13 @@
 import { DrawerContentScrollView, type DrawerContentComponentProps } from '@react-navigation/drawer';
-import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { DeviceEventEmitter, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { HEALTHFIRST_AVATAR_CHANGED } from '../features/profile/profileAvatarEvents';
 import { signOut } from '../services/auth';
+import { getPersistedAvatarUri } from '../services/userAvatar';
 import { colors } from '../theme/tokens';
+import { navigateToDestination } from './drawerNavigation';
 import { useDrawerUserProfile } from './hooks/useDrawerUserProfile';
 import { DrawerEdgeCollapseHandle } from './ui/DrawerEdgeCollapseHandle';
 import { DrawerNavItemsList } from './ui/DrawerNavItemsList';
@@ -18,9 +21,26 @@ export function CustomDrawerContent(props: Readonly<DrawerContentComponentProps>
   const { navigation, state } = props;
   const insets = useSafeAreaInsets();
   const profile = useDrawerUserProfile();
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  const reloadAvatar = useCallback(() => {
+    getPersistedAvatarUri()
+      .then(setAvatarUri)
+      .catch(() => setAvatarUri(null));
+  }, []);
+
+  useEffect(() => {
+    reloadAvatar();
+    const sub = DeviceEventEmitter.addListener(HEALTHFIRST_AVATAR_CHANGED, reloadAvatar);
+    return () => sub.remove();
+  }, [reloadAvatar]);
 
   const handleCloseDrawer = useCallback(() => {
     navigation.closeDrawer();
+  }, [navigation]);
+
+  const handleOpenProfile = useCallback(() => {
+    navigateToDestination(navigation, 'Profile');
   }, [navigation]);
 
   const handleLogout = useCallback(async () => {
@@ -39,7 +59,11 @@ export function CustomDrawerContent(props: Readonly<DrawerContentComponentProps>
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <DrawerProfileHeader profile={profile} />
+        <DrawerProfileHeader
+          profile={profile}
+          avatarUri={avatarUri}
+          onPressProfile={handleOpenProfile}
+        />
 
         <DrawerNavItemsList navigation={navigation} drawerState={state} />
       </DrawerContentScrollView>

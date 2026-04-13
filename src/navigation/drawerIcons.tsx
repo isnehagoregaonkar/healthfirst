@@ -6,6 +6,10 @@ type DrawerIconProps = Readonly<{
   size: number;
 }>;
 
+export function ProfileDrawerIcon({ color, size }: DrawerIconProps) {
+  return <Icon name="account-circle-outline" size={size} color={color} />;
+}
+
 export function DashboardDrawerIcon({ color, size }: DrawerIconProps) {
   return <Icon name="view-dashboard-outline" size={size} color={color} />;
 }

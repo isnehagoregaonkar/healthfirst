@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { addCalendarDays, startOfLocalDay } from '../water/waterDayUtils';
 import type {
   FastingReminderSettings,
@@ -44,7 +44,7 @@ export function useFasting() {
     useState<FastingReminderSettings>(DEFAULT_REMINDERS);
   const [scheduledFasts, setScheduledFasts] = useState<ScheduledFast[]>([]);
   const [selectedDay, setSelectedDay] = useState(() => startOfLocalDay(new Date()));
-  const [tick, setTick] = useState(0);
+  const [, bumpTick] = useReducer((c: number) => c + 1, 0);
 
   const selectDay = useCallback((d: Date) => {
     setSelectedDay(startOfLocalDay(d));
@@ -66,7 +66,7 @@ export function useFasting() {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    refresh().catch(() => {});
   }, [refresh]);
 
   const isFasting = activeFastStartedAt != null;
@@ -75,7 +75,7 @@ export function useFasting() {
     if (!isFasting) {
       return;
     }
-    const id = setInterval(() => setTick(t => t + 1), 1000);
+    const id = setInterval(() => bumpTick(), 1000);
     return () => clearInterval(id);
   }, [isFasting]);
 
@@ -85,12 +85,11 @@ export function useFasting() {
     [activeFastStartedAt],
   );
 
-  const elapsedMs = useMemo(() => {
-    if (!startedAtDate || Number.isNaN(startedAtDate.getTime())) {
-      return 0;
-    }
-    return Math.max(0, Date.now() - startedAtDate.getTime());
-  }, [startedAtDate, tick]);
+  // Recomputed each render; `bumpTick` runs every second while fasting so `Date.now()` advances in the UI.
+  const elapsedMs =
+    startedAtDate != null && !Number.isNaN(startedAtDate.getTime())
+      ? Math.max(0, Date.now() - startedAtDate.getTime())
+      : 0;
 
   const setTargetFastHours = useCallback(async (hours: number) => {
     const h = Math.min(24, Math.max(12, Math.round(hours)));

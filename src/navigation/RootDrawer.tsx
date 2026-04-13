@@ -1,6 +1,7 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
 import { ExerciseHistoryScreen } from '../features/exercise/ExerciseHistoryScreen';
+import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
 import { colors } from '../theme/tokens';
@@ -36,6 +37,14 @@ export function RootDrawer() {
       }}
     >
       <Drawer.Screen name="Main" component={MainTabNavigator} options={{ title: 'HealthFirst' }} />
+      <Drawer.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          ...drawerLeafScreenOptions,
+          title: 'Profile',
+        }}
+      />
       <Drawer.Screen
         name="ProgressHistory"
         component={ProgressHistoryScreen}
