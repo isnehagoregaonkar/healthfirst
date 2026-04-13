@@ -84,7 +84,11 @@ export function RemindersScreen() {
 
   if (s.loading) {
     return (
-      <Screen applyTopSafeArea={false}>
+      <Screen
+        applyTopSafeArea={false}
+        applyBottomSafeArea={false}
+        backgroundColor="#F8FAFC"
+      >
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading reminders…</Text>
@@ -94,7 +98,11 @@ export function RemindersScreen() {
   }
 
   return (
-    <Screen>
+    <Screen
+      applyTopSafeArea={false}
+      applyBottomSafeArea={false}
+      backgroundColor="#F8FAFC"
+    >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -308,7 +316,7 @@ export function RemindersScreen() {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 0,
+    paddingTop: 8,
     paddingBottom: 28,
   },
   centered: {
