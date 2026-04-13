@@ -53,6 +53,7 @@ export function IntermittentFastingScreen() {
             <FastingFastLengthChips
               preferredHours={s.preferredFastHours}
               targetFastHours={s.targetFastHours}
+              customSelectedLabel={s.customFastChipLabel}
               onSelectHours={h => void s.setTargetFastHours(h)}
             />
             {s.isFasting ? (

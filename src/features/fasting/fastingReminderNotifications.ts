@@ -3,13 +3,19 @@ import {
   PermissionsAndroid,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FastingReminderSettings, TimeOfDay } from './fastingTypes';
+import { fastWindowMinutes } from './fastingScheduleDuration';
 
 const ANDROID_CHANNEL_ID = 'fasting-reminders';
 export const FASTING_NOTIF_ID_BEGIN = 'fasting-reminder-begin';
 export const FASTING_NOTIF_ID_BREAK = 'fasting-reminder-break';
+const FASTING_PENDING_START_KEY = '@HealthFirst/fasting/pending-start';
 
 type NotifeeNamespace = typeof import('@notifee/react-native');
+type PendingFastingStart = Readonly<{
+  durationMin: number | null;
+}>;
 
 let cachedNotifee: NotifeeNamespace | null | undefined;
 
@@ -68,6 +74,24 @@ export function nextDailyTriggerMillis(hour: number, minute: number): number {
     next.setDate(next.getDate() + 1);
   }
   return next.getTime();
+}
+
+function nextTimestampAfterMillis(msFromNow: number): number {
+  const now = Date.now();
+  const t = now + Math.max(1, msFromNow);
+  return t;
+}
+
+function formatDurationHm(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h <= 0) {
+    return `${m}m`;
+  }
+  if (m === 0) {
+    return `${h}h`;
+  }
+  return `${h}h ${m}m`;
 }
 
 async function ensureAndroidPostNotifications(): Promise<boolean> {
@@ -129,8 +153,38 @@ function scheduleOne(
   title: string,
   body: string,
   at: TimeOfDay,
+  data?: Record<string, string>,
 ): Promise<string> {
   const timestamp = nextDailyTriggerMillis(at.hour, at.minute);
+  return n.default.createTriggerNotification(
+    {
+      id,
+      title,
+      body,
+      android: {
+        channelId: ANDROID_CHANNEL_ID,
+        pressAction: { id: 'default' },
+      },
+      ios: {
+        sound: 'default',
+      },
+      data,
+    },
+    {
+      type: n.TriggerType.TIMESTAMP,
+      timestamp,
+      repeatFrequency: n.RepeatFrequency.DAILY,
+    },
+  );
+}
+
+function scheduleOneAtTimestamp(
+  n: NotifeeNamespace,
+  id: string,
+  title: string,
+  body: string,
+  timestamp: number,
+): Promise<string> {
   return n.default.createTriggerNotification(
     {
       id,
@@ -147,7 +201,6 @@ function scheduleOne(
     {
       type: n.TriggerType.TIMESTAMP,
       timestamp,
-      repeatFrequency: n.RepeatFrequency.DAILY,
     },
   );
 }
@@ -172,26 +225,141 @@ export async function syncFastingReminderNotifications(
       await ensureAndroidChannel(n);
     }
 
+    const durationMin = fastWindowMinutes(settings.beginFast, settings.breakFast);
     await scheduleOne(
       n,
       FASTING_NOTIF_ID_BEGIN,
-      'Begin your fast',
-      'Gentle nudge: wrap up eating and start your fasting window when you are ready.',
+      '🕒 Scheduled Fast Time',
+      `▶ Start your ${formatDurationHm(durationMin)} scheduled fast now. You got this!`,
       settings.beginFast,
+      { durationMin: String(durationMin) },
     );
 
-    await scheduleOne(
-      n,
-      FASTING_NOTIF_ID_BREAK,
-      'Break your fast',
-      'Your eating window is open — time to nourish yourself.',
-      settings.breakFast,
-    );
+    // Break reminder is intentionally not scheduled here.
+    // It is scheduled only after a fast actually starts.
   } catch (e) {
     if (__DEV__) {
       console.warn('[fasting] Failed to sync reminder notifications.', e);
     }
   }
+}
+
+export async function scheduleBreakNotificationForStartedFast(
+  targetFastHours: number,
+): Promise<void> {
+  const n = getNotifee();
+  if (!n) {
+    return;
+  }
+  try {
+    if (Platform.OS === 'android') {
+      await ensureAndroidChannel(n);
+    }
+    await n.default.cancelNotification(FASTING_NOTIF_ID_BREAK);
+    const timestamp = nextTimestampAfterMillis(
+      Math.round(targetFastHours * 3600 * 1000),
+    );
+    await scheduleOneAtTimestamp(
+      n,
+      FASTING_NOTIF_ID_BREAK,
+      '🥗 Time To Break Fast',
+      '✨ Great job staying consistent. Your eating window is open now.',
+      timestamp,
+    );
+  } catch (e) {
+    if (__DEV__) {
+      console.warn('[fasting] Failed to schedule break reminder.', e);
+    }
+  }
+}
+
+export async function cancelBreakNotification(): Promise<void> {
+  const n = getNotifee();
+  if (!n) {
+    return;
+  }
+  try {
+    await n.default.cancelNotification(FASTING_NOTIF_ID_BREAK);
+  } catch {
+    // ignore
+  }
+}
+
+export async function markPendingFastingStartFromNotification(
+  durationMin?: number | null,
+): Promise<void> {
+  try {
+    const payload: PendingFastingStart = {
+      durationMin:
+        typeof durationMin === 'number' && Number.isFinite(durationMin)
+          ? Math.max(1, Math.round(durationMin))
+          : null,
+    };
+    await AsyncStorage.setItem(FASTING_PENDING_START_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
+export async function consumePendingFastingStartFromNotification(): Promise<PendingFastingStart | null> {
+  try {
+    const raw = await AsyncStorage.getItem(FASTING_PENDING_START_KEY);
+    if (!raw) {
+      return null;
+    }
+    await AsyncStorage.removeItem(FASTING_PENDING_START_KEY);
+    const parsed = JSON.parse(raw) as Partial<PendingFastingStart>;
+    return {
+      durationMin:
+        typeof parsed.durationMin === 'number' && Number.isFinite(parsed.durationMin)
+          ? Math.max(1, Math.round(parsed.durationMin))
+          : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function startFastingNotificationOpenListener(
+  onStartFastNotificationOpen?: () => void,
+): () => void {
+  const n = getNotifee();
+  if (!n) {
+    return () => {};
+  }
+
+  void n.default
+    .getInitialNotification()
+    .then(initial => {
+      if (initial?.notification?.id === FASTING_NOTIF_ID_BEGIN) {
+        const d = Number.parseInt(
+          String(initial.notification.data?.durationMin ?? ''),
+          10,
+        );
+        void markPendingFastingStartFromNotification(Number.isFinite(d) ? d : null);
+        onStartFastNotificationOpen?.();
+      }
+    })
+    .catch(() => {
+      // ignore
+    });
+
+  return n.default.onForegroundEvent(({ type, detail }) => {
+    if (
+      type !== n.EventType.PRESS &&
+      type !== n.EventType.ACTION_PRESS
+    ) {
+      return;
+    }
+    if (detail.notification?.id === FASTING_NOTIF_ID_BEGIN) {
+      const d = Number.parseInt(
+        String(detail.notification.data?.durationMin ?? ''),
+        10,
+      );
+      void markPendingFastingStartFromNotification(Number.isFinite(d) ? d : null);
+      onStartFastNotificationOpen?.();
+    }
+  });
 }
 
 export async function fireFastingReminderEnabledTest(): Promise<void> {
@@ -205,8 +373,8 @@ export async function fireFastingReminderEnabledTest(): Promise<void> {
     }
     await n.default.displayNotification({
       id: 'fasting-reminder-enabled-test',
-      title: 'Fasting reminders are on',
-      body: 'You will get alerts at your selected start and end times.',
+      title: '🔔 Fasting reminders are ON',
+      body: 'You will now get your scheduled Start / Break Fast alerts.',
       android: {
         channelId: ANDROID_CHANNEL_ID,
         pressAction: { id: 'default' },

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PREFERRED_FAST_HOURS } from '../fastingConstants';
 import { FASTING_MOTIVATION_LINES } from '../fastingMotivation';
 import {
+  consumePendingFastingStartFromNotification,
   fireFastingReminderEnabledTest,
   requestFastingReminderPermission,
   syncFastingReminderNotifications,
 } from '../fastingReminderNotifications';
+import { fastWindowMinutes } from '../fastingScheduleDuration';
 import type { TimeOfDay } from '../fastingTypes';
 import { DEFAULT_REMINDERS } from '../fastingStorage';
 import { useFasting } from '../useFasting';
@@ -46,6 +48,9 @@ export function useIntermittentFastingScreen() {
   const [scheduleEditorError, setScheduleEditorError] = useState<string | null>(
     null,
   );
+  const [customFastChipLabel, setCustomFastChipLabel] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (loading) {
@@ -55,6 +60,36 @@ export function useIntermittentFastingScreen() {
       /* errors are logged inside sync; avoid unhandled rejection */
     });
   }, [loading, reminders]);
+
+  useEffect(() => {
+    if (loading || isFasting) {
+      return;
+    }
+    void (async () => {
+      const pending = await consumePendingFastingStartFromNotification();
+      if (!pending) {
+        return;
+      }
+      const mins =
+        pending.durationMin ??
+        fastWindowMinutes(reminders.beginFast, reminders.breakFast);
+      const hrs = Math.min(24, Math.max(12, Math.round(mins / 60)));
+      await setTargetFastHours(hrs);
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      if (m > 0 || !PREFERRED_FAST_HOURS.includes(hrs as (typeof PREFERRED_FAST_HOURS)[number])) {
+        setCustomFastChipLabel(h <= 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`);
+      } else {
+        setCustomFastChipLabel(`${hrs}h`);
+      }
+    })();
+  }, [
+    isFasting,
+    loading,
+    reminders.beginFast,
+    reminders.breakFast,
+    setTargetFastHours,
+  ]);
 
   const progressPct = useMemo(() => {
     if (!isFasting) {
@@ -96,6 +131,14 @@ export function useIntermittentFastingScreen() {
     [patchReminders],
   );
 
+  const onSelectFastHoursChip = useCallback(
+    async (h: number) => {
+      setCustomFastChipLabel(null);
+      await setTargetFastHours(h);
+    },
+    [setTargetFastHours],
+  );
+
   const onScheduleStartTimeChange = useCallback(
     (date: Date) => {
       const nextT = { hour: date.getHours(), minute: date.getMinutes() };
@@ -119,6 +162,7 @@ export function useIntermittentFastingScreen() {
     setScheduleDraftStart(reminders.beginFast);
     setScheduleDraftEnd(reminders.breakFast);
     setScheduleEditorError(null);
+    setCustomFastChipLabel(null);
     setScheduleEditorOpen(true);
   }, [reminders.beginFast, reminders.breakFast]);
 
@@ -165,7 +209,7 @@ export function useIntermittentFastingScreen() {
     isFasting,
     elapsedMs,
     targetFastHours,
-    setTargetFastHours,
+    setTargetFastHours: onSelectFastHoursChip,
     startFast,
     endFast,
     selectedDay,
@@ -173,6 +217,7 @@ export function useIntermittentFastingScreen() {
     filteredHistory,
     reminders,
     preferredFastHours: PREFERRED_FAST_HOURS,
+    customFastChipLabel,
     progressPct,
     eatingHours,
     motivationalLine,
