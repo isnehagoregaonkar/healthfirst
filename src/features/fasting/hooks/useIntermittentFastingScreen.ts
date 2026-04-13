@@ -13,6 +13,18 @@ import { DEFAULT_REMINDERS } from '../fastingStorage';
 import { useFasting } from '../useFasting';
 
 export function useIntermittentFastingScreen() {
+  const formatDurationChipLabel = (mins: number): string => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h <= 0) {
+      return `${m}m`;
+    }
+    if (m === 0) {
+      return `${h}h`;
+    }
+    return `${h}h ${m}m`;
+  };
+
   const fasting = useFasting();
   const {
     loading,
@@ -51,6 +63,7 @@ export function useIntermittentFastingScreen() {
   const [customFastChipLabel, setCustomFastChipLabel] = useState<string | null>(
     null,
   );
+  const [pendingStartDurationMin, setPendingStartDurationMin] = useState<number | null>(null);
 
   useEffect(() => {
     if (loading) {
@@ -74,14 +87,24 @@ export function useIntermittentFastingScreen() {
         pending.durationMin ??
         fastWindowMinutes(reminders.beginFast, reminders.breakFast);
       const hrs = Math.min(24, Math.max(12, Math.round(mins / 60)));
-      await setTargetFastHours(hrs);
+
       const h = Math.floor(mins / 60);
       const m = mins % 60;
-      if (m > 0 || !PREFERRED_FAST_HOURS.includes(hrs as (typeof PREFERRED_FAST_HOURS)[number])) {
-        setCustomFastChipLabel(h <= 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`);
+      const isPreset =
+        m === 0 &&
+        PREFERRED_FAST_HOURS.includes(
+          hrs as (typeof PREFERRED_FAST_HOURS)[number],
+        );
+      if (isPreset) {
+        setCustomFastChipLabel(null);
+        setPendingStartDurationMin(null);
       } else {
-        setCustomFastChipLabel(`${hrs}h`);
+        const label = h <= 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
+        // Show chip immediately on first render after notification open.
+        setCustomFastChipLabel(label);
+        setPendingStartDurationMin(mins);
       }
+      await setTargetFastHours(hrs);
     })();
   }, [
     isFasting,
@@ -103,6 +126,23 @@ export function useIntermittentFastingScreen() {
     () => Math.max(0, 24 - targetFastHours),
     [targetFastHours],
   );
+
+  const timerDurationLabels = useMemo(() => {
+    const mins =
+      pendingStartDurationMin != null
+        ? pendingStartDurationMin
+        : Math.round(targetFastHours * 60);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const fastLabel =
+      h <= 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
+    const eatMin = Math.max(0, 24 * 60 - mins);
+    const eh = Math.floor(eatMin / 60);
+    const em = eatMin % 60;
+    const eatingLabel =
+      eh <= 0 ? `${em}m` : em === 0 ? `~${eh}h` : `~${eh}h ${em}m`;
+    return { fastLabel, eatingLabel };
+  }, [pendingStartDurationMin, targetFastHours]);
 
   const motivationalLine = useMemo(() => {
     const d = selectedDay;
@@ -134,27 +174,62 @@ export function useIntermittentFastingScreen() {
   const onSelectFastHoursChip = useCallback(
     async (h: number) => {
       setCustomFastChipLabel(null);
+      setPendingStartDurationMin(null);
       await setTargetFastHours(h);
     },
     [setTargetFastHours],
   );
 
+  const onStartFastPress = useCallback(async () => {
+    if (pendingStartDurationMin != null) {
+      await startFast({ breakAfterMin: pendingStartDurationMin });
+      return;
+    }
+    await startFast();
+  }, [pendingStartDurationMin, startFast]);
+
+  const onEndFastPress = useCallback(async () => {
+    await endFast();
+    setCustomFastChipLabel(null);
+    setPendingStartDurationMin(null);
+  }, [endFast]);
+
   const onScheduleStartTimeChange = useCallback(
-    (date: Date) => {
+    async (date: Date) => {
       const nextT = { hour: date.getHours(), minute: date.getMinutes() };
       setScheduleDraftStart(nextT);
       void patchReminders({ beginFast: nextT });
+      const mins = fastWindowMinutes(nextT, scheduleDraftEnd);
+      const hrs = Math.min(24, Math.max(12, Math.round(mins / 60)));
+      const isPreset =
+        mins % 60 === 0 &&
+        PREFERRED_FAST_HOURS.includes(
+          hrs as (typeof PREFERRED_FAST_HOURS)[number],
+        );
+      setPendingStartDurationMin(null);
+      setCustomFastChipLabel(isPreset ? null : formatDurationChipLabel(mins));
+      await setTargetFastHours(hrs);
     },
-    [patchReminders],
+    [patchReminders, scheduleDraftEnd, setTargetFastHours],
   );
 
   const onScheduleEndTimeChange = useCallback(
-    (date: Date) => {
+    async (date: Date) => {
       const nextT = { hour: date.getHours(), minute: date.getMinutes() };
       setScheduleDraftEnd(nextT);
       void patchReminders({ breakFast: nextT });
+      const mins = fastWindowMinutes(scheduleDraftStart, nextT);
+      const hrs = Math.min(24, Math.max(12, Math.round(mins / 60)));
+      const isPreset =
+        mins % 60 === 0 &&
+        PREFERRED_FAST_HOURS.includes(
+          hrs as (typeof PREFERRED_FAST_HOURS)[number],
+        );
+      setPendingStartDurationMin(null);
+      setCustomFastChipLabel(isPreset ? null : formatDurationChipLabel(mins));
+      await setTargetFastHours(hrs);
     },
-    [patchReminders],
+    [patchReminders, scheduleDraftStart, setTargetFastHours],
   );
 
   const openScheduleEditor = useCallback(() => {
@@ -195,10 +270,17 @@ export function useIntermittentFastingScreen() {
       );
       return;
     }
+    // Scheduling a fast should arm reminders for that start/end window.
+    await patchReminders({
+      enabled: true,
+      beginFast: scheduleDraftStart,
+      breakFast: scheduleDraftEnd,
+    });
     setScheduleEditorOpen(false);
     setScheduleEditorError(null);
   }, [
     addScheduledFast,
+    patchReminders,
     scheduleDraftEnd,
     scheduleDraftStart,
     scheduleDraftWeekdays,
@@ -210,8 +292,8 @@ export function useIntermittentFastingScreen() {
     elapsedMs,
     targetFastHours,
     setTargetFastHours: onSelectFastHoursChip,
-    startFast,
-    endFast,
+    startFast: onStartFastPress,
+    endFast: onEndFastPress,
     selectedDay,
     selectDay,
     filteredHistory,
@@ -220,6 +302,8 @@ export function useIntermittentFastingScreen() {
     customFastChipLabel,
     progressPct,
     eatingHours,
+    timerFastLabel: timerDurationLabels.fastLabel,
+    timerEatingWindowLabel: timerDurationLabels.eatingLabel,
     motivationalLine,
     reminderError,
     toggleReminders,

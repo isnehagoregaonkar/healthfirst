@@ -10,6 +10,8 @@ type FastingTimerSectionProps = Readonly<{
   targetFastHours: number;
   eatingHours: number;
   progressPct: number;
+  targetFastLabel?: string;
+  eatingWindowLabel?: string;
 }>;
 
 export function FastingTimerSection({
@@ -18,7 +20,11 @@ export function FastingTimerSection({
   targetFastHours,
   eatingHours,
   progressPct,
+  targetFastLabel,
+  eatingWindowLabel,
 }: FastingTimerSectionProps) {
+  const fastLabel = targetFastLabel ?? `${targetFastHours}h`;
+  const eatLabel = eatingWindowLabel ?? `~${eatingHours}h`;
   return (
     <View style={styles.timerCard}>
       <View style={styles.timerHeader}>
@@ -35,7 +41,7 @@ export function FastingTimerSection({
         <>
           <Text style={styles.elapsed}>{formatElapsed(elapsedMs)}</Text>
           <Text style={styles.timerHint}>
-            Goal · {targetFastHours}h fast · ~{eatingHours}h eating window
+            Goal · {fastLabel} fast · {eatLabel} eating window
           </Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
@@ -52,7 +58,7 @@ export function FastingTimerSection({
             Start when you finish your last meal. Pick a fast length below anytime.
           </Text>
           <Text style={styles.timerHint}>
-            Target · {targetFastHours}h fast · ~{eatingHours}h eating window
+            Target · {fastLabel} fast · {eatLabel} eating window
           </Text>
         </>
       )}
