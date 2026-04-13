@@ -9,6 +9,7 @@ import {
   ExerciseDrawerIcon,
   FastingDrawerIcon,
   MealDrawerIcon,
+  ProfileDrawerIcon,
   ProgressDrawerIcon,
   RemindersDrawerIcon,
   StepsDrawerIcon,
@@ -36,6 +37,7 @@ const ROWS: DrawerNavRow[] = [
   { id: 'ExerciseHistory', label: 'Exercise & streak', Icon: ExerciseDrawerIcon },
   { id: 'IntermittentFasting', label: 'Intermittent fasting', Icon: FastingDrawerIcon },
   { id: 'Reminders', label: 'Reminders', Icon: RemindersDrawerIcon },
+  { id: 'Profile', label: 'Profile', Icon: ProfileDrawerIcon },
 ];
 
 type DrawerNavItemsListProps = Readonly<{
