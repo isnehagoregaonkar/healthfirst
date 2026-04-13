@@ -10,15 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  LinearGradient,
-  Path,
-  Rect,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
@@ -40,7 +32,6 @@ import { useDashboardScreen } from './hooks/useDashboardScreen';
 import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
 import {
   formatRelativeHeartTime,
-  greetingForNow,
   waterRemainingFoot,
 } from './utils/dashboardFormat';
 
@@ -315,7 +306,7 @@ export function DashboardScreen() {
           ? { contentInsetAdjustmentBehavior: 'never' as const }
           : {})}
       >
-        <View style={[styles.hero, { width: winW }]}>
+        {/* <View style={[styles.hero, { width: winW }]}>
           <Svg
             style={StyleSheet.absoluteFill}
             width={winW}
@@ -334,7 +325,7 @@ export function DashboardScreen() {
             <Text style={styles.heroSub}>{greetingForNow()},</Text>
             <Text style={styles.heroKicker}>{user?.name ?? 'there'}</Text>
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.body}>
           {loading && !snapshot ? (
@@ -509,7 +500,9 @@ export function DashboardScreen() {
                 </View>
               </View>
 
-              <View style={[styles.card, styles.todayHeroCard, styles.moveCard]}>
+              <View
+                style={[styles.card, styles.todayHeroCard, styles.moveCard]}
+              >
                 <View style={[styles.cardIconRow, styles.moveCardIconRow]}>
                   <View style={styles.exerciseIconBubble}>
                     <Icon
@@ -534,7 +527,9 @@ export function DashboardScreen() {
                       {moveExercise.estKcalWeek} kcal
                     </Text>
                   </View>
-                  <View style={[styles.exerciseChart, styles.exerciseChartCompact]}>
+                  <View
+                    style={[styles.exerciseChart, styles.exerciseChartCompact]}
+                  >
                     <ExerciseZigzagBg />
                     <ExerciseWeekBars
                       values={moveExercise.values}
@@ -727,6 +722,7 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 18,
     gap: 12,
+    paddingVertical: 12,
   },
   centerLoad: {
     paddingVertical: 32,
@@ -859,7 +855,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   metricStatPillOffset: {
-    marginTop: 12,
+    marginTop: 8,
   },
   halfCardStatPill: {
     alignSelf: 'flex-start',
