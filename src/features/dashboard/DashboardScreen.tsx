@@ -1,4 +1,5 @@
-import React from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useRef } from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
   ActivityIndicator,
@@ -15,8 +16,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Screen } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
-import { MEAL_PRIMARY } from '../meals/mealUiTheme';
 import { MealCalorieProfileModal } from '../meals/components/MealCalorieProfileModal';
+import { MEAL_PRIMARY } from '../meals/mealUiTheme';
 import { LogHeartRateModal } from './components/LogHeartRateModal';
 import {
   DASH_BAD,
@@ -31,7 +32,10 @@ import {
 } from './dashboardTokens';
 import { useDashboardScreen } from './hooks/useDashboardScreen';
 import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
-import { formatRelativeHeartTime, waterRemainingFoot } from './utils/dashboardFormat';
+import {
+  formatRelativeHeartTime,
+  waterRemainingFoot,
+} from './utils/dashboardFormat';
 
 /** Slight floor so calories / water tiles align with heart rate / weight half-cards. */
 const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 148;
@@ -286,6 +290,20 @@ export function DashboardScreen() {
     calOverAmt,
   } = useDashboardScreen();
 
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'ios') {
+        return undefined;
+      }
+      const id = requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+      });
+      return () => cancelAnimationFrame(id);
+    }, []),
+  );
+
   return (
     <Screen
       applyTopSafeArea={false}
@@ -293,6 +311,7 @@ export function DashboardScreen() {
       backgroundColor="#F8FAFC"
     >
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -302,30 +321,13 @@ export function DashboardScreen() {
         }
         contentContainerStyle={styles.scrollContent}
         {...(Platform.OS === 'ios'
-          ? { contentInsetAdjustmentBehavior: 'never' as const }
+          ? {
+              contentInsetAdjustmentBehavior: 'never' as const,
+              automaticallyAdjustsScrollIndicatorInsets: false,
+              scrollIndicatorInsets: { top: 0, bottom: 0, left: 0, right: 0 },
+            }
           : {})}
       >
-        {/* <View style={[styles.hero, { width: winW }]}>
-          <Svg
-            style={StyleSheet.absoluteFill}
-            width={winW}
-            height={64}
-            preserveAspectRatio="none"
-          >
-            <Defs>
-              <LinearGradient id="heroWash" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor="#D1FAE5" stopOpacity={0.85} />
-                <Stop offset="1" stopColor="#F8FAFC" stopOpacity={0.15} />
-              </LinearGradient>
-            </Defs>
-            <Rect x={0} y={0} width={winW} height={64} fill="url(#heroWash)" />
-          </Svg>
-          <View style={styles.heroInner}>
-            <Text style={styles.heroSub}>{greetingForNow()},</Text>
-            <Text style={styles.heroKicker}>{user?.name ?? 'there'}</Text>
-          </View>
-        </View> */}
-
         <View style={styles.body}>
           {loading && !snapshot ? (
             <View style={styles.centerLoad}>
