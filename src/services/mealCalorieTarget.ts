@@ -102,7 +102,8 @@ function rowToProfile(row: BodyProfileRow): MealCalorieProfile {
   };
 }
 
-function isDefaultProfile(p: MealCalorieProfile): boolean {
+/** True when the profile still matches bundled defaults (user may not have customized it). */
+export function isMealCalorieProfileDefault(p: MealCalorieProfile): boolean {
   return (
     p.weightKg === DEFAULT_PROFILE.weightKg &&
     p.goalWeightKg === DEFAULT_PROFILE.goalWeightKg &&
@@ -168,7 +169,7 @@ export async function loadMealCalorieProfile(): Promise<MealCalorieProfile> {
       await writeLocalProfile(remote);
       return remote;
     }
-    if (!isDefaultProfile(local)) {
+    if (!isMealCalorieProfileDefault(local)) {
       await upsertBodyProfileToSupabase(session.user.id, local);
     }
   } catch {
