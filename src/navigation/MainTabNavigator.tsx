@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { MealTrackingScreen } from '../features/meals/MealTrackingScreen';
-import { StepsTrackingScreen } from '../features/steps/StepsTrackingScreen';
+import { ExerciseScreen } from '../features/exercise/ExerciseScreen';
 import { WaterIntakeScreen } from '../features/water/WaterIntakeScreen';
 import { FastingStackNavigator } from './FastingStackNavigator';
 import { tabScreenOptions } from './navHeaderOptions';
@@ -45,7 +45,7 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name="Steps"
-        component={StepsTrackingScreen}
+        component={ExerciseScreen}
         options={{
           title: 'Exercise',
           tabBarLabel: 'Exercise',
