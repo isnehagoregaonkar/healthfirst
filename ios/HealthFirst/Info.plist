@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>HealthFirst needs camera access if you want to take a new profile photo.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>HealthFirst reads your Health data to show steps, workouts, and heart trends.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>HealthFirst writes workout-related updates to keep your activity data in sync.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>NSPhotoLibraryUsageDescription</key>

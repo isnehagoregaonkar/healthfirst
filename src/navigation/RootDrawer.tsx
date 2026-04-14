@@ -58,7 +58,7 @@ export function RootDrawer() {
         component={ExerciseHistoryScreen}
         options={{
           ...drawerLeafScreenOptions,
-          title: 'Exercise & streak',
+          title: 'Exercise history',
         }}
       />
       <Drawer.Screen

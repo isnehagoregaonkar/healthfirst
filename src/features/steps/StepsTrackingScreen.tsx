@@ -3,10 +3,13 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
+import { ExerciseHistoryScreen } from '../exercise/ExerciseHistoryScreen';
 import { formatDayShort, startOfLocalDay } from '../water/waterDayUtils';
 
 export function StepsTrackingScreen() {
-  const [selectedDay, setSelectedDay] = useState(() => startOfLocalDay(new Date()));
+  const [selectedDay, setSelectedDay] = useState(() =>
+    startOfLocalDay(new Date()),
+  );
 
   const selectDay = useCallback((d: Date) => {
     setSelectedDay(startOfLocalDay(d));
@@ -27,13 +30,14 @@ export function StepsTrackingScreen() {
           stripScope="scrollablePast"
         />
 
-        <View style={styles.placeholderCard}>
-          <Text style={styles.placeholderTitle}>Steps</Text>
-          <Text style={styles.placeholderBody}>
-            Step totals for {dayLabel} will appear here when this screen is connected to Health
-            Connect / HealthKit.
+        <View style={styles.introCard}>
+          <Text style={styles.introTitle}>Exercise</Text>
+          <Text style={styles.introBody}>
+            Movement and workouts for {dayLabel}. Pick another day above to explore your history.
           </Text>
         </View>
+
+        <ExerciseHistoryScreen selectedDay={selectedDay} />
       </ScrollView>
     </Screen>
   );
@@ -45,7 +49,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 28,
   },
-  placeholderCard: {
+  introCard: {
     marginTop: 12,
     padding: 18,
     borderRadius: 16,
@@ -53,13 +57,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  placeholderTitle: {
-    fontSize: 16,
+  introTitle: {
+    fontSize: 18,
     fontWeight: '800',
     color: colors.textPrimary,
     marginBottom: 8,
   },
-  placeholderBody: {
+  introBody: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,

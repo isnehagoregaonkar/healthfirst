@@ -47,8 +47,8 @@ export function MainTabNavigator() {
         name="Steps"
         component={StepsTrackingScreen}
         options={{
-          title: 'Steps tracking',
-          tabBarLabel: 'Move',
+          title: 'Exercise',
+          tabBarLabel: 'Exercise',
         }}
       />
       <Tab.Screen
