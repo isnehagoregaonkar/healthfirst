@@ -33,12 +33,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>HealthFirst needs camera access if you want to take a new profile photo.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>HealthFirst needs access to your photo library to set your profile picture.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>HealthFirst needs camera access if you want to take a new profile photo.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

@@ -278,6 +278,7 @@ export function DashboardScreen() {
     onWeightSaved,
     streakModel,
     reminders,
+    insights,
     calPctRaw,
     calOverEarly,
     calPct,
@@ -674,6 +675,47 @@ export function DashboardScreen() {
                         ) : null}
                       </View>
                       {r.onPress ? (
+                        <Icon
+                          name="chevron-right"
+                          size={20}
+                          color={DASH_MUTED}
+                        />
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              {insights.length > 0 ? (
+                <View style={styles.card}>
+                  <View style={styles.insightsHead}>
+                    <Icon
+                      name="lightbulb-on-outline"
+                      size={22}
+                      color={DASH_SLATE}
+                    />
+                    <Text style={styles.insightsTitle}>Insights & Feedback</Text>
+                  </View>
+                  {insights.map(row => (
+                    <Pressable
+                      key={row.key}
+                      onPress={row.onPress}
+                      disabled={!row.onPress}
+                      style={({ pressed }) => [
+                        styles.insightRow,
+                        pressed && row.onPress && styles.cardPressed,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.insightIcon,
+                          { backgroundColor: `${row.color}18` },
+                        ]}
+                      >
+                        <Icon name={row.icon} size={20} color={row.color} />
+                      </View>
+                      <Text style={styles.insightText}>{row.text}</Text>
+                      {row.onPress ? (
                         <Icon
                           name="chevron-right"
                           size={20}
@@ -1110,5 +1152,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: DASH_MUTED,
     lineHeight: 18,
+  },
+  insightsHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  insightsTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: DASH_SLATE,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  insightIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: DASH_SLATE,
+    lineHeight: 20,
   },
 });
