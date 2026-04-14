@@ -9,6 +9,7 @@ import {
   type MealCalorieProfile,
 } from '../../../services/mealCalorieTarget';
 import { useDashboardData } from './useDashboardData';
+import { useDashboardInsights } from './useDashboardInsights';
 import { useDashboardReminders } from './useDashboardReminders';
 import { useDashboardStreakModel } from './useDashboardStreakModel';
 import { useDashboardTodayMetrics } from './useDashboardTodayMetrics';
@@ -43,6 +44,12 @@ export function useDashboardScreen() {
     todayMetrics.waterPct,
     todayMetrics.exerciseToday,
   );
+  const insights = useDashboardInsights(
+    snapshot,
+    navigation,
+    todayMetrics.waterPct,
+    todayMetrics.moveExercise,
+  );
 
   return {
     navigation,
@@ -60,6 +67,7 @@ export function useDashboardScreen() {
     onWeightSaved,
     streakModel,
     reminders,
+    insights,
     ...todayMetrics,
   };
 }
