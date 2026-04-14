@@ -137,6 +137,15 @@ function workoutTitleAndroid(w: unknown): string {
   return 'Workout';
 }
 
+function formatWorkoutName(name: string): string {
+  return name
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function workoutDurationAndroid(w: unknown): string | null {
   if (!w || typeof w !== 'object') {
     return null;
@@ -652,7 +661,8 @@ export function ExerciseScreen() {
                 <Text style={styles.panelMuted}>No workouts for this day.</Text>
               ) : (
                 summary.workouts.slice(0, 16).map((w, idx) => {
-                  const title = isIos ? workoutLabelIos(w) : workoutTitleAndroid(w);
+                  const rawTitle = isIos ? workoutLabelIos(w) : workoutTitleAndroid(w);
+                  const title = formatWorkoutName(rawTitle);
                   const duration = isIos
                     ? workoutDurationMinutesIos(w)
                     : workoutDurationAndroid(w);
