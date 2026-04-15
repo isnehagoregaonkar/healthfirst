@@ -113,6 +113,7 @@
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
+				A1B2C3D4E5F60718293A4B5C /* Generate Hermes dSYM */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
@@ -193,17 +194,28 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-HealthFirst/Pods-HealthFirst-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-HealthFirst/Pods-HealthFirst-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HealthFirst/Pods-HealthFirst-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A1B2C3D4E5F60718293A4B5C /* Generate Hermes dSYM */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Hermes dSYM";
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HealthFirst/Pods-HealthFirst-frameworks.sh\"\n";
+			shellScript = "HERMES_BIN=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework/hermesvm\"\nHERMES_DSYM=\"${DWARF_DSYM_FOLDER_PATH}/hermesvm.framework.dSYM\"\nif [ -f \"$HERMES_BIN\" ]; then\n  rm -rf \"$HERMES_DSYM\"\n  if /usr/bin/dsymutil \"$HERMES_BIN\" -o \"$HERMES_DSYM\"; then\n    echo \"Generated Hermes dSYM at $HERMES_DSYM\"\n  else\n    echo \"warning: Failed to generate Hermes dSYM from $HERMES_BIN\"\n  fi\nfi\n";
 			showEnvVarsInLog = 0;
 		};
 		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
@@ -236,13 +248,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-HealthFirst/Pods-HealthFirst-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-HealthFirst/Pods-HealthFirst-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

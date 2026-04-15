@@ -1,9 +1,14 @@
 # RN 0.85 omits legacy native-module code by default (RCT_REMOVE_LEGACY_ARCH=1).
 # @notifee/react-native is still a legacy bridge module; keep legacy arch in the build.
 ENV['RCT_REMOVE_LEGACY_ARCH'] = '0'
+# Avoid prebuilt RN dependency artifacts in release archives to prevent missing dSYMs
+# during TestFlight symbol upload (ReactNativeDependencies.framework).
+ENV['RCT_USE_RN_DEP'] = '0'
 # Prebuilt React-Core binaries often ship without legacy bridge interop; Notifee needs a core
 # built from source with legacy paths. First `pod install` + Xcode build will take longer.
 ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
+# Build Hermes from source so archive includes hermesvm dSYMs for App Store upload.
+ENV['RCT_BUILD_HERMES_FROM_SOURCE'] = 'true'
 
 # Resolve react_native_pods.rb with node to allow for hoisting
 require Pod::Executable.execute_command('node', ['-p',
@@ -38,5 +43,16 @@ target 'HealthFirst' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Ensure all CocoaPods frameworks (including Hermes and ReactNativeDependencies)
+    # emit dSYMs for Release archives so App Store symbol upload succeeds.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        next unless build_config.name == 'Release'
+
+        build_config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+        build_config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
+      end
+    end
   end
 end
