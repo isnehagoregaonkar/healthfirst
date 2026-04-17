@@ -19,6 +19,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { RegisterScreen } from './src/features/auth/RegisterScreen';
+import { ForgotPasswordScreen } from './src/features/auth/ForgotPasswordScreen';
 import { useAuthSession } from './src/features/auth/hooks/useAuthSession';
 import { RootDrawer } from './src/navigation/RootDrawer';
 import type { RootDrawerParamList } from './src/navigation/types';
@@ -28,7 +29,9 @@ const navRef = createNavigationContainerRef<RootDrawerParamList>();
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
-  const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
+  const [authScreen, setAuthScreen] = useState<
+    'login' | 'register' | 'forgotPassword'
+  >('login');
   const [pendingNavigateToFasting, setPendingNavigateToFasting] =
     useState(false);
   const { showSplash, isAuthenticated } = useAuthSession();
@@ -79,7 +82,14 @@ function App() {
     );
   } else if (authScreen === 'login') {
     mainContent = (
-      <LoginScreen onNavigateToRegister={() => setAuthScreen('register')} />
+      <LoginScreen
+        onNavigateToRegister={() => setAuthScreen('register')}
+        onNavigateToForgotPassword={() => setAuthScreen('forgotPassword')}
+      />
+    );
+  } else if (authScreen === 'forgotPassword') {
+    mainContent = (
+      <ForgotPasswordScreen onBackToLogin={() => setAuthScreen('login')} />
     );
   } else {
     mainContent = (
