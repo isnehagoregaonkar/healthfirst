@@ -1,11 +1,2 @@
-import React from 'react';
-import { PlaceholderScreen } from '../../components/PlaceholderScreen';
-
-export function ExerciseHistoryScreen() {
-  return (
-    <PlaceholderScreen
-      title="Exercise history & streak"
-      subtitle="Workouts, consistency, and streaks."
-    />
-  );
-}
+/** @deprecated Use `ExerciseScreen` — kept for backwards-compatible imports. */
+export { ExerciseScreen as ExerciseHistoryScreen } from './ExerciseScreen';

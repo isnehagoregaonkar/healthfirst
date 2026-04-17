@@ -1,6 +1,6 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
-import { ExerciseHistoryScreen } from '../features/exercise/ExerciseHistoryScreen';
+import { ExerciseScreen } from '../features/exercise/ExerciseScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
@@ -55,10 +55,10 @@ export function RootDrawer() {
       />
       <Drawer.Screen
         name="ExerciseHistory"
-        component={ExerciseHistoryScreen}
+        component={ExerciseScreen}
         options={{
           ...drawerLeafScreenOptions,
-          title: 'Exercise & streak',
+          title: 'Exercise history',
         }}
       />
       <Drawer.Screen
