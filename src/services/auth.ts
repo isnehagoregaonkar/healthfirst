@@ -36,6 +36,10 @@ export const signOut = async () => {
   return await supabase.auth.signOut();
 };
 
+export const requestPasswordReset = async (email: string) => {
+  return await supabase.auth.resetPasswordForEmail(email);
+};
+
 export async function updateAuthDisplayName(name: string): Promise<{ ok: true } | { ok: false; message: string }> {
   const trimmed = name.trim();
   if (trimmed.length < 1) {

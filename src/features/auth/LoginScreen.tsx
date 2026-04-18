@@ -14,9 +14,13 @@ import { colors } from '../../theme/tokens';
 
 type LoginScreenProps = Readonly<{
   onNavigateToRegister?: () => void;
+  onNavigateToForgotPassword?: () => void;
 }>;
 
-export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
+export function LoginScreen({
+  onNavigateToRegister,
+  onNavigateToForgotPassword,
+}: LoginScreenProps) {
   const {
     email,
     setEmail,
@@ -80,7 +84,10 @@ export function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
       </Pressable>
       {submitError ? <Text style={authFormStyles.submitErrorText}>{submitError}</Text> : null}
 
-      <Pressable style={styles.secondaryAction}>
+      <Pressable
+        style={styles.secondaryAction}
+        onPress={onNavigateToForgotPassword}
+      >
         <Text style={styles.secondaryActionText}>Forgot password?</Text>
       </Pressable>
     </AuthScreenShell>
