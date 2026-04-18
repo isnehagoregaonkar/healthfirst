@@ -1182,5 +1182,204 @@
         { "name": "2 biscuits", "grams": 30, "default": true },
         { "name": "4 biscuits", "grams": 60 }
       ]
+    },
+    {
+      "name": "prawns masala",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 120, "protein": 18, "carbs": 3, "fat": 4 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "batata rassa",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 90, "protein": 2, "carbs": 14, "fat": 3 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "dal makhani",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 130, "protein": 5, "carbs": 12, "fat": 7 },
+      "units": [
+        { "name": "1 bowl", "grams": 250, "default": true },
+        { "name": "1/2 bowl", "grams": 125 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "moong dal",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 105, "protein": 7, "carbs": 16, "fat": 2 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "chicken curry",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 150, "protein": 18, "carbs": 3, "fat": 7 },
+      "units": [
+        { "name": "1 bowl", "grams": 250, "default": true },
+        { "name": "1/2 bowl", "grams": 125 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "paneer butter masala",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 170, "protein": 6, "carbs": 6, "fat": 14 },
+      "units": [
+        { "name": "1 bowl", "grams": 250, "default": true },
+        { "name": "1/2 bowl", "grams": 125 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "chole",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 110, "protein": 6, "carbs": 18, "fat": 2 },
+      "units": [
+        { "name": "1 bowl", "grams": 250, "default": true },
+        { "name": "1/2 bowl", "grams": 125 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "rajma",
+      "category": "main course",
+      "nutrition_per_100g": { "calories": 110, "protein": 7, "carbs": 19, "fat": 1 },
+      "units": [
+        { "name": "1 bowl", "grams": 250, "default": true },
+        { "name": "1/2 bowl", "grams": 125 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "poha",
+      "category": "breakfast",
+      "nutrition_per_100g": { "calories": 110, "protein": 2.5, "carbs": 18, "fat": 3 },
+      "units": [
+        { "name": "1 bowl", "grams": 180, "default": true },
+        { "name": "1/2 bowl", "grams": 90 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "upma",
+      "category": "breakfast",
+      "nutrition_per_100g": { "calories": 110, "protein": 3, "carbs": 18, "fat": 3 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "idli",
+      "category": "breakfast",
+      "nutrition_per_100g": { "calories": 120, "protein": 4, "carbs": 24, "fat": 1 },
+      "units": [
+        { "name": "2 idli", "grams": 120, "default": true },
+        { "name": "1 idli", "grams": 60 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "masala dosa",
+      "category": "breakfast",
+      "nutrition_per_100g": { "calories": 160, "protein": 3, "carbs": 25, "fat": 6 },
+      "units": [
+        { "name": "1 dosa", "grams": 250, "default": true },
+        { "name": "1/2 dosa", "grams": 125 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "plain rice",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 130, "protein": 2.5, "carbs": 28, "fat": 0.3 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "jeera rice",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 150, "protein": 3, "carbs": 26, "fat": 4 },
+      "units": [
+        { "name": "1 bowl", "grams": 200, "default": true },
+        { "name": "1/2 bowl", "grams": 100 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "chapati",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 260, "protein": 8, "carbs": 55, "fat": 3 },
+      "units": [
+        { "name": "1 roti", "grams": 40, "default": true },
+        { "name": "2 roti", "grams": 80 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "butter naan",
+      "category": "meal",
+      "nutrition_per_100g": { "calories": 270, "protein": 7, "carbs": 40, "fat": 9 },
+      "units": [
+        { "name": "1 naan", "grams": 100, "default": true },
+        { "name": "1/2 naan", "grams": 50 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "curd",
+      "category": "dairy",
+      "nutrition_per_100g": { "calories": 60, "protein": 3.5, "carbs": 4, "fat": 3 },
+      "units": [
+        { "name": "1 bowl", "grams": 150, "default": true },
+        { "name": "1/2 bowl", "grams": 75 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "buttermilk",
+      "category": "beverage",
+      "nutrition_per_100g": { "calories": 30, "protein": 2, "carbs": 3, "fat": 1 },
+      "units": [
+        { "name": "1 glass", "grams": 200, "default": true },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "milk chocolate",
+      "category": "dessert",
+      "nutrition_per_100g": { "calories": 535, "protein": 7, "carbs": 59, "fat": 30 },
+      "units": [
+        { "name": "1 piece (10g)", "grams": 10, "default": true },
+        { "name": "1 bar (50g)", "grams": 50 },
+        { "name": "100 g", "grams": 100 }
+      ]
+    },
+    {
+      "name": "dark chocolate",
+      "category": "dessert",
+      "nutrition_per_100g": { "calories": 600, "protein": 8, "carbs": 45, "fat": 42 },
+      "units": [
+        { "name": "1 piece (10g)", "grams": 10, "default": true },
+        { "name": "1 bar (50g)", "grams": 50 },
+        { "name": "100 g", "grams": 100 }
+      ]
     }
 ]
