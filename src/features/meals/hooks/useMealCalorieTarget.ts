@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  computeBmi,
   loadMealCalorieProfile,
+  type BmiInfo,
+  type MacroTargets,
   type MealCalorieProfile,
   saveMealCalorieProfile,
   suggestedDailyCalories,
+  suggestedMacroTargets,
 } from '../../../services/mealCalorieTarget';
 
 export function useMealCalorieTarget() {
@@ -26,6 +30,13 @@ export function useMealCalorieTarget() {
     [profile],
   );
 
+  const macroTargets = useMemo<MacroTargets | null>(
+    () => (profile ? suggestedMacroTargets(profile) : null),
+    [profile],
+  );
+
+  const bmi = useMemo<BmiInfo | null>(() => (profile ? computeBmi(profile) : null), [profile]);
+
   const updateProfile = useCallback(async (next: MealCalorieProfile) => {
     await saveMealCalorieProfile(next);
     setProfile(next);
@@ -34,6 +45,8 @@ export function useMealCalorieTarget() {
   return {
     profile,
     suggestedKcal,
+    macroTargets,
+    bmi,
     updateProfile,
     ready: profile !== null,
   };
