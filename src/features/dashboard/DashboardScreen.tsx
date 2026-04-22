@@ -33,6 +33,7 @@ import {
 import { useDashboardScreen } from './hooks/useDashboardScreen';
 import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
 import {
+  formatHeartSourceLabel,
   formatRelativeHeartTime,
   waterRemainingFoot,
 } from './utils/dashboardFormat';
@@ -578,7 +579,7 @@ export function DashboardScreen() {
                             {snapshot.heartLatest.bpm}
                           </Text>
                           <Text style={styles.hrUnit}>
-                            BPM ·{' '}
+                            BPM · {formatHeartSourceLabel(snapshot.heartLatest.source)} ·{' '}
                             {formatRelativeHeartTime(
                               snapshot.heartLatest.recordedAt,
                             )}

@@ -24,6 +24,7 @@ import {
   loadMealCalorieProfile,
   type MealCalorieProfile,
 } from '../../services/mealCalorieTarget';
+import { upsertExternalHeartRateReading } from '../../services/vitals';
 import { colors } from '../../theme/tokens';
 import { startOfLocalDay } from '../water/waterDayUtils';
 
@@ -396,6 +397,12 @@ function localDayBounds(day: Date): Readonly<{ start: Date; end: Date }> {
   end.setDate(end.getDate() + 1);
   end.setMilliseconds(end.getMilliseconds() - 1);
   return { start, end };
+}
+
+function localDayMidpoint(day: Date): Date {
+  const mid = startOfLocalDay(day);
+  mid.setHours(12, 0, 0, 0);
+  return mid;
 }
 
 function dayMetricsFromIosRaw(d: Record<string, unknown>): DayMetrics {
@@ -1029,6 +1036,19 @@ export function ExerciseScreen() {
           console.warn('[ExerciseScreen] Supabase sync:', res.error.message);
         }
       });
+
+      if (summary.avgHr != null) {
+        const source = Platform.OS === 'ios' ? 'healthkit' : 'health_connect';
+        void upsertExternalHeartRateReading({
+          bpm: summary.avgHr,
+          recordedAt: localDayMidpoint(activeDay),
+          source,
+        }).then(res => {
+          if (!res.ok) {
+            console.warn('[ExerciseScreen] Heart rate history sync:', res.error.message);
+          }
+        });
+      }
     },
     [activeDay],
   );

@@ -9,11 +9,14 @@ export type HeartRateReading = Readonly<{
   id: string;
   bpm: number;
   recordedAt: string;
+  source: 'manual' | 'health_connect' | 'healthkit' | 'unknown';
 }>;
 
 type AddHeartRateResult =
   | Readonly<{ ok: true }>
   | Readonly<{ ok: false; error: VitalsServiceError }>;
+
+type ExternalHeartRateSource = 'health_connect' | 'healthkit';
 
 async function requireUserId(): Promise<{ userId: string } | { error: VitalsServiceError }> {
   const { data, error } = await supabase.auth.getUser();
@@ -24,6 +27,10 @@ async function requireUserId(): Promise<{ userId: string } | { error: VitalsServ
     return { error: { message: 'Not signed in' } };
   }
   return { userId: data.user.id };
+}
+
+function isTableMissingError(code?: string): boolean {
+  return code === '42P01';
 }
 
 function startOfLocalDayVitals(d: Date): Date {
@@ -78,18 +85,37 @@ export async function getLatestHeartRateReading(): Promise<
     return { error: user.error };
   }
 
-  const { data, error } = await supabase
-    .from('heart_rate_readings')
+  const latestFromHistory = await supabase
+    .from('heart_rate_history')
     .select('id, bpm, recorded_at')
     .eq('user_id', user.userId)
     .order('recorded_at', { ascending: false })
     .limit(1);
-
-  if (error) {
-    return { error: { message: error.message, code: error.code } };
+  if (latestFromHistory.error && !isTableMissingError(latestFromHistory.error.code)) {
+    return {
+      error: { message: latestFromHistory.error.message, code: latestFromHistory.error.code },
+    };
   }
 
-  const row = data?.[0];
+  const latestResult = latestFromHistory.error
+    ? await supabase
+        .from('heart_rate_readings')
+        .select('id, bpm, recorded_at, source')
+        .eq('user_id', user.userId)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+    : await supabase
+        .from('heart_rate_history')
+        .select('id, bpm, recorded_at, source')
+        .eq('user_id', user.userId)
+        .order('recorded_at', { ascending: false })
+        .limit(1);
+
+  if (latestResult.error) {
+    return { error: { message: latestResult.error.message, code: latestResult.error.code } };
+  }
+
+  const row = latestResult.data?.[0];
   if (!row) {
     return { reading: null };
   }
@@ -99,6 +125,12 @@ export async function getLatestHeartRateReading(): Promise<
       id: String(row.id),
       bpm: Number(row.bpm),
       recordedAt: String(row.recorded_at),
+      source:
+        String(row.source) === 'manual' ||
+        String(row.source) === 'health_connect' ||
+        String(row.source) === 'healthkit'
+          ? (String(row.source) as HeartRateReading['source'])
+          : 'unknown',
     },
   };
 }
@@ -125,19 +157,32 @@ export async function getHeartRateDayBucketsForRange(
   const { startIso } = localDayBoundsIsoVitals(firstStart);
   const { endIso } = localDayBoundsIsoVitals(endDay);
 
-  const { data, error } = await supabase
-    .from('heart_rate_readings')
+  const rangeFromHistory = await supabase
+    .from('heart_rate_history')
     .select('id, bpm, recorded_at')
     .eq('user_id', user.userId)
     .gte('recorded_at', startIso)
     .lte('recorded_at', endIso)
     .order('recorded_at', { ascending: false });
-
-  if (error) {
-    return { error: { message: error.message, code: error.code } };
+  if (rangeFromHistory.error && !isTableMissingError(rangeFromHistory.error.code)) {
+    return { error: { message: rangeFromHistory.error.message, code: rangeFromHistory.error.code } };
   }
 
-  const rows = data ?? [];
+  const rangeResult = rangeFromHistory.error
+    ? await supabase
+        .from('heart_rate_readings')
+        .select('id, bpm, recorded_at')
+        .eq('user_id', user.userId)
+        .gte('recorded_at', startIso)
+        .lte('recorded_at', endIso)
+        .order('recorded_at', { ascending: false })
+    : rangeFromHistory;
+
+  if (rangeResult.error) {
+    return { error: { message: rangeResult.error.message, code: rangeResult.error.code } };
+  }
+
+  const rows = rangeResult.data ?? [];
 
   const sumByKey = new Map<string, { sum: number; count: number }>();
   for (let i = 0; i < n; i += 1) {
@@ -179,14 +224,75 @@ export async function addHeartRateReading(bpm: number): Promise<AddHeartRateResu
     return { ok: false, error: user.error };
   }
 
-  const { error } = await supabase.from('heart_rate_readings').insert({
+  const insertResult = await supabase.from('heart_rate_history').insert({
     user_id: user.userId,
     bpm: Math.round(bpm),
+    recorded_at: new Date().toISOString(),
     source: 'manual',
   });
+  if (insertResult.error && !isTableMissingError(insertResult.error.code)) {
+    return {
+      ok: false,
+      error: { message: insertResult.error.message, code: insertResult.error.code },
+    };
+  }
 
-  if (error) {
-    return { ok: false, error: { message: error.message, code: error.code } };
+  if (insertResult.error) {
+    const fallback = await supabase.from('heart_rate_readings').insert({
+      user_id: user.userId,
+      bpm: Math.round(bpm),
+      source: 'manual',
+    });
+    if (fallback.error) {
+      return { ok: false, error: { message: fallback.error.message, code: fallback.error.code } };
+    }
+  }
+
+  return { ok: true };
+}
+
+export async function upsertExternalHeartRateReading(input: {
+  bpm: number;
+  recordedAt: Date;
+  source: ExternalHeartRateSource;
+}): Promise<AddHeartRateResult> {
+  if (!Number.isFinite(input.bpm) || input.bpm < 35 || input.bpm > 220) {
+    return { ok: false, error: { message: 'BPM must be between 35 and 220' } };
+  }
+
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { ok: false, error: user.error };
+  }
+
+  const recordedIso = input.recordedAt.toISOString();
+  const upsertResult = await supabase.from('heart_rate_history').upsert(
+    {
+      user_id: user.userId,
+      bpm: Math.round(input.bpm),
+      recorded_at: recordedIso,
+      source: input.source,
+    },
+    { onConflict: 'user_id,source,recorded_at' },
+  );
+
+  if (upsertResult.error && !isTableMissingError(upsertResult.error.code)) {
+    return {
+      ok: false,
+      error: { message: upsertResult.error.message, code: upsertResult.error.code },
+    };
+  }
+
+  if (upsertResult.error) {
+    const fallback = await supabase.from('heart_rate_readings').insert({
+      user_id: user.userId,
+      bpm: Math.round(input.bpm),
+      recorded_at: recordedIso,
+      source: input.source,
+    });
+    if (fallback.error) {
+      return { ok: false, error: { message: fallback.error.message, code: fallback.error.code } };
+    }
   }
 
   return { ok: true };
