@@ -10,8 +10,11 @@ import {
 import { DEFAULT_DAILY_GOAL_ML, getTodayTotalMl, getWaterDailyTotalsForRange } from '../../../services/water';
 import type { WaterDayTotal } from '../../../services/water';
 import {
+  getLatestHeartRateFromDevice,
   getHeartRateDayBucketsForRange,
   getLatestHeartRateReading,
+  syncLatestHeartRateFromDevice,
+  upsertExternalHeartRateReading,
   type HeartRateDayBucket,
   type HeartRateReading,
 } from '../../../services/vitals';
@@ -92,7 +95,33 @@ export function useDashboardData() {
         return;
       }
 
-      const heartLatestR = await getLatestHeartRateReading();
+      let heartLatestR = await getLatestHeartRateReading();
+      const deviceLatestR = await getLatestHeartRateFromDevice();
+      if (!('error' in deviceLatestR) && deviceLatestR.reading) {
+        const deviceIso = deviceLatestR.reading.recordedAt.toISOString();
+        const dbIso =
+          !('error' in heartLatestR) && heartLatestR.reading
+            ? heartLatestR.reading.recordedAt
+            : null;
+        const shouldUseDevice =
+          dbIso == null || deviceLatestR.reading.recordedAt.getTime() > new Date(dbIso).getTime();
+        if (shouldUseDevice) {
+          heartLatestR = {
+            reading: {
+              id: `device:${deviceIso}`,
+              bpm: deviceLatestR.reading.bpm,
+              recordedAt: deviceIso,
+              source: deviceLatestR.reading.source,
+            },
+          };
+        }
+        void upsertExternalHeartRateReading(deviceLatestR.reading);
+      } else if (!('error' in heartLatestR) && !heartLatestR.reading) {
+        const syncR = await syncLatestHeartRateFromDevice();
+        if (syncR.ok && syncR.synced) {
+          heartLatestR = await getLatestHeartRateReading();
+        }
+      }
       const heartWeekR = await getHeartRateDayBucketsForRange(today, 7);
 
       let heartLatest: HeartRateReading | null = null;
