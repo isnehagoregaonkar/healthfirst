@@ -9,16 +9,20 @@ import {
   suggestedDailyCalories,
   suggestedMacroTargets,
 } from '../../../services/mealCalorieTarget';
+import { loadUserGoals } from '../../../services/goals';
 
 export function useMealCalorieTarget() {
   const [profile, setProfile] = useState<MealCalorieProfile | null>(null);
+  const [goalKcal, setGoalKcal] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
-    loadMealCalorieProfile().then((p) => {
-      if (alive) {
-        setProfile(p);
+    Promise.all([loadMealCalorieProfile(), loadUserGoals()]).then(([p, goals]) => {
+      if (!alive) {
+        return;
       }
+      setProfile(p);
+      setGoalKcal(goals.calorieIntakeGoal);
     });
     return () => {
       alive = false;
@@ -26,8 +30,16 @@ export function useMealCalorieTarget() {
   }, []);
 
   const suggestedKcal = useMemo(
-    () => (profile ? suggestedDailyCalories(profile) : 2000),
-    [profile],
+    () => {
+      if (goalKcal != null) {
+        return goalKcal;
+      }
+      if (profile) {
+        return suggestedDailyCalories(profile);
+      }
+      return 2000;
+    },
+    [goalKcal, profile],
   );
 
   const macroTargets = useMemo<MacroTargets | null>(
@@ -40,6 +52,8 @@ export function useMealCalorieTarget() {
   const updateProfile = useCallback(async (next: MealCalorieProfile) => {
     await saveMealCalorieProfile(next);
     setProfile(next);
+    const goals = await loadUserGoals();
+    setGoalKcal(goals.calorieIntakeGoal);
   }, []);
 
   return {

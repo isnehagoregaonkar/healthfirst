@@ -4,10 +4,10 @@ import type { DayMacroTotals, MealDaySummary, MealWithItems } from '../../../ser
 import { getMealDaySummariesForRange, getMealsForToday } from '../../../services/meals';
 import {
   loadMealCalorieProfile,
-  suggestedDailyCalories,
   type MealCalorieProfile,
 } from '../../../services/mealCalorieTarget';
-import { DEFAULT_DAILY_GOAL_ML, getTodayTotalMl, getWaterDailyTotalsForRange } from '../../../services/water';
+import { loadUserGoals, type UserGoals } from '../../../services/goals';
+import { getTodayTotalMl, getWaterDailyTotalsForRange } from '../../../services/water';
 import type { WaterDayTotal } from '../../../services/water';
 import {
   getLatestHeartRateFromDevice,
@@ -30,6 +30,8 @@ export type DashboardSnapshot = Readonly<{
   waterWeek: WaterDayTotal[];
   heartWeek: HeartRateDayBucket[];
   heartLatest: HeartRateReading | null;
+  goals: UserGoals;
+  weightGoalKg: number;
 }>;
 
 function round1(n: number): number {
@@ -69,7 +71,8 @@ export function useDashboardData() {
 
     try {
       const profile = await loadMealCalorieProfile();
-      const calorieTarget = suggestedDailyCalories(profile);
+      const goals = await loadUserGoals();
+      const calorieTarget = goals.calorieIntakeGoal;
 
       const mealsToday = await getMealsForToday();
       if ('error' in mealsToday) {
@@ -140,11 +143,13 @@ export function useDashboardData() {
         todayCalories: mealsToday.totalCalories,
         todayMacros: macrosFromMeals(mealsToday.meals),
         waterTodayMl: waterMl,
-        waterGoalMl: DEFAULT_DAILY_GOAL_ML,
+        waterGoalMl: goals.waterIntakeGoalMl,
         mealWeek: mealWeekR.days,
         waterWeek: waterWeekR.days,
         heartWeek,
         heartLatest,
+        goals,
+        weightGoalKg: goals.targetWeightKg,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');

@@ -9,12 +9,12 @@ type MainNavigatorParams = NavigatorScreenParams<MainTabParamList>;
 
 type MainTabDrawerDestinationId = Exclude<
   DrawerDestinationId,
-  'ProgressHistory' | 'ExerciseHistory' | 'Reminders' | 'Profile'
+  'Goals' | 'ProgressHistory' | 'ExerciseHistory' | 'Reminders' | 'Profile'
 >;
 
 type LeafDrawerDestinationId = Extract<
   DrawerDestinationId,
-  'ProgressHistory' | 'ExerciseHistory' | 'Reminders' | 'Profile'
+  'Goals' | 'ProgressHistory' | 'ExerciseHistory' | 'Reminders' | 'Profile'
 >;
 
 const MAIN_NAV_BY_DESTINATION = {
@@ -26,6 +26,7 @@ const MAIN_NAV_BY_DESTINATION = {
 } as const satisfies Record<MainTabDrawerDestinationId, MainNavigatorParams>;
 
 const DRAWER_SCREEN_BY_DESTINATION = {
+  Goals: 'Goals',
   Profile: 'Profile',
   ProgressHistory: 'ProgressHistory',
   ExerciseHistory: 'ExerciseHistory',
@@ -41,6 +42,7 @@ const TAB_ROUTE_TO_DESTINATION: Record<string, DrawerDestinationId> = {
 };
 
 const DRAWER_ROUTE_TO_DESTINATION: Partial<Record<keyof RootDrawerParamList, DrawerDestinationId>> = {
+  Goals: 'Goals',
   Profile: 'Profile',
   ProgressHistory: 'ProgressHistory',
   ExerciseHistory: 'ExerciseHistory',

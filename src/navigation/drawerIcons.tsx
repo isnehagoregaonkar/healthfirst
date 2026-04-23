@@ -22,6 +22,10 @@ export function ProgressDrawerIcon({ color, size }: DrawerIconProps) {
   return <Icon name="chart-line" size={size} color={color} />;
 }
 
+export function GoalsDrawerIcon({ color, size }: DrawerIconProps) {
+  return <Icon name="bullseye-arrow" size={size} color={color} />;
+}
+
 export function WaterDrawerIcon({ color, size }: DrawerIconProps) {
   return <Icon name="cup-water" size={size} color={color} />;
 }

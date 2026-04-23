@@ -24,6 +24,7 @@ import {
   loadMealCalorieProfile,
   type MealCalorieProfile,
 } from '../../services/mealCalorieTarget';
+import { loadUserGoals } from '../../services/goals';
 import { upsertExternalHeartRateReading } from '../../services/vitals';
 import { colors } from '../../theme/tokens';
 import { startOfLocalDay } from '../water/waterDayUtils';
@@ -951,6 +952,7 @@ export function ExerciseScreen() {
   const [mealProfile, setMealProfile] = useState<MealCalorieProfile | null>(
     null,
   );
+  const [energyGoalKcal, setEnergyGoalKcal] = useState(ACTIVE_ENERGY_GOAL_KCAL);
   const healthBootstrapDone = useRef(false);
 
   useEffect(() => {
@@ -958,6 +960,11 @@ export function ExerciseScreen() {
     void loadMealCalorieProfile().then(p => {
       if (alive) {
         setMealProfile(p);
+      }
+    });
+    void loadUserGoals().then(goals => {
+      if (alive) {
+        setEnergyGoalKcal(goals.calorieBurnGoal);
       }
     });
     return () => {
@@ -1183,7 +1190,7 @@ export function ExerciseScreen() {
         : null;
     const energyProgress =
       summary.energyKcal != null && summary.energyKcal >= 0
-        ? Math.min(1, summary.energyKcal / ACTIVE_ENERGY_GOAL_KCAL)
+        ? Math.min(1, summary.energyKcal / Math.max(energyGoalKcal, 1))
         : null;
     const workoutProgress = Math.min(
       1,
@@ -1198,7 +1205,7 @@ export function ExerciseScreen() {
       energyProgress,
       workoutProgress,
     };
-  }, [summary, trendPrior7]);
+  }, [summary, trendPrior7, energyGoalKcal]);
 
   const coachingCard = useMemo(() => {
     if (!summary) {
@@ -1332,7 +1339,7 @@ export function ExerciseScreen() {
                 }
                 sub={summary.energyKcal !== null ? 'kcal' : undefined}
                 accent={colors.primary}
-                goalLabel={`Goal ${ACTIVE_ENERGY_GOAL_KCAL} kcal`}
+                goalLabel={`Goal ${energyGoalKcal} kcal`}
                 progress={statContext?.energyProgress ?? null}
                 insight={statContext?.energyInsight ?? null}
               />
