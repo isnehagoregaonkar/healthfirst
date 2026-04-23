@@ -30,13 +30,13 @@ type DrawerNavRow = Readonly<{
 
 const ROWS: DrawerNavRow[] = [
   { id: 'Dashboard', label: 'Dashboard', Icon: DashboardDrawerIcon },
-  { id: 'MealTracking', label: 'Meal tracking', Icon: MealDrawerIcon },
   { id: 'Goals', label: 'Goals', Icon: GoalsDrawerIcon },
   { id: 'ProgressHistory', label: 'Progress history', Icon: ProgressDrawerIcon },
   { id: 'WaterIntake', label: 'Water intake', Icon: WaterDrawerIcon },
   { id: 'StepsTracking', label: 'Exercise', Icon: StepsDrawerIcon },
   { id: 'IntermittentFasting', label: 'Intermittent fasting', Icon: FastingDrawerIcon },
   { id: 'Reminders', label: 'Reminders', Icon: RemindersDrawerIcon },
+  { id: 'MealTracking', label: 'Meal tracking', Icon: MealDrawerIcon },
   { id: 'Profile', label: 'Profile', Icon: ProfileDrawerIcon },
 ];
 

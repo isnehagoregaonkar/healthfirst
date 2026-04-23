@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,7 +8,8 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import type { TimeOfDay } from '../fasting/fastingTypes';
 import { ReminderTimePickerModal } from './ReminderTimePickerModal';
@@ -90,8 +90,7 @@ export function RemindersScreen() {
         backgroundColor="#F8FAFC"
       >
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading reminders…</Text>
+          <AppLoadingSpinner title="Loading reminders…" />
         </View>
       </Screen>
     );
@@ -121,8 +120,7 @@ export function RemindersScreen() {
 
         {s.saving ? (
           <View style={styles.savingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.savingText}>Updating…</Text>
+            <AppLoadingSpinner title="Updating…" compact />
           </View>
         ) : null}
 
@@ -315,7 +313,7 @@ export function RemindersScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 8,
     paddingBottom: 28,
   },
@@ -324,11 +322,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-  },
-  loadingText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontWeight: '600',
   },
   warnBanner: {
     flexDirection: 'row',
@@ -353,11 +346,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 12,
-  },
-  savingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
   lead: {
     fontSize: 14,

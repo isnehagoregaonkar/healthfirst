@@ -10,7 +10,7 @@ export type MainTabParamList = {
   Meals: undefined;
   Water: undefined;
   Steps: undefined;
-  Fasting: NavigatorScreenParams<FastingStackParamList>;
+  Fasting: undefined;
 };
 
 export type RootDrawerParamList = {

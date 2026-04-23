@@ -25,7 +25,7 @@ export type ProgressSummary = Readonly<{
   exerciseMinutesTotal: number;
   workoutsTotal: number;
   fastingSessions: number;
-  fastingHoursTotal: number;
+  fastingMinutesTotal: number;
   mealGoalHitDays: number;
   waterGoalHitDays: number;
   exerciseGoalHitDays: number;
@@ -65,12 +65,65 @@ function overlapsDayRange(
   rangeStart: Date,
   rangeEnd: Date,
 ): boolean {
-  const start = new Date(startIso).getTime();
-  const end = new Date(endIso).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end)) {
+  const start = timestampFromUnknown(startIso);
+  const end = timestampFromUnknown(endIso);
+  if (start === null || end === null) {
     return false;
   }
   return end >= rangeStart.getTime() && start <= rangeEnd.getTime();
+}
+
+function timestampFromUnknown(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const abs = Math.abs(value);
+    return abs >= 1e12 ? value : value * 1000;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const asNumber = Number(trimmed);
+    if (Number.isFinite(asNumber)) {
+      const abs = Math.abs(asNumber);
+      return abs >= 1e12 ? asNumber : asNumber * 1000;
+    }
+    const parsed = Date.parse(trimmed);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const o = value as Record<string, unknown>;
+  const nestedKeys = [
+    'timestamp',
+    'time',
+    'date',
+    'value',
+    'epochMillis',
+    'epochMs',
+    'epochSeconds',
+    'seconds',
+  ] as const;
+  for (const key of nestedKeys) {
+    const nested = o[key];
+    if (nested !== undefined) {
+      return timestampFromUnknown(nested);
+    }
+  }
+  return null;
+}
+
+function fastingDurationMin(session: FastingSession): number {
+  if (Number.isFinite(session.durationMin) && session.durationMin > 0) {
+    return Math.max(1, Math.round(session.durationMin));
+  }
+  const start = timestampFromUnknown(session.startedAt);
+  const end = timestampFromUnknown(session.endedAt);
+  if (start == null || end == null || end <= start) {
+    return 0;
+  }
+  return Math.max(1, Math.round((end - start) / 60_000));
 }
 
 function calcRange(preset: ProgressRangePreset, anchor: Date): { start: Date; end: Date } {
@@ -202,12 +255,10 @@ export function useProgressHistoryScreen() {
     const exerciseKcalTotal = dayRows.reduce((acc, d) => acc + d.exerciseKcal, 0);
     const exerciseMinutesTotal = dayRows.reduce((acc, d) => acc + d.exerciseMinutes, 0);
     const workoutsTotal = dayRows.reduce((acc, d) => acc + d.workouts, 0);
-    const fastingHoursTotal =
-      Math.round(
-        (fastingSessions.reduce((acc, s) => acc + Math.max(0, s.durationMin), 0) /
-          60) *
-          10,
-      ) / 10;
+    const fastingMinutesTotal = fastingSessions.reduce(
+      (acc, session) => acc + fastingDurationMin(session),
+      0,
+    );
     let mealGoalHitDays = 0;
     let waterGoalHitDays = 0;
     let exerciseGoalHitDays = 0;
@@ -224,7 +275,7 @@ export function useProgressHistoryScreen() {
       exerciseMinutesTotal,
       workoutsTotal,
       fastingSessions: fastingSessions.length,
-      fastingHoursTotal,
+      fastingMinutesTotal,
       mealGoalHitDays,
       waterGoalHitDays,
       exerciseGoalHitDays,

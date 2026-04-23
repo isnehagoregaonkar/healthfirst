@@ -22,7 +22,7 @@ const MAIN_NAV_BY_DESTINATION = {
   MealTracking: { screen: 'Meals' },
   WaterIntake: { screen: 'Water' },
   StepsTracking: { screen: 'Steps' },
-  IntermittentFasting: { screen: 'Fasting', params: { screen: 'FastingHome' } },
+  IntermittentFasting: { screen: 'Fasting' },
 } as const satisfies Record<MainTabDrawerDestinationId, MainNavigatorParams>;
 
 const DRAWER_SCREEN_BY_DESTINATION = {

@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +11,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { LogMealItemPayload, MealItemRow, MealType } from '../../services/meals';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import { ScreenTopCard } from '../../components/screenTop';
 import { formatDayShort, isSameLocalDay } from '../water/waterDayUtils';
@@ -132,11 +132,11 @@ export function MealTrackingScreen() {
         >
           {initialLoading ? (
             <View style={styles.loading}>
-              <View style={styles.loadingOrb}>
-                <ActivityIndicator size="large" color={MEAL_PRIMARY} />
-              </View>
-              <Text style={styles.loadingTitle}>Loading meals…</Text>
-              <Text style={styles.loadingText}>Fetching this day</Text>
+              <AppLoadingSpinner
+                title="Loading meals…"
+                subtitle="Fetching this day"
+                color={MEAL_PRIMARY}
+              />
             </View>
           ) : (
             <ScrollView
@@ -245,34 +245,11 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
     paddingHorizontal: 32,
   },
-  loadingOrb: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: `${MEAL_PRIMARY}40`,
-  },
-  loadingTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  loadingText: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
   scrollFlex: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 4,
     paddingBottom: 28,
   },

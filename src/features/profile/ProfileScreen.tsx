@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   DeviceEventEmitter,
   Image,
@@ -17,7 +16,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { updateAuthDisplayName } from '../../services/auth';
 import {
   loadMealCalorieProfile,
@@ -54,7 +54,7 @@ export function ProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [initialDisplayName, setInitialDisplayName] = useState('');
   const [weightKg, setWeightKg] = useState('');
-  const [goalKg, setGoalKg] = useState('');
+  const [savedGoalKg, setSavedGoalKg] = useState(70);
   const [heightCm, setHeightCm] = useState('');
   const [age, setAge] = useState('');
   const [sex, setSex] = useState<MealCalorieSex>('female');
@@ -79,7 +79,7 @@ export function ProfileScreen() {
         }
         setAvatarUri(avatar);
         setWeightKg(String(profile.weightKg));
-        setGoalKg(String(profile.goalWeightKg));
+        setSavedGoalKg(profile.goalWeightKg);
         setHeightCm(String(profile.heightCm));
         setAge(String(profile.age));
         setSex(profile.sex);
@@ -219,15 +219,10 @@ export function ProfileScreen() {
 
   const handleSave = useCallback(async () => {
     const w = Number.parseFloat(weightKg.replace(',', '.'));
-    const g = Number.parseFloat(goalKg.replace(',', '.'));
     const h = Number.parseFloat(heightCm.replace(',', '.'));
     const a = Number.parseInt(age.replace(/\s/g, ''), 10);
     if (!Number.isFinite(w) || w < 30 || w > 300) {
       Alert.alert('Check weight', 'Enter current weight between 30 and 300 kg.');
-      return;
-    }
-    if (!Number.isFinite(g) || g < 30 || g > 300) {
-      Alert.alert('Check goal', 'Enter goal weight between 30 and 300 kg.');
       return;
     }
     if (!Number.isFinite(h) || h < 120 || h > 230) {
@@ -243,7 +238,7 @@ export function ProfileScreen() {
     try {
       const nextBody: MealCalorieProfile = {
         weightKg: w,
-        goalWeightKg: g,
+        goalWeightKg: savedGoalKg,
         heightCm: h,
         age: a,
         sex,
@@ -269,7 +264,7 @@ export function ProfileScreen() {
     }
   }, [
     weightKg,
-    goalKg,
+    savedGoalKg,
     heightCm,
     age,
     sex,
@@ -281,8 +276,7 @@ export function ProfileScreen() {
     return (
       <Screen applyTopSafeArea={false}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading profile…</Text>
+          <AppLoadingSpinner title="Loading profile…" />
         </View>
       </Screen>
     );
@@ -327,7 +321,7 @@ export function ProfileScreen() {
               )}
               {avatarBusy ? (
                 <View style={styles.avatarSpinner}>
-                  <ActivityIndicator color={colors.surface} />
+                  <AppLoadingSpinner title="Uploading…" compact color={colors.surface} />
                 </View>
               ) : null}
             </Pressable>
@@ -370,19 +364,6 @@ export function ProfileScreen() {
             onChangeText={setWeightKg}
             keyboardType="decimal-pad"
             placeholder="72"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-            returnKeyType="done"
-            blurOnSubmit
-            onSubmitEditing={Keyboard.dismiss}
-          />
-
-          <Text style={styles.fieldLabel}>Goal weight (kg)</Text>
-          <TextInput
-            value={goalKg}
-            onChangeText={setGoalKg}
-            keyboardType="decimal-pad"
-            placeholder="68"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
             returnKeyType="done"
@@ -462,7 +443,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 8,
     paddingBottom: 32,
   },
@@ -471,11 +452,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-  },
-  loadingText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontWeight: '600',
   },
   sectionLabel: {
     fontSize: 13,
