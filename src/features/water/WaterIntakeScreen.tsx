@@ -8,7 +8,8 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { formatWaterEntryTime } from './waterDayUtils';
@@ -26,7 +27,6 @@ export function WaterIntakeScreen() {
     goalMl,
     selectedDay,
     selectDay,
-    dateNav,
     loading,
     error,
     totalMl,
@@ -43,8 +43,6 @@ export function WaterIntakeScreen() {
     addMl,
     confirmRemoveEntry,
   } = useWaterIntakeScreen();
-
-  const { isViewingToday } = dateNav;
 
   return (
     <Screen applyTopSafeArea={false} applyBottomSafeArea={false}>
@@ -69,8 +67,7 @@ export function WaterIntakeScreen() {
         <View style={styles.progressCard}>
           {loading ? (
             <View style={styles.loadingBlock}>
-              <ActivityIndicator size="large" color={WATER_BLUE} />
-              <Text style={styles.loadingLabel}>Loading…</Text>
+              <AppLoadingSpinner title="Loading water…" color={WATER_BLUE} />
             </View>
           ) : (
             <>
@@ -141,14 +138,14 @@ export function WaterIntakeScreen() {
                 key={ml}
                 accessibilityRole="button"
                 accessibilityLabel={`Add ${ml} milliliters`}
-                disabled={adding || loading || !isViewingToday}
+                disabled={adding || loading}
                 onPress={() => {
                   addMl(ml).catch(() => {});
                 }}
                 style={({ pressed }) => [
                   styles.addButton,
                   pressed && styles.addButtonPressed,
-                  (adding || loading || !isViewingToday) && styles.addButtonDisabled,
+                  (adding || loading) && styles.addButtonDisabled,
                 ]}
               >
                 <Text style={styles.addButtonText}>+{ml} ml</Text>
@@ -157,12 +154,9 @@ export function WaterIntakeScreen() {
           </View>
           {adding ? (
             <View style={styles.inlineLoading}>
-              <ActivityIndicator size="small" color={WATER_BLUE} />
+              <AppLoadingSpinner title="Saving…" compact color={WATER_BLUE} />
             </View>
           ) : null}
-          {isViewingToday ? null : (
-            <Text style={styles.pastDayHint}>Switch to Today to log water.</Text>
-          )}
         </View>
 
         {!loading && weekTotals.length > 0 ? (
@@ -252,7 +246,7 @@ const cardChrome = {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 4,
     paddingBottom: 28,
   },
@@ -427,10 +421,6 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
     gap: 12,
   },
-  loadingLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   progressTopRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -537,11 +527,5 @@ const styles = StyleSheet.create({
   inlineLoading: {
     marginTop: 10,
     alignItems: 'center',
-  },
-  pastDayHint: {
-    marginTop: 10,
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 });

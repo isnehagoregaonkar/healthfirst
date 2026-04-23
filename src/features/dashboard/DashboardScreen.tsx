@@ -2,7 +2,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useRef } from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
@@ -13,7 +12,8 @@ import {
 } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { MealCalorieProfileModal } from '../meals/components/MealCalorieProfileModal';
@@ -285,6 +285,11 @@ export function DashboardScreen() {
       applyBottomSafeArea={false}
       backgroundColor="#F8FAFC"
     >
+      {loading && !snapshot && !error ? (
+        <View style={styles.fullCenterLoad}>
+          <AppLoadingSpinner title="Loading dashboard..." color={MEAL_PRIMARY} />
+        </View>
+      ) : null}
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -304,12 +309,6 @@ export function DashboardScreen() {
           : {})}
       >
         <View style={styles.body}>
-          {loading && !snapshot ? (
-            <View style={styles.centerLoad}>
-              <ActivityIndicator size="large" color={MEAL_PRIMARY} />
-              <Text style={styles.loadLabel}>Loading…</Text>
-            </View>
-          ) : null}
 
           {error && !snapshot ? (
             <View style={styles.errorCard}>
@@ -696,7 +695,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   heroInner: {
-    paddingHorizontal: 18,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 2,
     paddingBottom: 4,
     zIndex: 2,
@@ -714,19 +713,25 @@ const styles = StyleSheet.create({
     color: DASH_MUTED,
   },
   body: {
-    paddingHorizontal: 18,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     gap: 12,
     paddingVertical: 12,
+  },
+  fullCenterLoad: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    backgroundColor: '#F8FAFC',
   },
   centerLoad: {
     paddingVertical: 32,
     alignItems: 'center',
     gap: 10,
-  },
-  loadLabel: {
-    fontSize: 14,
-    color: DASH_MUTED,
-    fontWeight: '600',
   },
   errorCard: {
     padding: 18,

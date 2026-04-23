@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -8,7 +7,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import { ProgressBarChart } from './components/ProgressBarChart';
 import {
@@ -145,8 +145,7 @@ export function ProgressHistoryScreen() {
 
         {loading && dayRows.length === 0 ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={styles.loaderText}>Loading your trends...</Text>
+            <AppLoadingSpinner title="Loading your trends..." color={colors.accent} />
           </View>
         ) : null}
 
@@ -252,7 +251,7 @@ export function ProgressHistoryScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: 14,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 12,
     paddingBottom: 28,
     gap: 12,
@@ -324,10 +323,6 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     gap: 8,
-  },
-  loaderText: {
-    color: '#64748B',
-    fontWeight: '700',
   },
   summaryGrid: {
     flexDirection: 'row',

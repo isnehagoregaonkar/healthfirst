@@ -46,7 +46,6 @@ function App() {
     }
     navRef.navigate('Main', {
       screen: 'Fasting',
-      params: { screen: 'FastingHome' },
     });
   }, [isAuthenticated]);
 

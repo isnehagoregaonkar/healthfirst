@@ -195,15 +195,12 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
 
   const addMl = useCallback(
     async (ml: number) => {
-      if (!isViewingToday) {
-        return;
-      }
       setError(null);
       const before = totalMl;
       setTotalMl(before + ml);
       setAdding(true);
       try {
-        const result = await addWaterIntake(ml);
+        const result = await addWaterIntake(ml, selectedDay);
         if (!result.ok) {
           setTotalMl(before);
           setError(result.error.message);
@@ -217,7 +214,7 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
         setAdding(false);
       }
     },
-    [isViewingToday, totalMl, syncDayAndWeek],
+    [totalMl, syncDayAndWeek, selectedDay],
   );
 
   const removeEntryById = useCallback(

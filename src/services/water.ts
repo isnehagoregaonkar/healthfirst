@@ -82,10 +82,18 @@ async function requireUserId(): Promise<{ userId: string } | { error: WaterServi
   return { userId: data.user.id };
 }
 
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 /**
  * Records a water intake row for the signed-in user.
  */
-export async function addWaterIntake(amountMl: number): Promise<AddWaterResult> {
+export async function addWaterIntake(amountMl: number, day?: Date): Promise<AddWaterResult> {
   if (!Number.isFinite(amountMl) || amountMl <= 0 || amountMl > 10_000) {
     return { ok: false, error: { message: 'Amount must be between 1 and 10000 ml' } };
   }
@@ -95,9 +103,20 @@ export async function addWaterIntake(amountMl: number): Promise<AddWaterResult> 
     return { ok: false, error: user.error };
   }
 
+  const targetDay = day ? startOfLocalDayWater(day) : startOfLocalDayWater(new Date());
+  const now = new Date();
+  const createdAt = isSameLocalDay(targetDay, now)
+    ? now.toISOString()
+    : (() => {
+        const d = new Date(targetDay);
+        d.setHours(12, 0, 0, 0);
+        return d.toISOString();
+      })();
+
   const { error } = await supabase.from('water_intakes').insert({
     user_id: user.userId,
     amount_ml: Math.round(amountMl),
+    created_at: createdAt,
   });
 
   if (error) {

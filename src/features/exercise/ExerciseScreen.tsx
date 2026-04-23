@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
 import { Screen } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { upsertHealthDaySnapshot } from '../../services/healthDaySnapshots';
@@ -1463,6 +1464,12 @@ export function ExerciseScreen() {
           <Text style={styles.bannerError}>{state.error}</Text>
         ) : null}
 
+        {loading && !summary ? (
+          <View style={styles.loadingWrap}>
+            <AppLoadingSpinner title="Loading exercise..." color={colors.primary} />
+          </View>
+        ) : null}
+
         {!summary && !loading ? (
           <Text style={styles.empty}>
             Allow health access in Settings to see this day.
@@ -1663,6 +1670,9 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontWeight: '700',
     fontSize: 13,
+  },
+  loadingWrap: {
+    marginTop: 10,
   },
   empty: {
     marginTop: 16,

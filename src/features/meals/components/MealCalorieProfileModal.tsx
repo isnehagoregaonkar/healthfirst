@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -105,6 +106,7 @@ export function MealCalorieProfileModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
         style={styles.backdrop}
       >
         <Pressable
@@ -113,111 +115,113 @@ export function MealCalorieProfileModal({
           accessibilityLabel="Dismiss"
         />
         <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Calorie target</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && styles.iconBtnPressed,
-              ]}
-            >
-              <Icon name="close" size={22} color={colors.textPrimary} />
-            </Pressable>
-          </View>
-          <Text style={styles.blurb}>
-            We estimate your suggested intake from weight, goal, height, age,
-            and sex (Mifflin–St Jeor + activity). This isn&apos;t medical
-            advice.
-          </Text>
-
-          <Text style={styles.label}>Current weight (kg)</Text>
-          <TextInput
-            value={weightKg}
-            onChangeText={setWeightKg}
-            keyboardType="decimal-pad"
-            placeholder="72"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-            returnKeyType="done"
-            blurOnSubmit
-            onSubmitEditing={Keyboard.dismiss}
-          />
-
-          <Text style={styles.label}>Goal weight (kg)</Text>
-          <TextInput
-            value={goalKg}
-            onChangeText={setGoalKg}
-            keyboardType="decimal-pad"
-            placeholder="68"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-            returnKeyType="done"
-            blurOnSubmit
-            onSubmitEditing={Keyboard.dismiss}
-          />
-
-          <Text style={styles.label}>Height (cm)</Text>
-          <TextInput
-            value={heightCm}
-            onChangeText={setHeightCm}
-            keyboardType="decimal-pad"
-            placeholder="170"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-            returnKeyType="done"
-            blurOnSubmit
-            onSubmitEditing={Keyboard.dismiss}
-          />
-
-          <Text style={styles.label}>Age</Text>
-          <TextInput
-            value={age}
-            onChangeText={setAge}
-            keyboardType="number-pad"
-            placeholder="32"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-            returnKeyType="done"
-            blurOnSubmit
-            onSubmitEditing={Keyboard.dismiss}
-          />
-
-          <Text style={styles.label}>Sex (for BMR)</Text>
-          <View style={styles.sexRow}>
-            {(['female', 'male'] as const).map(s => (
+          <ScrollView
+            contentContainerStyle={styles.sheetScroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.header}>
+              <Text style={styles.title}>Calorie target</Text>
               <Pressable
-                key={s}
                 accessibilityRole="button"
-                accessibilityState={{ selected: sex === s }}
-                onPress={() => setSex(s)}
+                accessibilityLabel="Close"
+                onPress={onClose}
                 style={({ pressed }) => [
-                  styles.seg,
-                  sex === s && styles.segOn,
-                  pressed && styles.segPressed,
+                  styles.iconBtn,
+                  pressed && styles.iconBtnPressed,
                 ]}
               >
-                <Text style={[styles.segText, sex === s && styles.segTextOn]}>
-                  {s === 'female' ? 'Female' : 'Male'}
-                </Text>
+                <Icon name="close" size={22} color={colors.textPrimary} />
               </Pressable>
-            ))}
-          </View>
+            </View>
+            <Text style={styles.blurb}>
+              We estimate your suggested intake from weight, goal, height, age,
+              and sex (Mifflin–St Jeor + activity). This isn&apos;t medical
+              advice.
+            </Text>
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={saving}
-            onPress={() => handleSave().catch(() => {})}
-            style={({ pressed }) => [
-              styles.saveBtn,
-              saving && styles.saveDisabled,
-              pressed && !saving && styles.savePressed,
-            ]}
-          >
-            <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
-          </Pressable>
+            <Text style={styles.label}>Current weight (kg)</Text>
+            <TextInput
+              value={weightKg}
+              onChangeText={setWeightKg}
+              keyboardType="decimal-pad"
+              placeholder="72"
+              placeholderTextColor="#9CA3AF"
+              style={styles.input}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+
+            <Text style={styles.label}>Goal weight (kg)</Text>
+            <TextInput
+              value={goalKg}
+              onChangeText={setGoalKg}
+              keyboardType="decimal-pad"
+              placeholder="68"
+              placeholderTextColor="#9CA3AF"
+              style={styles.input}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+
+            <Text style={styles.label}>Height (cm)</Text>
+            <TextInput
+              value={heightCm}
+              onChangeText={setHeightCm}
+              keyboardType="decimal-pad"
+              placeholder="170"
+              placeholderTextColor="#9CA3AF"
+              style={styles.input}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+
+            <Text style={styles.label}>Age</Text>
+            <TextInput
+              value={age}
+              onChangeText={setAge}
+              keyboardType="number-pad"
+              placeholder="32"
+              placeholderTextColor="#9CA3AF"
+              style={styles.input}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+
+            <Text style={styles.label}>Sex (for BMR)</Text>
+            <View style={styles.sexRow}>
+              {(['female', 'male'] as const).map(s => (
+                <Pressable
+                  key={s}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: sex === s }}
+                  onPress={() => setSex(s)}
+                  style={({ pressed }) => [
+                    styles.seg,
+                    sex === s && styles.segOn,
+                    pressed && styles.segPressed,
+                  ]}
+                >
+                  <Text style={[styles.segText, sex === s && styles.segTextOn]}>
+                    {s === 'female' ? 'Female' : 'Male'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={saving}
+              onPress={() => handleSave().catch(() => {})}
+              style={({ pressed }) => [
+                styles.saveBtn,
+                saving && styles.saveDisabled,
+                pressed && !saving && styles.savePressed,
+              ]}
+            >
+              <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
+            </Pressable>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -241,6 +245,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 28,
     maxHeight: '88%',
+  },
+  sheetScroll: {
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',

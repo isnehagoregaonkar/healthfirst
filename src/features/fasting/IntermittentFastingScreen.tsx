@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,7 +7,8 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { FastingFastLengthChips } from './components/FastingFastLengthChips';
@@ -38,8 +38,7 @@ export function IntermittentFastingScreen() {
 
         {s.loading ? (
           <View style={styles.loadRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.loadLabel}>Loading…</Text>
+            <AppLoadingSpinner title="Loading fasting…" compact />
           </View>
         ) : (
           <>
@@ -115,7 +114,7 @@ export function IntermittentFastingScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 4,
     paddingBottom: 28,
   },
@@ -124,11 +123,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 32,
-  },
-  loadLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
   primaryBtn: {
     flexDirection: 'row',

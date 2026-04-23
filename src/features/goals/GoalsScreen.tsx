@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -12,7 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Screen } from '../../components/layout/Screen';
+import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
+import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import { MEAL_PRIMARY } from '../meals/mealUiTheme';
 import { useGoalsScreen } from './hooks/useGoalsScreen';
@@ -93,8 +93,7 @@ export function GoalsScreen() {
     return (
       <Screen applyTopSafeArea={false}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading goals…</Text>
+          <AppLoadingSpinner title="Loading goals…" />
         </View>
       </Screen>
     );
@@ -209,7 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 10,
     paddingBottom: 32,
     gap: 10,
@@ -219,11 +218,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-  },
-  loadingText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontWeight: '600',
   },
   headerTitle: {
     fontSize: 24,

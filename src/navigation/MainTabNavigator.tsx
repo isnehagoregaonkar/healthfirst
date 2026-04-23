@@ -5,7 +5,7 @@ import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { MealTrackingScreen } from '../features/meals/MealTrackingScreen';
 import { ExerciseScreen } from '../features/exercise/ExerciseScreen';
 import { WaterIntakeScreen } from '../features/water/WaterIntakeScreen';
-import { FastingStackNavigator } from './FastingStackNavigator';
+import { IntermittentFastingScreen } from '../features/fasting/IntermittentFastingScreen';
 import { tabScreenOptions } from './navHeaderOptions';
 import type { MainTabParamList } from './types';
 import { HealthBottomTabBar } from './ui/HealthBottomTabBar';
@@ -53,9 +53,8 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name="Fasting"
-        component={FastingStackNavigator}
+        component={IntermittentFastingScreen}
         options={{
-          headerShown: false,
           title: 'Intermittent fasting',
           tabBarLabel: 'Fasting',
         }}
