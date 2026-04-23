@@ -19,13 +19,13 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
 import { Screen } from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
+import { loadUserGoals } from '../../services/goals';
 import { upsertHealthDaySnapshot } from '../../services/healthDaySnapshots';
 import {
   isMealCalorieProfileDefault,
   loadMealCalorieProfile,
   type MealCalorieProfile,
 } from '../../services/mealCalorieTarget';
-import { loadUserGoals } from '../../services/goals';
 import { upsertExternalHeartRateReading } from '../../services/vitals';
 import { colors } from '../../theme/tokens';
 import { startOfLocalDay } from '../water/waterDayUtils';
@@ -295,7 +295,9 @@ function workoutDistanceKmAndroid(w: unknown): number | null {
   if (!w || typeof w !== 'object') {
     return null;
   }
-  const o = w as { totalDistance?: { inMeters?: unknown; inKilometers?: unknown } };
+  const o = w as {
+    totalDistance?: { inMeters?: unknown; inKilometers?: unknown };
+  };
   const km = numOrNull(o.totalDistance?.inKilometers);
   if (km != null && km > 0) {
     return Math.round(km * 100) / 100;
@@ -345,7 +347,9 @@ function groupSimilarWorkouts(
       ? workoutDurationMinutesNumIos(w)
       : workoutDurationMinutesNumAndroid(w);
     const kcal = isIos ? workoutEnergyKcalIos(w) : workoutEnergyKcalAndroid(w);
-    const distanceKm = isIos ? workoutDistanceKmIos(w) : workoutDistanceKmAndroid(w);
+    const distanceKm = isIos
+      ? workoutDistanceKmIos(w)
+      : workoutDistanceKmAndroid(w);
     const prev = map.get(key);
     const addMins = mins ?? 0;
     if (!prev) {
@@ -1206,7 +1210,10 @@ export function ExerciseScreen() {
           source,
         }).then(res => {
           if (!res.ok) {
-            console.warn('[ExerciseScreen] Heart rate history sync:', res.error.message);
+            console.warn(
+              '[ExerciseScreen] Heart rate history sync:',
+              res.error.message,
+            );
           }
         });
       }
@@ -1466,7 +1473,7 @@ export function ExerciseScreen() {
 
         {loading && !summary ? (
           <View style={styles.loadingWrap}>
-            <AppLoadingSpinner title="Loading exercise..." color={colors.primary} />
+            <AppLoadingSpinner title="Loading exercise..." />
           </View>
         ) : null}
 
@@ -1568,7 +1575,8 @@ export function ExerciseScreen() {
                   const metaLine = [
                     g.sessions > 1 ? `${g.sessions}×` : null,
                     formatDurationLabel(g.totalMinutes),
-                    g.title.toLowerCase().includes('walk') && g.totalDistanceKm != null
+                    g.title.toLowerCase().includes('walk') &&
+                    g.totalDistanceKm != null
                       ? `${g.totalDistanceKm.toFixed(2)} km`
                       : null,
                     kcalStr,

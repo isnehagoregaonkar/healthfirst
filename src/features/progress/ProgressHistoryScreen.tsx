@@ -8,7 +8,10 @@ import {
   View,
 } from 'react-native';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
-import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
+import {
+  Screen,
+  SCREEN_HORIZONTAL_PADDING,
+} from '../../components/layout/Screen';
 import { colors } from '../../theme/tokens';
 import { ProgressBarChart } from './components/ProgressBarChart';
 import {
@@ -95,27 +98,53 @@ export function ProgressHistoryScreen() {
   const highlights = useMemo(() => {
     const bestHydration = dayRows.reduce(
       (best, row) => (row.waterMl > best.waterMl ? row : best),
-      dayRows[0] ?? { date: new Date(), waterMl: 0, calories: 0, exerciseKcal: 0, exerciseMinutes: 0, workouts: 0 },
+      dayRows[0] ?? {
+        date: new Date(),
+        waterMl: 0,
+        calories: 0,
+        exerciseKcal: 0,
+        exerciseMinutes: 0,
+        workouts: 0,
+      },
     );
     return {
       avgCalories:
-        summary.daysCount > 0 ? compactNum(summary.caloriesTotal / summary.daysCount) : '0',
+        summary.daysCount > 0
+          ? compactNum(summary.caloriesTotal / summary.daysCount)
+          : '0',
       avgWater:
-        summary.daysCount > 0 ? compactNum(summary.waterTotalMl / summary.daysCount) : '0',
+        summary.daysCount > 0
+          ? compactNum(summary.waterTotalMl / summary.daysCount)
+          : '0',
       bestHydrationLabel:
         bestHydration.waterMl > 0
-          ? `${formatDateShort(bestHydration.date)} • ${compactNum(bestHydration.waterMl)} ml`
+          ? `${formatDateShort(bestHydration.date)} • ${compactNum(
+              bestHydration.waterMl,
+            )} ml`
           : 'No hydration logs yet',
     };
   }, [dayRows, summary.caloriesTotal, summary.daysCount, summary.waterTotalMl]);
 
+  if (loading && dayRows.length === 0 && !error) {
+    return (
+      <Screen applyTopSafeArea={false}>
+        <View style={styles.fullCenterLoad}>
+          <AppLoadingSpinner title="Loading your trends..." />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen applyTopSafeArea={false}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
-      >
-        <View style={styles.filterWrap}>
+      <View style={styles.screenBody}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={refresh} />
+          }
+        >
+          <View style={styles.filterWrap}>
           {PRESET_OPTIONS.map(item => {
             const active = item.id === preset;
             return (
@@ -124,7 +153,12 @@ export function ProgressHistoryScreen() {
                 onPress={() => setPreset(item.id)}
                 style={[styles.filterChip, active && styles.filterChipActive]}
               >
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active && styles.filterChipTextActive,
+                  ]}
+                >
                   {item.label}
                 </Text>
               </Pressable>
@@ -134,7 +168,9 @@ export function ProgressHistoryScreen() {
 
         <View style={styles.rangeCard}>
           <Text style={styles.rangeTitle}>Selected range</Text>
-          <Text style={styles.rangeValue}>{formatRangeLabel(range.start, range.end)}</Text>
+          <Text style={styles.rangeValue}>
+            {formatRangeLabel(range.start, range.end)}
+          </Text>
         </View>
 
         {error ? (
@@ -143,24 +179,24 @@ export function ProgressHistoryScreen() {
           </View>
         ) : null}
 
-        {loading && dayRows.length === 0 ? (
-          <View style={styles.loaderWrap}>
-            <AppLoadingSpinner title="Loading your trends..." color={colors.accent} />
-          </View>
-        ) : null}
-
         <View style={styles.summaryGrid}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Meal calories</Text>
-            <Text style={styles.summaryValue}>{compactNum(summary.caloriesTotal)} kcal</Text>
+            <Text style={styles.summaryValue}>
+              {compactNum(summary.caloriesTotal)} kcal
+            </Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Water intake</Text>
-            <Text style={styles.summaryValue}>{compactNum(summary.waterTotalMl)} ml</Text>
+            <Text style={styles.summaryValue}>
+              {compactNum(summary.waterTotalMl)} ml
+            </Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Exercise burn</Text>
-            <Text style={styles.summaryValue}>{compactNum(summary.exerciseKcalTotal)} kcal</Text>
+            <Text style={styles.summaryValue}>
+              {compactNum(summary.exerciseKcalTotal)} kcal
+            </Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Fasting</Text>
@@ -214,37 +250,51 @@ export function ProgressHistoryScreen() {
           unit="kcal"
         />
 
-        <View style={styles.footerCard}>
-          <Text style={styles.footerTitle}>Highlights</Text>
-          <View style={styles.highlightRow}>
-            <View style={styles.highlightPill}>
-              <Text style={styles.highlightPillLabel}>Daily avg calories</Text>
-              <Text style={styles.highlightPillValue}>{highlights.avgCalories} kcal</Text>
+          <View style={styles.footerCard}>
+            <Text style={styles.footerTitle}>Highlights</Text>
+            <View style={styles.highlightRow}>
+              <View style={styles.highlightPill}>
+                <Text style={styles.highlightPillLabel}>Daily avg calories</Text>
+                <Text style={styles.highlightPillValue}>
+                  {highlights.avgCalories} kcal
+                </Text>
+              </View>
+              <View style={styles.highlightPill}>
+                <Text style={styles.highlightPillLabel}>Daily avg water</Text>
+                <Text style={styles.highlightPillValue}>
+                  {highlights.avgWater} ml
+                </Text>
+              </View>
             </View>
-            <View style={styles.highlightPill}>
-              <Text style={styles.highlightPillLabel}>Daily avg water</Text>
-              <Text style={styles.highlightPillValue}>{highlights.avgWater} ml</Text>
+            <View style={styles.highlightRow}>
+              <View style={styles.highlightPill}>
+                <Text style={styles.highlightPillLabel}>Workouts logged</Text>
+                <Text style={styles.highlightPillValue}>
+                  {summary.workoutsTotal}
+                </Text>
+              </View>
+              <View style={styles.highlightPill}>
+                <Text style={styles.highlightPillLabel}>Total fasting</Text>
+                <Text style={styles.highlightPillValue}>
+                  {formatDurationLabel(summary.fastingMinutesTotal)}
+                </Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.highlightRow}>
-            <View style={styles.highlightPill}>
-              <Text style={styles.highlightPillLabel}>Workouts logged</Text>
-              <Text style={styles.highlightPillValue}>{summary.workoutsTotal}</Text>
-            </View>
-            <View style={styles.highlightPill}>
-              <Text style={styles.highlightPillLabel}>Total fasting</Text>
-              <Text style={styles.highlightPillValue}>
-                {formatDurationLabel(summary.fastingMinutesTotal)}
+            <View style={styles.highlightCallout}>
+              <Text style={styles.highlightCalloutTitle}>Best hydration day</Text>
+              <Text style={styles.highlightCalloutText}>
+                {highlights.bestHydrationLabel}
               </Text>
             </View>
           </View>
-          <View style={styles.highlightCallout}>
-            <Text style={styles.highlightCalloutTitle}>Best hydration day</Text>
-            <Text style={styles.highlightCalloutText}>{highlights.bestHydrationLabel}</Text>
-          </View>
-        </View>
+        </ScrollView>
 
-      </ScrollView>
+        {loading && dayRows.length > 0 ? (
+          <View style={styles.loadingOverlay}>
+            <AppLoadingSpinner title="Loading your trends..." />
+          </View>
+        ) : null}
+      </View>
     </Screen>
   );
 }
@@ -255,6 +305,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 28,
     gap: 12,
+  },
+  screenBody: {
+    flex: 1,
   },
   filterWrap: {
     flexDirection: 'row',
@@ -315,14 +368,20 @@ const styles = StyleSheet.create({
     color: '#991B1B',
     fontWeight: '700',
   },
-  loaderWrap: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 16,
-    padding: 24,
+  fullCenterLoad: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFCDD',
   },
   summaryGrid: {
     flexDirection: 'row',

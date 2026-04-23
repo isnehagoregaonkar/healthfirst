@@ -13,7 +13,10 @@ import {
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
-import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
+import {
+  Screen,
+  SCREEN_HORIZONTAL_PADDING,
+} from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { MealCalorieProfileModal } from '../meals/components/MealCalorieProfileModal';
@@ -42,7 +45,12 @@ const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 148;
 /** Ring diameter in calories / water dashboard tiles. */
 const DASHBOARD_METRIC_RING_SIZE = 44;
 
-type DashboardStatPillTone = 'cal' | 'calOver' | 'water' | 'weight' | 'exercise';
+type DashboardStatPillTone =
+  | 'cal'
+  | 'calOver'
+  | 'water'
+  | 'weight'
+  | 'exercise';
 
 function DashboardStatPill({
   tone,
@@ -202,14 +210,22 @@ function MacroProgressRing({ label, consumed, target, color }: MacroRingProps) {
   const r = (size - stroke) / 2;
   const c = size / 2;
   const circ = 2 * Math.PI * r;
-  const pct = target > 0 ? Math.min(100, Math.max(0, (consumed / target) * 100)) : 0;
+  const pct =
+    target > 0 ? Math.min(100, Math.max(0, (consumed / target) * 100)) : 0;
   const dash = (pct / 100) * circ;
 
   return (
     <View style={styles.macroRingItem}>
       <View style={styles.macroRingWrap}>
         <Svg width={size} height={size}>
-          <Circle cx={c} cy={c} r={r} stroke="#E2E8F0" strokeWidth={stroke} fill="none" />
+          <Circle
+            cx={c}
+            cy={c}
+            r={r}
+            stroke="#E2E8F0"
+            strokeWidth={stroke}
+            fill="none"
+          />
           <Circle
             cx={c}
             cy={c}
@@ -287,7 +303,7 @@ export function DashboardScreen() {
     >
       {loading && !snapshot && !error ? (
         <View style={styles.fullCenterLoad}>
-          <AppLoadingSpinner title="Loading dashboard..." color={MEAL_PRIMARY} />
+          <AppLoadingSpinner title="Loading dashboard..." />
         </View>
       ) : null}
       <ScrollView
@@ -309,7 +325,6 @@ export function DashboardScreen() {
           : {})}
       >
         <View style={styles.body}>
-
           {error && !snapshot ? (
             <View style={styles.errorCard}>
               <Icon
@@ -429,7 +444,10 @@ export function DashboardScreen() {
                 onPress={() => navigation.navigate('Meals')}
                 accessibilityRole="button"
                 accessibilityLabel="Calories and macros, open meals"
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                style={({ pressed }) => [
+                  styles.card,
+                  pressed && styles.cardPressed,
+                ]}
               >
                 <View style={styles.burnMacroGrid}>
                   <View style={styles.burnMacroCol}>
@@ -453,10 +471,13 @@ export function DashboardScreen() {
                       {snapshot.todayCalories.toLocaleString('en-US')} kcal
                     </Text>
                     <Text style={styles.burnMetricSub}>
-                      Burned today {moveEstKcalToday.toLocaleString('en-US')} kcal
+                      Burned today {moveEstKcalToday.toLocaleString('en-US')}{' '}
+                      kcal
                     </Text>
                     <View style={styles.metricStatPillOffset}>
-                      <DashboardStatPill tone={calOverEarly ? 'calOver' : 'cal'}>
+                      <DashboardStatPill
+                        tone={calOverEarly ? 'calOver' : 'cal'}
+                      >
                         {calOverEarly
                           ? `${calOverAmt} kcal over goal`
                           : `${Math.max(
@@ -560,7 +581,11 @@ export function DashboardScreen() {
                             {snapshot.heartLatest.bpm}
                           </Text>
                           <Text style={styles.hrUnit}>
-                            BPM · {formatHeartSourceLabel(snapshot.heartLatest.source)} ·{' '}
+                            BPM ·{' '}
+                            {formatHeartSourceLabel(
+                              snapshot.heartLatest.source,
+                            )}{' '}
+                            ·{' '}
                             {formatRelativeHeartTime(
                               snapshot.heartLatest.recordedAt,
                             )}
@@ -634,7 +659,9 @@ export function DashboardScreen() {
                       size={22}
                       color={DASH_SLATE}
                     />
-                    <Text style={styles.insightsTitle}>Insights & Feedback</Text>
+                    <Text style={styles.insightsTitle}>
+                      Insights & Feedback
+                    </Text>
                   </View>
                   {insights.map(row => (
                     <Pressable

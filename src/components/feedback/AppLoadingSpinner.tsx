@@ -12,13 +12,12 @@ type AppLoadingSpinnerProps = Readonly<{
 export function AppLoadingSpinner({
   title = 'Loading…',
   subtitle,
-  color = colors.primary,
   compact = false,
 }: AppLoadingSpinnerProps) {
   if (compact) {
     return (
       <View style={styles.compactRow}>
-        <ActivityIndicator size="small" color={color} />
+        <ActivityIndicator size="small" color={colors.primary} />
         <Text style={styles.compactText}>{title}</Text>
       </View>
     );
@@ -27,7 +26,7 @@ export function AppLoadingSpinner({
   return (
     <View style={styles.wrap}>
       <View style={styles.badge}>
-        <ActivityIndicator size="large" color={color} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

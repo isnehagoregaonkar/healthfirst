@@ -10,14 +10,19 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { LogMealItemPayload, MealItemRow, MealType } from '../../services/meals';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
-import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
-import { colors } from '../../theme/tokens';
+import {
+  Screen,
+  SCREEN_HORIZONTAL_PADDING,
+} from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
+import type {
+  LogMealItemPayload,
+  MealItemRow,
+  MealType,
+} from '../../services/meals';
+import { colors } from '../../theme/tokens';
 import { formatDayShort, isSameLocalDay } from '../water/waterDayUtils';
-import { MEAL_PRIMARY } from './mealUiTheme';
-import { MEAL_TYPE_ORDER } from './mealConstants';
 import { AddMealActions } from './components/AddMealActions';
 import { MealAddFoodModal } from './components/MealAddFoodModal';
 import { MealCalorieProfileModal } from './components/MealCalorieProfileModal';
@@ -25,6 +30,8 @@ import { MealDaySummaryCard } from './components/MealDaySummaryCard';
 import { MealTypeSection } from './components/MealTypeSection';
 import { useMealCalorieTarget } from './hooks/useMealCalorieTarget';
 import { useMealLogScreen } from './hooks/useMealLogScreen';
+import { MEAL_TYPE_ORDER } from './mealConstants';
+import { MEAL_PRIMARY } from './mealUiTheme';
 
 export function MealTrackingScreen() {
   const {
@@ -51,17 +58,27 @@ export function MealTrackingScreen() {
     clearError,
   } = useMealLogScreen();
 
-  const { profile, suggestedKcal, macroTargets, bmi, updateProfile } = useMealCalorieTarget();
+  const { profile, suggestedKcal, macroTargets, bmi, updateProfile } =
+    useMealCalorieTarget();
 
   const [foodModalMealId, setFoodModalMealId] = useState<string | null>(null);
   const [foodModalItemId, setFoodModalItemId] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
-  const isViewingToday = useMemo(() => isSameLocalDay(selectedDay, new Date()), [selectedDay]);
-  const selectedDayLabel = useMemo(() => formatDayShort(selectedDay), [selectedDay]);
+  const isViewingToday = useMemo(
+    () => isSameLocalDay(selectedDay, new Date()),
+    [selectedDay],
+  );
+  const selectedDayLabel = useMemo(
+    () => formatDayShort(selectedDay),
+    [selectedDay],
+  );
 
   const foodModalMeal = useMemo(
-    () => (foodModalMealId ? meals.find((m) => m.id === foodModalMealId) ?? null : null),
+    () =>
+      foodModalMealId
+        ? meals.find(m => m.id === foodModalMealId) ?? null
+        : null,
     [meals, foodModalMealId],
   );
 
@@ -69,7 +86,7 @@ export function MealTrackingScreen() {
     if (!foodModalMeal || !foodModalItemId) {
       return null;
     }
-    return foodModalMeal.items.find((i) => i.id === foodModalItemId) ?? null;
+    return foodModalMeal.items.find(i => i.id === foodModalItemId) ?? null;
   }, [foodModalMeal, foodModalItemId]);
 
   const closeFoodModal = useCallback(() => {
@@ -135,7 +152,6 @@ export function MealTrackingScreen() {
               <AppLoadingSpinner
                 title="Loading meals…"
                 subtitle="Fetching this day"
-                color={MEAL_PRIMARY}
               />
             </View>
           ) : (
@@ -157,9 +173,16 @@ export function MealTrackingScreen() {
                 <Pressable
                   accessibilityRole="alert"
                   onPress={clearError}
-                  style={({ pressed }) => [styles.errorBanner, pressed && styles.errorPressed]}
+                  style={({ pressed }) => [
+                    styles.errorBanner,
+                    pressed && styles.errorPressed,
+                  ]}
                 >
-                  <Icon name="alert-circle-outline" size={22} color={colors.error} />
+                  <Icon
+                    name="alert-circle-outline"
+                    size={22}
+                    color={colors.error}
+                  />
                   <View style={styles.errorTextCol}>
                     <Text style={styles.errorTitle}>{error}</Text>
                     <Text style={styles.errorHint}>Tap to dismiss</Text>
@@ -177,7 +200,8 @@ export function MealTrackingScreen() {
 
               {!isViewingToday ? (
                 <Text style={styles.pastHint}>
-                  Viewing {selectedDayLabel} — you can still log meals for this day.
+                  Viewing {selectedDayLabel} — you can still log meals for this
+                  day.
                 </Text>
               ) : null}
 
@@ -192,9 +216,12 @@ export function MealTrackingScreen() {
                 onPressAdjustTargets={() => setProfileModalOpen(true)}
               />
 
-              <AddMealActions creatingMealType={creatingMealType} onAddMeal={handleMealTypePress} />
+              <AddMealActions
+                creatingMealType={creatingMealType}
+                onAddMeal={handleMealTypePress}
+              />
 
-              {MEAL_TYPE_ORDER.map((type) => (
+              {MEAL_TYPE_ORDER.map(type => (
                 <MealTypeSection
                   key={type}
                   mealType={type}

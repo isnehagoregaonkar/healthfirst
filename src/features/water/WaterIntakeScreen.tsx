@@ -9,13 +9,16 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
-import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
+import {
+  Screen,
+  SCREEN_HORIZONTAL_PADDING,
+} from '../../components/layout/Screen';
 import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
-import { formatWaterEntryTime } from './waterDayUtils';
 import { useWaterIntakeScreen } from './hooks/useWaterIntakeScreen';
-import { WaterMiniCharts } from './WaterMiniCharts';
+import { formatWaterEntryTime } from './waterDayUtils';
 import { WaterDropletProgress } from './WaterDropletProgress';
+import { WaterMiniCharts } from './WaterMiniCharts';
 
 const QUICK_ADD_ML = [250, 500, 1000] as const;
 
@@ -67,13 +70,16 @@ export function WaterIntakeScreen() {
         <View style={styles.progressCard}>
           {loading ? (
             <View style={styles.loadingBlock}>
-              <AppLoadingSpinner title="Loading water…" color={WATER_BLUE} />
+              <AppLoadingSpinner title="Loading water…" />
             </View>
           ) : (
             <>
               <View style={styles.progressTopRow}>
                 <View style={styles.dropletCol}>
-                  <WaterDropletProgress percent={percent} style={styles.dropletInner} />
+                  <WaterDropletProgress
+                    percent={percent}
+                    style={styles.dropletInner}
+                  />
                 </View>
                 <View style={styles.statsColumn}>
                   <View style={[styles.statCard, styles.statCardDone]}>
@@ -88,7 +94,14 @@ export function WaterIntakeScreen() {
                       <Icon name="water-minus" size={20} color="#D97706" />
                     </View>
                     <Text style={styles.statLabel}>Left</Text>
-                    <Text style={[styles.statValue, leftMl === 0 && styles.statValueMuted]}>{leftMl} ml</Text>
+                    <Text
+                      style={[
+                        styles.statValue,
+                        leftMl === 0 && styles.statValueMuted,
+                      ]}
+                    >
+                      {leftMl} ml
+                    </Text>
                   </View>
                   <View style={[styles.statCard, styles.statCardGoal]}>
                     <View style={styles.statIconWrap}>
@@ -105,7 +118,9 @@ export function WaterIntakeScreen() {
                   Last drink · {formatWaterEntryTime(entries[0].createdAt)}
                 </Text>
               ) : (
-                <Text style={styles.lastDrinkMuted}>No drinks logged for this day yet.</Text>
+                <Text style={styles.lastDrinkMuted}>
+                  No drinks logged for this day yet.
+                </Text>
               )}
 
               {coachingLines.length > 0 ? (
@@ -121,7 +136,9 @@ export function WaterIntakeScreen() {
                       ]}
                     >
                       <Text style={styles.coachingTitle}>{line.title}</Text>
-                      {line.subtitle ? <Text style={styles.coachingSub}>{line.subtitle}</Text> : null}
+                      {line.subtitle ? (
+                        <Text style={styles.coachingSub}>{line.subtitle}</Text>
+                      ) : null}
                     </View>
                   ))}
                 </View>
@@ -133,7 +150,7 @@ export function WaterIntakeScreen() {
         <View style={styles.quickAddSection}>
           <Text style={styles.quickAddTitle}>Quick add</Text>
           <View style={styles.buttonsRow}>
-            {QUICK_ADD_ML.map((ml) => (
+            {QUICK_ADD_ML.map(ml => (
               <Pressable
                 key={ml}
                 accessibilityRole="button"
@@ -154,7 +171,7 @@ export function WaterIntakeScreen() {
           </View>
           {adding ? (
             <View style={styles.inlineLoading}>
-              <AppLoadingSpinner title="Saving…" compact color={WATER_BLUE} />
+              <AppLoadingSpinner title="Saving…" compact />
             </View>
           ) : null}
         </View>
@@ -162,7 +179,9 @@ export function WaterIntakeScreen() {
         {!loading && weekTotals.length > 0 ? (
           <View style={styles.insightsWrap}>
             {compareSlice ? (
-              <Text style={styles.insightsSectionTitle}>{compareSlice.compareTitle}</Text>
+              <Text style={styles.insightsSectionTitle}>
+                {compareSlice.compareTitle}
+              </Text>
             ) : null}
             <View style={styles.insightsCard}>
               {compareSlice ? (
@@ -196,11 +215,18 @@ export function WaterIntakeScreen() {
                 return (
                   <View key={entry.id} style={styles.tlRow}>
                     <View style={styles.tlAxis}>
-                      <View style={[styles.tlDot, { backgroundColor: dropletPalette.accent }]} />
+                      <View
+                        style={[
+                          styles.tlDot,
+                          { backgroundColor: dropletPalette.accent },
+                        ]}
+                      />
                       {!isLast ? <View style={styles.tlLine} /> : null}
                     </View>
                     <View style={styles.tlMain}>
-                      <Text style={styles.tlTime}>{formatWaterEntryTime(entry.createdAt)}</Text>
+                      <Text style={styles.tlTime}>
+                        {formatWaterEntryTime(entry.createdAt)}
+                      </Text>
                       <Text style={styles.tlAmount}>+{entry.amountMl} ml</Text>
                     </View>
                     <Pressable
@@ -217,7 +243,11 @@ export function WaterIntakeScreen() {
                       {busy ? (
                         <ActivityIndicator size="small" color={colors.error} />
                       ) : (
-                        <Icon name="trash-can-outline" size={22} color={colors.error} />
+                        <Icon
+                          name="trash-can-outline"
+                          size={22}
+                          color={colors.error}
+                        />
                       )}
                     </Pressable>
                   </View>

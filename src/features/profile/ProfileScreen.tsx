@@ -14,10 +14,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
-import { Screen, SCREEN_HORIZONTAL_PADDING } from '../../components/layout/Screen';
+import {
+  Screen,
+  SCREEN_HORIZONTAL_PADDING,
+} from '../../components/layout/Screen';
 import { updateAuthDisplayName } from '../../services/auth';
 import {
   loadMealCalorieProfile,
@@ -124,11 +127,16 @@ export function ProfileScreen() {
                 return;
               }
               if (!asset.base64) {
-                Alert.alert('Photos', 'Could not read this image. Try another photo.');
+                Alert.alert(
+                  'Photos',
+                  'Could not read this image. Try another photo.',
+                );
                 return;
               }
               const mime =
-                asset.type && asset.type.startsWith('image/') ? asset.type : 'image/jpeg';
+                asset.type && asset.type.startsWith('image/')
+                  ? asset.type
+                  : 'image/jpeg';
               await persistAvatarFromBase64(asset.base64, mime);
               await refreshAvatar();
               DeviceEventEmitter.emit(HEALTHFIRST_AVATAR_CHANGED);
@@ -152,7 +160,10 @@ export function ProfileScreen() {
                 PermissionsAndroid.PERMISSIONS.CAMERA,
               );
               if (perm !== PermissionsAndroid.RESULTS.GRANTED) {
-                Alert.alert('Camera', 'Camera permission is needed to take a photo.');
+                Alert.alert(
+                  'Camera',
+                  'Camera permission is needed to take a photo.',
+                );
                 return;
               }
             }
@@ -174,7 +185,9 @@ export function ProfileScreen() {
                 return;
               }
               const mime =
-                asset.type && asset.type.startsWith('image/') ? asset.type : 'image/jpeg';
+                asset.type && asset.type.startsWith('image/')
+                  ? asset.type
+                  : 'image/jpeg';
               await persistAvatarFromBase64(asset.base64, mime);
               await refreshAvatar();
               DeviceEventEmitter.emit(HEALTHFIRST_AVATAR_CHANGED);
@@ -204,7 +217,9 @@ export function ProfileScreen() {
                   } catch (e) {
                     Alert.alert(
                       'Photos',
-                      e instanceof Error ? e.message : 'Could not remove the photo.',
+                      e instanceof Error
+                        ? e.message
+                        : 'Could not remove the photo.',
                     );
                   } finally {
                     setAvatarBusy(false);
@@ -222,7 +237,10 @@ export function ProfileScreen() {
     const h = Number.parseFloat(heightCm.replace(',', '.'));
     const a = Number.parseInt(age.replace(/\s/g, ''), 10);
     if (!Number.isFinite(w) || w < 30 || w > 300) {
-      Alert.alert('Check weight', 'Enter current weight between 30 and 300 kg.');
+      Alert.alert(
+        'Check weight',
+        'Enter current weight between 30 and 300 kg.',
+      );
       return;
     }
     if (!Number.isFinite(h) || h < 120 || h > 230) {
@@ -321,7 +339,7 @@ export function ProfileScreen() {
               )}
               {avatarBusy ? (
                 <View style={styles.avatarSpinner}>
-                  <AppLoadingSpinner title="Uploading…" compact color={colors.surface} />
+                  <AppLoadingSpinner title="Uploading…" compact />
                 </View>
               ) : null}
             </Pressable>
@@ -329,7 +347,10 @@ export function ProfileScreen() {
               accessibilityRole="button"
               onPress={openPhotoActions}
               disabled={avatarBusy}
-              style={({ pressed }) => [styles.linkBtn, pressed && styles.linkBtnPressed]}
+              style={({ pressed }) => [
+                styles.linkBtn,
+                pressed && styles.linkBtnPressed,
+              ]}
             >
               <Text style={styles.linkBtnText}>
                 {avatarUri ? 'Change or remove photo' : 'Add profile photo'}
@@ -428,7 +449,9 @@ export function ProfileScreen() {
               pressed && !saving && styles.savePressed,
             ]}
           >
-            <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save changes'}</Text>
+            <Text style={styles.saveText}>
+              {saving ? 'Saving…' : 'Save changes'}
+            </Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
