@@ -166,7 +166,7 @@ export function ProgressHistoryScreen() {
             <Text style={styles.summaryLabel}>Fasting</Text>
             <Text style={styles.summaryValue}>
               {summary.fastingSessions} sessions /{' '}
-              {formatDurationLabel(summary.fastingHoursTotal * 60)}
+              {formatDurationLabel(summary.fastingMinutesTotal)}
             </Text>
           </View>
         </View>
@@ -234,7 +234,7 @@ export function ProgressHistoryScreen() {
             <View style={styles.highlightPill}>
               <Text style={styles.highlightPillLabel}>Total fasting</Text>
               <Text style={styles.highlightPillValue}>
-                {formatDurationLabel(summary.fastingHoursTotal * 60)}
+                {formatDurationLabel(summary.fastingMinutesTotal)}
               </Text>
             </View>
           </View>
