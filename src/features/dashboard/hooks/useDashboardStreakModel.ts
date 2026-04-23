@@ -9,6 +9,7 @@ export function useDashboardStreakModel(snapshot: DashboardSnapshot | null) {
     }
     return buildDashboardStreakModel(
       snapshot.mealWeek,
+      snapshot.waterWeek,
       snapshot.calorieTarget,
     );
   }, [snapshot]);

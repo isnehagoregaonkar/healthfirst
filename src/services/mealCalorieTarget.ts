@@ -201,3 +201,82 @@ export function suggestedDailyProteinGrams(profile: MealCalorieProfile): number 
   const w = clamp(profile.weightKg, 30, 300);
   return Math.round(Math.min(160, Math.max(50, w * 1.8)));
 }
+
+export type BmiCategory = 'underweight' | 'normal' | 'overweight' | 'obese';
+
+export type BmiInfo = Readonly<{
+  bmi: number;
+  category: BmiCategory;
+  label: string;
+}>;
+
+/** Body mass index (kg/m²) from the profile's height + weight. */
+export function computeBmi(profile: MealCalorieProfile): BmiInfo {
+  const meters = clamp(profile.heightCm, 120, 230) / 100;
+  const weight = clamp(profile.weightKg, 30, 300);
+  const raw = weight / (meters * meters);
+  const bmi = Math.round(raw * 10) / 10;
+  let category: BmiCategory;
+  let label: string;
+  if (bmi < 18.5) {
+    category = 'underweight';
+    label = 'Underweight';
+  } else if (bmi < 25) {
+    category = 'normal';
+    label = 'Healthy';
+  } else if (bmi < 30) {
+    category = 'overweight';
+    label = 'Overweight';
+  } else {
+    category = 'obese';
+    label = 'Obese';
+  }
+  return { bmi, category, label };
+}
+
+export type MacroTargets = Readonly<{
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
+}>;
+
+/**
+ * Daily macro goal derived from the user's profile + goal weight.
+ *
+ * Logic (for in-app guidance, not medical advice):
+ * - Calories use `suggestedDailyCalories` (Mifflin–St Jeor + goal delta).
+ * - Protein is tuned from body weight; bumped for weight-loss / higher BMI.
+ * - Fat: ~25–30% of kcal; leaner in a cut, standard when maintaining/bulking.
+ * - Carbs: the remainder of kcal.
+ * - Fiber: ~14 g / 1000 kcal, min 25 g.
+ */
+export function suggestedMacroTargets(profile: MealCalorieProfile): MacroTargets {
+  const calories = suggestedDailyCalories(profile);
+  const { category } = computeBmi(profile);
+  const diff = profile.goalWeightKg - profile.weightKg;
+  const isCut = diff < -0.5;
+  const isBulk = diff > 0.5;
+
+  const weight = clamp(profile.weightKg, 30, 300);
+  let proteinPerKg = 1.6;
+  if (isCut || category === 'overweight' || category === 'obese') {
+    proteinPerKg = 2;
+  } else if (isBulk && category === 'underweight') {
+    proteinPerKg = 1.8;
+  }
+  const proteinG = Math.round(clamp(weight * proteinPerKg, 50, 200));
+
+  const fatRatio = isCut ? 0.25 : 0.3;
+  const fatKcal = calories * fatRatio;
+  const fatG = Math.round(fatKcal / 9);
+
+  const proteinKcal = proteinG * 4;
+  const remainingKcal = Math.max(0, calories - proteinKcal - fatG * 9);
+  const carbsG = Math.round(remainingKcal / 4);
+
+  const fiberG = Math.max(25, Math.round((calories / 1000) * 14));
+
+  return { calories, proteinG, carbsG, fatG, fiberG };
+}

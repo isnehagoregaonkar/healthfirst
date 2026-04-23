@@ -1,4 +1,4 @@
--- Paste into Supabase SQL Editor if migration 011 is not applied yet.
+-- Historical heart-rate readings from manual input and connected health data.
 
 create table if not exists public.heart_rate_history (
   id uuid primary key default gen_random_uuid(),

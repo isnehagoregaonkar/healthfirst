@@ -35,6 +35,19 @@ export function formatRelativeHeartTime(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+export function formatHeartSourceLabel(source: string): string {
+  if (source === 'health_connect') {
+    return 'Health Connect';
+  }
+  if (source === 'healthkit') {
+    return 'Health';
+  }
+  if (source === 'manual') {
+    return 'Manual';
+  }
+  return 'Tracked';
+}
+
 export function waterRemainingFoot(goalMl: number, todayMl: number): string {
   const rem = Math.max(0, goalMl - todayMl);
   if (rem <= 0) {

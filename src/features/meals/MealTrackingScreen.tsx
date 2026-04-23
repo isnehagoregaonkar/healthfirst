@@ -51,7 +51,7 @@ export function MealTrackingScreen() {
     clearError,
   } = useMealLogScreen();
 
-  const { profile, suggestedKcal, updateProfile } = useMealCalorieTarget();
+  const { profile, suggestedKcal, macroTargets, bmi, updateProfile } = useMealCalorieTarget();
 
   const [foodModalMealId, setFoodModalMealId] = useState<string | null>(null);
   const [foodModalItemId, setFoodModalItemId] = useState<string | null>(null);
@@ -186,6 +186,8 @@ export function MealTrackingScreen() {
                 totalCalories={totalCalories}
                 macros={dayMacroTotals}
                 suggestedKcal={suggestedKcal}
+                macroTargets={macroTargets}
+                bmi={bmi}
                 dayLoading={dayLoading}
                 onPressAdjustTargets={() => setProfileModalOpen(true)}
               />
