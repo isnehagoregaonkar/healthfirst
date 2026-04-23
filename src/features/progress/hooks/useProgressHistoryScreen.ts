@@ -14,6 +14,7 @@ import {
   getWaterDailyTotalsForPeriod,
   type WaterDayTotal,
 } from '../../../services/water';
+import { buildProgressHealthScore, type HealthScoreModel } from '../../../services/healthScore';
 
 export type ProgressRangePreset = 'week' | 'month' | 'all';
 
@@ -29,6 +30,7 @@ export type ProgressSummary = Readonly<{
   mealGoalHitDays: number;
   waterGoalHitDays: number;
   exerciseGoalHitDays: number;
+  healthScore: HealthScoreModel;
 }>;
 
 export type ProgressDayRow = Readonly<{
@@ -255,6 +257,7 @@ export function useProgressHistoryScreen() {
     const exerciseKcalTotal = dayRows.reduce((acc, d) => acc + d.exerciseKcal, 0);
     const exerciseMinutesTotal = dayRows.reduce((acc, d) => acc + d.exerciseMinutes, 0);
     const workoutsTotal = dayRows.reduce((acc, d) => acc + d.workouts, 0);
+    const workoutDays = dayRows.filter(d => d.workouts > 0).length;
     const fastingMinutesTotal = fastingSessions.reduce(
       (acc, session) => acc + fastingDurationMin(session),
       0,
@@ -267,6 +270,15 @@ export function useProgressHistoryScreen() {
       waterGoalHitDays = dayRows.filter(d => d.waterMl >= goals.waterIntakeGoalMl).length;
       exerciseGoalHitDays = dayRows.filter(d => d.exerciseMinutes >= goals.exerciseMinutesGoal).length;
     }
+    const healthScore = buildProgressHealthScore({
+      daysCount,
+      mealGoalHitDays,
+      waterGoalHitDays,
+      exerciseGoalHitDays,
+      workoutDays,
+      fastingSessions: fastingSessions.length,
+    });
+
     return {
       daysCount,
       caloriesTotal,
@@ -279,6 +291,7 @@ export function useProgressHistoryScreen() {
       mealGoalHitDays,
       waterGoalHitDays,
       exerciseGoalHitDays,
+      healthScore,
     };
   }, [dayRows, fastingSessions, goals]);
 

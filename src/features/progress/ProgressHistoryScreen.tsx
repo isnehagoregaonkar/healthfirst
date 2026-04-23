@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { AppLoadingSpinner } from '../../components/feedback/AppLoadingSpinner';
 import {
   Screen,
@@ -54,6 +55,81 @@ function formatDurationLabel(totalMinutes: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function healthTone(score: number): string {
+  if (score >= 85) {
+    return '#16A34A';
+  }
+  if (score >= 70) {
+    return '#2563EB';
+  }
+  if (score >= 55) {
+    return '#CA8A04';
+  }
+  return '#DC2626';
+}
+
+type HealthDonutSlice = Readonly<{
+  value: number;
+  color: string;
+}>;
+
+function HealthScoreDonut({
+  score,
+  slices,
+}: Readonly<{ score: number; slices: HealthDonutSlice[] }>) {
+  const size = 136;
+  const stroke = 13;
+  const c = size / 2;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const safeScore = Math.max(0, Math.min(100, score));
+  let acc = 0;
+
+  return (
+    <View style={styles.healthDonutWrap}>
+      <Svg width={size} height={size}>
+        <Circle
+          cx={c}
+          cy={c}
+          r={r}
+          stroke="#E7EEF8"
+          strokeWidth={stroke}
+          fill="none"
+        />
+        {slices.map((slice, idx) => {
+          const pct = Math.max(0, Math.min(100, slice.value));
+          const seg = (pct / 100) * circ;
+          const gap = Math.min(8, seg * 0.14);
+          const dash = Math.max(0, seg - gap);
+          const node = (
+            <Circle
+              key={`${slice.color}-${idx}`}
+              cx={c}
+              cy={c}
+              r={r}
+              stroke={slice.color}
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={`${dash} ${circ}`}
+              strokeDashoffset={-acc}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${c} ${c})`}
+            />
+          );
+          acc += seg;
+          return node;
+        })}
+      </Svg>
+      <View style={styles.healthDonutCenter}>
+        <Text style={[styles.healthDonutScore, { color: healthTone(safeScore) }]}>
+          {safeScore}
+        </Text>
+        <Text style={styles.healthDonutOutOf}>/100</Text>
+      </View>
+    </View>
+  );
 }
 
 export function ProgressHistoryScreen() {
@@ -124,6 +200,53 @@ export function ProgressHistoryScreen() {
           : 'No hydration logs yet',
     };
   }, [dayRows, summary.caloriesTotal, summary.daysCount, summary.waterTotalMl]);
+  const healthRows = useMemo(
+    () => [
+      {
+        id: 'nutrition',
+        label: 'Nutrition',
+        value: summary.healthScore.breakdown.nutrition,
+        color: '#1B5E20',
+        weight: 0.3,
+      },
+      {
+        id: 'hydration',
+        label: 'Hydration',
+        value: summary.healthScore.breakdown.hydration,
+        color: '#2E7D32',
+        weight: 0.2,
+      },
+      {
+        id: 'activity',
+        label: 'Activity',
+        value: summary.healthScore.breakdown.activity,
+        color: '#66BB6A',
+        weight: 0.3,
+      },
+      {
+        id: 'consistency',
+        label: 'Consistency',
+        value: summary.healthScore.breakdown.consistency,
+        color: '#C8E6C9',
+        weight: 0.2,
+      },
+    ],
+    [summary.healthScore.breakdown],
+  );
+  const healthDonutSlices = useMemo(() => {
+    const weighted = healthRows.map(row => ({
+      color: row.color,
+      points: Math.max(0, row.value) * row.weight,
+    }));
+    const total = weighted.reduce((acc, row) => acc + row.points, 0);
+    if (total <= 0) {
+      return weighted.map(row => ({ color: row.color, value: 0 }));
+    }
+    return weighted.map(row => ({
+      color: row.color,
+      value: (row.points / total) * 100,
+    }));
+  }, [healthRows]);
 
   if (loading && dayRows.length === 0 && !error) {
     return (
@@ -145,32 +268,64 @@ export function ProgressHistoryScreen() {
           }
         >
           <View style={styles.filterWrap}>
-          {PRESET_OPTIONS.map(item => {
-            const active = item.id === preset;
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => setPreset(item.id)}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    active && styles.filterChipTextActive,
-                  ]}
+            {PRESET_OPTIONS.map(item => {
+              const active = item.id === preset;
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => setPreset(item.id)}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
                 >
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      active && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
         <View style={styles.rangeCard}>
           <Text style={styles.rangeTitle}>Selected range</Text>
           <Text style={styles.rangeValue}>
             {formatRangeLabel(range.start, range.end)}
           </Text>
+        </View>
+
+        <View style={styles.healthScoreCard}>
+          <View style={styles.healthScoreAura} />
+          <Text style={styles.healthScoreTitle}>Health score</Text>
+          <View style={styles.healthScoreHeader}>
+            <View style={styles.healthTopLeft}>
+              <HealthScoreDonut
+                score={summary.healthScore.score}
+                slices={healthDonutSlices}
+              />
+              <Text style={styles.healthScoreLabel}>{summary.healthScore.label}</Text>
+            </View>
+
+            <View style={styles.healthLegendWrap}>
+              {healthRows.map(row => (
+                <View key={row.id} style={styles.healthLegendRow}>
+                  <View
+                    style={[
+                      styles.healthLegendDot,
+                      { backgroundColor: row.color },
+                    ]}
+                  />
+                  <Text style={styles.healthLegendLabel}>{row.label}</Text>
+                  <Text style={styles.healthLegendValue}>
+                    {row.value}% · {Math.round(row.weight * 100)}%
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          <Text style={styles.healthHint}>{summary.healthScore.hint}</Text>
         </View>
 
         {error ? (
@@ -250,7 +405,7 @@ export function ProgressHistoryScreen() {
           unit="kcal"
         />
 
-          <View style={styles.footerCard}>
+        <View style={styles.footerCard}>
             <Text style={styles.footerTitle}>Highlights</Text>
             <View style={styles.highlightRow}>
               <View style={styles.highlightPill}>
@@ -286,7 +441,7 @@ export function ProgressHistoryScreen() {
                 {highlights.bestHydrationLabel}
               </Text>
             </View>
-          </View>
+        </View>
         </ScrollView>
 
         {loading && dayRows.length > 0 ? (
@@ -355,6 +510,112 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: colors.primary,
+  },
+  healthScoreCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DDE9F7',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  healthScoreAura: {
+    position: 'absolute',
+    right: -28,
+    top: -24,
+    width: 148,
+    height: 148,
+    borderRadius: 999,
+    backgroundColor: '#DBEAFE66',
+  },
+  healthScoreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  healthTopLeft: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthScoreTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    color: '#64748B',
+  },
+  healthScoreLabel: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  healthDonutWrap: {
+    position: 'relative',
+  },
+  healthDonutCenter: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 136,
+    height: 136,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 2,
+  },
+  healthDonutScore: {
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 32,
+  },
+  healthDonutOutOf: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  healthLegendWrap: {
+    flex: 1,
+    gap: 8,
+    marginTop: 4,
+  },
+  healthLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFFAA',
+    borderWidth: 1,
+    borderColor: '#E5EEF9',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  healthLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 99,
+  },
+  healthLegendLabel: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1E293B',
+    fontWeight: '700',
+  },
+  healthLegendValue: {
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '800',
+  },
+  healthHint: {
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '700',
+    lineHeight: 17,
   },
   errorCard: {
     backgroundColor: '#FEF2F2',
