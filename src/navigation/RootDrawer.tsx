@@ -1,7 +1,6 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
 import { GoalsScreen } from '../features/goals/GoalsScreen';
-import { ExerciseScreen } from '../features/exercise/ExerciseScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
 import { RemindersScreen } from '../features/reminders/RemindersScreen';
@@ -60,14 +59,6 @@ export function RootDrawer() {
         options={{
           ...drawerLeafScreenOptions,
           title: 'Progress history',
-        }}
-      />
-      <Drawer.Screen
-        name="ExerciseHistory"
-        component={ExerciseScreen}
-        options={{
-          ...drawerLeafScreenOptions,
-          title: 'Exercise history',
         }}
       />
       <Drawer.Screen

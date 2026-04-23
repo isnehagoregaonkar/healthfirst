@@ -54,6 +54,56 @@ function numOrNull(v: unknown): number | null {
   return null;
 }
 
+function normalizeDateString(s: string): string {
+  return s.trim().replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+}
+
+function toIsoOrNull(v: unknown): string | null {
+  if (typeof v === 'string') {
+    const d = new Date(normalizeDateString(v));
+    if (!Number.isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+    return v;
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const ms = Math.abs(v) < 1_000_000_000_000 ? v * 1000 : v;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    const candidates: unknown[] = [
+      o.timestamp,
+      o.timestampMs,
+      o.timestampMillis,
+      o.epochMillis,
+      o.epochSeconds,
+      o.timeIntervalSince1970,
+      o.value,
+      o.time,
+      o.seconds,
+    ];
+    for (const c of candidates) {
+      const n = numOrNull(c);
+      if (n != null) {
+        const ms = Math.abs(n) < 1_000_000_000_000 ? n * 1000 : n;
+        const d = new Date(ms);
+        if (!Number.isNaN(d.getTime())) {
+          return d.toISOString();
+        }
+      }
+      if (typeof c === 'string') {
+        const d = new Date(normalizeDateString(c));
+        if (!Number.isNaN(d.getTime())) {
+          return d.toISOString();
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function parseIosStepCount(raw: unknown): number | null {
   if (!raw || typeof raw !== 'object') {
     return null;
@@ -135,8 +185,8 @@ function workoutDurationMinutesNumIos(w: unknown): number | null {
     }
     return Math.max(1, Math.round(d));
   }
-  const start = typeof o.startDate === 'string' ? o.startDate : null;
-  const end = typeof o.endDate === 'string' ? o.endDate : null;
+  const start = toIsoOrNull(o.startDate ?? o.start);
+  const end = toIsoOrNull(o.endDate ?? o.end);
   if (!start || !end) {
     return null;
   }
@@ -146,6 +196,19 @@ function workoutDurationMinutesNumIos(w: unknown): number | null {
     return null;
   }
   return Math.max(1, Math.round((b - a) / 60000));
+}
+
+function workoutDistanceKmIos(w: unknown): number | null {
+  if (!w || typeof w !== 'object') {
+    return null;
+  }
+  const o = w as Record<string, unknown>;
+  const d = numOrNull(o.distance);
+  if (d == null || d <= 0) {
+    return null;
+  }
+  // HealthKit workout distance from this bridge is typically km.
+  return Math.round(d * 100) / 100;
 }
 
 function workoutEnergyKcalIos(w: unknown): number | null {
@@ -178,6 +241,16 @@ function formatWorkoutName(name: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatDurationLabel(totalMinutes: number): string {
+  const mins = Math.max(0, Math.round(totalMinutes));
+  if (mins < 60) {
+    return `${mins}m`;
+  }
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 function workoutDurationMinutesNumAndroid(w: unknown): number | null {
@@ -217,12 +290,29 @@ function workoutEnergyKcalAndroid(w: unknown): number | null {
   return v === null ? null : Math.round(v * 10) / 10;
 }
 
+function workoutDistanceKmAndroid(w: unknown): number | null {
+  if (!w || typeof w !== 'object') {
+    return null;
+  }
+  const o = w as { totalDistance?: { inMeters?: unknown; inKilometers?: unknown } };
+  const km = numOrNull(o.totalDistance?.inKilometers);
+  if (km != null && km > 0) {
+    return Math.round(km * 100) / 100;
+  }
+  const m = numOrNull(o.totalDistance?.inMeters);
+  if (m != null && m > 0) {
+    return Math.round((m / 1000) * 100) / 100;
+  }
+  return null;
+}
+
 type GroupedWorkoutRow = Readonly<{
   key: string;
   title: string;
   sessions: number;
   totalMinutes: number;
   totalKcal: number | null;
+  totalDistanceKm: number | null;
 }>;
 
 function addNullableNumbers(a: number | null, b: number | null): number | null {
@@ -243,6 +333,7 @@ function groupSimilarWorkouts(
       sessions: number;
       totalMinutes: number;
       totalKcal: number | null;
+      totalDistanceKm: number | null;
     }
   >();
   for (const w of workouts) {
@@ -253,6 +344,7 @@ function groupSimilarWorkouts(
       ? workoutDurationMinutesNumIos(w)
       : workoutDurationMinutesNumAndroid(w);
     const kcal = isIos ? workoutEnergyKcalIos(w) : workoutEnergyKcalAndroid(w);
+    const distanceKm = isIos ? workoutDistanceKmIos(w) : workoutDistanceKmAndroid(w);
     const prev = map.get(key);
     const addMins = mins ?? 0;
     if (!prev) {
@@ -261,6 +353,7 @@ function groupSimilarWorkouts(
         sessions: 1,
         totalMinutes: addMins,
         totalKcal: kcal,
+        totalDistanceKm: distanceKm,
       });
     } else {
       map.set(key, {
@@ -268,6 +361,7 @@ function groupSimilarWorkouts(
         sessions: prev.sessions + 1,
         totalMinutes: prev.totalMinutes + addMins,
         totalKcal: addNullableNumbers(prev.totalKcal, kcal),
+        totalDistanceKm: addNullableNumbers(prev.totalDistanceKm, distanceKm),
       });
     }
   }
@@ -278,6 +372,7 @@ function groupSimilarWorkouts(
       sessions: v.sessions,
       totalMinutes: v.totalMinutes,
       totalKcal: v.totalKcal,
+      totalDistanceKm: v.totalDistanceKm,
     }))
     .sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
@@ -440,6 +535,49 @@ function dayMetricsFromAndroidRaw(d: Record<string, unknown>): DayMetrics {
     avgHr: avgHrAndroid(d.heartRate),
     workoutCount: readHcRecords(d.exercise).length,
   };
+}
+
+function logExerciseRawDebugShape(
+  platform: 'ios' | 'android',
+  raw: Record<string, unknown>,
+): void {
+  if (!__DEV__) {
+    return;
+  }
+  if (platform === 'ios') {
+    const workouts = parseIosSamplesArray(raw.workouts);
+    const first = workouts[0] as Record<string, unknown> | undefined;
+    console.log('[ExerciseRaw][iOS]', {
+      workoutsCount: workouts.length,
+      sampleWorkout: first
+        ? {
+            duration: first.duration ?? null,
+            startDate: first.startDate ?? null,
+            endDate: first.endDate ?? null,
+            activityName: first.activityName ?? first.activityType ?? null,
+          }
+        : null,
+      hasHeartRate: parseIosSamplesArray(raw.heartRateSamples).length > 0,
+      hasEnergy: parseIosSamplesArray(raw.activeEnergyBurned).length > 0,
+    });
+    return;
+  }
+
+  const exerciseRows = readHcRecords(raw.exercise);
+  const first = exerciseRows[0] as Record<string, unknown> | undefined;
+  console.log('[ExerciseRaw][Android]', {
+    workoutsCount: exerciseRows.length,
+    sampleWorkout: first
+      ? {
+          duration: first.duration ?? null,
+          startTime: first.startTime ?? null,
+          endTime: first.endTime ?? null,
+          exerciseType: first.exerciseType ?? null,
+        }
+      : null,
+    hasHeartRate: readHcRecords(raw.heartRate).length > 0,
+    hasSteps: readHcRecords(raw.steps).length > 0,
+  });
 }
 
 function meanOfNumbers(
@@ -1114,6 +1252,7 @@ export function ExerciseScreen() {
           error: null,
         }));
         const d = mainRaw as Record<string, unknown>;
+        logExerciseRawDebugShape('ios', d);
         const m = dayMetricsFromIosRaw(d);
         backgroundSync({
           steps: m.steps,
@@ -1141,6 +1280,7 @@ export function ExerciseScreen() {
         }
         setState(prev => ({ ...prev, androidData: mainRaw, error: null }));
         const d = mainRaw as Record<string, unknown>;
+        logExerciseRawDebugShape('android', d);
         const m = dayMetricsFromAndroidRaw(d);
         backgroundSync({
           steps: m.steps,
@@ -1420,7 +1560,10 @@ export function ExerciseScreen() {
                       : '— kcal';
                   const metaLine = [
                     g.sessions > 1 ? `${g.sessions}×` : null,
-                    `${g.totalMinutes} min`,
+                    formatDurationLabel(g.totalMinutes),
+                    g.title.toLowerCase().includes('walk') && g.totalDistanceKm != null
+                      ? `${g.totalDistanceKm.toFixed(2)} km`
+                      : null,
                     kcalStr,
                   ]
                     .filter(Boolean)
