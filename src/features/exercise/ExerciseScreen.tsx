@@ -128,15 +128,24 @@ function workoutDurationMinutesNumIos(w: unknown): number | null {
   }
   const o = w as Record<string, unknown>;
   const d = numOrNull(o.duration);
-  if (d === null || d <= 0) {
+  if (d !== null && d > 0) {
+    // Some providers expose seconds, others expose minutes. Handle both.
+    if (d >= 180) {
+      return Math.max(1, Math.round(d / 60));
+    }
+    return Math.max(1, Math.round(d));
+  }
+  const start = typeof o.startDate === 'string' ? o.startDate : null;
+  const end = typeof o.endDate === 'string' ? o.endDate : null;
+  if (!start || !end) {
     return null;
   }
-  return Math.max(1, Math.round(d / 60));
-}
-
-function workoutDurationMinutesIos(w: unknown): string | null {
-  const m = workoutDurationMinutesNumIos(w);
-  return m === null ? null : `${m} min`;
+  const a = new Date(start).getTime();
+  const b = new Date(end).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b) || b <= a) {
+    return null;
+  }
+  return Math.max(1, Math.round((b - a) / 60000));
 }
 
 function workoutEnergyKcalIos(w: unknown): number | null {
@@ -175,21 +184,27 @@ function workoutDurationMinutesNumAndroid(w: unknown): number | null {
   if (!w || typeof w !== 'object') {
     return null;
   }
-  const o = w as { startTime?: string; endTime?: string };
-  if (!o.startTime || !o.endTime) {
+  const o = w as {
+    startTime?: string;
+    endTime?: string;
+    duration?: number;
+  };
+  if (o.startTime && o.endTime) {
+    const a = new Date(o.startTime).getTime();
+    const b = new Date(o.endTime).getTime();
+    if (!Number.isNaN(a) && !Number.isNaN(b) && b > a) {
+      return Math.max(1, Math.round((b - a) / 60000));
+    }
+  }
+  const dur = numOrNull(o.duration);
+  if (dur == null || dur <= 0) {
     return null;
   }
-  const a = new Date(o.startTime).getTime();
-  const b = new Date(o.endTime).getTime();
-  if (Number.isNaN(a) || Number.isNaN(b) || b <= a) {
-    return null;
+  // In practice this can be either milliseconds or seconds depending on source.
+  if (dur > 3600) {
+    return Math.max(1, Math.round(dur / 60000));
   }
-  return Math.max(1, Math.round((b - a) / 60000));
-}
-
-function workoutDurationAndroid(w: unknown): string | null {
-  const m = workoutDurationMinutesNumAndroid(w);
-  return m === null ? null : `${m} min`;
+  return Math.max(1, Math.round(dur / 60));
 }
 
 function workoutEnergyKcalAndroid(w: unknown): number | null {
@@ -1453,6 +1468,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 14,
     paddingHorizontal: 14,
+    borderColor: '#D6E4FF',
+    backgroundColor: '#F8FBFF',
   },
   weekStripEyebrow: {
     fontSize: 11,
@@ -1522,6 +1539,8 @@ const styles = StyleSheet.create({
     minWidth: '46%',
     paddingVertical: 14,
     paddingHorizontal: 12,
+    borderColor: '#E8EEF7',
+    backgroundColor: '#FFFFFF',
   },
   statTopRow: {
     flexDirection: 'row',
@@ -1653,9 +1672,13 @@ const styles = StyleSheet.create({
   workoutRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E5EDF5',
   },
   workoutIconCircle: {
     width: 44,
