@@ -410,6 +410,10 @@ type MealRangeResult =
   | Readonly<{ days: MealDaySummary[] }>
   | Readonly<{ error: MealServiceError }>;
 
+type MealPeriodResult =
+  | Readonly<{ days: MealDaySummary[] }>
+  | Readonly<{ error: MealServiceError }>;
+
 /**
  * Per-local-day calories and macro sums across `numDays` ending on `endDay` (inclusive).
  * `days[0]` is the oldest day.
@@ -516,6 +520,119 @@ export async function getMealDaySummariesForRange(endDay: Date, numDays: number)
         fiberG: roundMacro(t.fiberG),
       },
     });
+  }
+
+  return { days };
+}
+
+/**
+ * Per-local-day calories and macro sums from `startDay` to `endDay` (inclusive), oldest first.
+ */
+export async function getMealDaySummariesForPeriod(
+  startDay: Date,
+  endDay: Date,
+): Promise<MealPeriodResult> {
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { error: user.error };
+  }
+
+  const start = startOfLocalDay(startDay);
+  const end = startOfLocalDay(endDay);
+  if (end.getTime() < start.getTime()) {
+    return { error: { message: 'Invalid date range' } };
+  }
+
+  const { startIso } = localDayBoundsFor(start);
+  const { endIso } = localDayBoundsFor(end);
+
+  const { data: mealRows, error: mealsError } = await supabase
+    .from('meals')
+    .select('id, created_at')
+    .eq('user_id', user.userId)
+    .gte('created_at', startIso)
+    .lte('created_at', endIso);
+
+  if (mealsError) {
+    return { error: { message: mealsError.message, code: mealsError.code } };
+  }
+
+  const meals = mealRows ?? [];
+  const mealIds = meals.map(m => String(m.id));
+  const mealIdToDayKey = new Map<string, string>();
+  for (const m of meals) {
+    const key = localDateKeyFromIsoMeals(String(m.created_at));
+    if (key) {
+      mealIdToDayKey.set(String(m.id), key);
+    }
+  }
+
+  const totalsByKey = new Map<
+    string,
+    { kcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number }
+  >();
+  const cursor = new Date(start);
+  while (cursor.getTime() <= end.getTime()) {
+    totalsByKey.set(localDateKeyFromDateMeals(cursor), {
+      kcal: 0,
+      proteinG: 0,
+      carbsG: 0,
+      fatG: 0,
+      fiberG: 0,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const mealCountByKey = new Map<string, number>();
+  for (const m of meals) {
+    const key = localDateKeyFromIsoMeals(String(m.created_at));
+    if (!key || !totalsByKey.has(key)) {
+      continue;
+    }
+    mealCountByKey.set(key, (mealCountByKey.get(key) ?? 0) + 1);
+  }
+
+  if (mealIds.length > 0) {
+    const { data: itemRows, error: itemsError } = await supabase
+      .from('meal_items')
+      .select('meal_id, calories, protein_g, carbs_g, fat_g, fiber_g')
+      .in('meal_id', mealIds);
+
+    if (itemsError) {
+      return { error: { message: itemsError.message, code: itemsError.code } };
+    }
+
+    for (const row of itemRows ?? []) {
+      const dayKey = mealIdToDayKey.get(String(row.meal_id));
+      if (!dayKey || !totalsByKey.has(dayKey)) {
+        continue;
+      }
+      const bucket = totalsByKey.get(dayKey)!;
+      bucket.kcal += Number(row.calories) || 0;
+      bucket.proteinG += row.protein_g != null ? Number(row.protein_g) : 0;
+      bucket.carbsG += row.carbs_g != null ? Number(row.carbs_g) : 0;
+      bucket.fatG += row.fat_g != null ? Number(row.fat_g) : 0;
+      bucket.fiberG += row.fiber_g != null ? Number(row.fiber_g) : 0;
+    }
+  }
+
+  const days: MealDaySummary[] = [];
+  const outCursor = new Date(start);
+  while (outCursor.getTime() <= end.getTime()) {
+    const key = localDateKeyFromDateMeals(outCursor);
+    const t = totalsByKey.get(key)!;
+    days.push({
+      date: new Date(outCursor),
+      totalCalories: Math.round(t.kcal),
+      mealCount: mealCountByKey.get(key) ?? 0,
+      macroTotals: {
+        proteinG: roundMacro(t.proteinG),
+        carbsG: roundMacro(t.carbsG),
+        fatG: roundMacro(t.fatG),
+        fiberG: roundMacro(t.fiberG),
+      },
+    });
+    outCursor.setDate(outCursor.getDate() + 1);
   }
 
   return { days };

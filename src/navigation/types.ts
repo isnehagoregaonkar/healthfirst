@@ -18,7 +18,6 @@ export type RootDrawerParamList = {
   Profile: undefined;
   Goals: undefined;
   ProgressHistory: undefined;
-  ExerciseHistory: undefined;
   Reminders: undefined;
 };
 
@@ -30,7 +29,6 @@ export type DrawerDestinationId =
   | 'Goals'
   | 'StepsTracking'
   | 'ProgressHistory'
-  | 'ExerciseHistory'
   | 'IntermittentFasting'
   | 'Reminders'
   | 'Profile';

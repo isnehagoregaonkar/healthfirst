@@ -6,7 +6,6 @@ import { colors } from '../../theme/tokens';
 import { getActiveDestinationId, navigateToDestination } from '../drawerNavigation';
 import {
   DashboardDrawerIcon,
-  ExerciseDrawerIcon,
   FastingDrawerIcon,
   GoalsDrawerIcon,
   MealDrawerIcon,
@@ -36,7 +35,6 @@ const ROWS: DrawerNavRow[] = [
   { id: 'ProgressHistory', label: 'Progress history', Icon: ProgressDrawerIcon },
   { id: 'WaterIntake', label: 'Water intake', Icon: WaterDrawerIcon },
   { id: 'StepsTracking', label: 'Exercise', Icon: StepsDrawerIcon },
-  { id: 'ExerciseHistory', label: 'Exercise history', Icon: ExerciseDrawerIcon },
   { id: 'IntermittentFasting', label: 'Intermittent fasting', Icon: FastingDrawerIcon },
   { id: 'Reminders', label: 'Reminders', Icon: RemindersDrawerIcon },
   { id: 'Profile', label: 'Profile', Icon: ProfileDrawerIcon },

@@ -147,6 +147,10 @@ type WaterRangeTotalsResult =
   | Readonly<{ days: WaterDayTotal[] }>
   | Readonly<{ error: WaterServiceError }>;
 
+type WaterPeriodTotalsResult =
+  | Readonly<{ days: WaterDayTotal[] }>
+  | Readonly<{ error: WaterServiceError }>;
+
 /**
  * Daily totals for a sliding window of local days ending on `endDay` (inclusive).
  * `days[0]` is the oldest day; `days[days.length - 1]` is `endDay`.
@@ -200,6 +204,64 @@ export async function getWaterDailyTotalsForRange(
     const d = addCalendarDaysWater(firstStart, i);
     const key = localDateKeyFromDate(d);
     days.push({ date: d, totalMl: totalsByKey.get(key) ?? 0 });
+  }
+
+  return { days };
+}
+
+/**
+ * Daily totals from `startDay` to `endDay` (inclusive), oldest first.
+ */
+export async function getWaterDailyTotalsForPeriod(
+  startDay: Date,
+  endDay: Date,
+): Promise<WaterPeriodTotalsResult> {
+  const user = await requireUserId();
+  if ('error' in user) {
+    return { error: user.error };
+  }
+
+  const start = startOfLocalDayWater(startDay);
+  const end = startOfLocalDayWater(endDay);
+  if (end.getTime() < start.getTime()) {
+    return { error: { message: 'Invalid date range' } };
+  }
+
+  const { startIso } = localDayBoundsIsoFor(start);
+  const { endIso } = localDayBoundsIsoFor(end);
+
+  const { data, error } = await supabase
+    .from('water_intakes')
+    .select('amount_ml, created_at')
+    .eq('user_id', user.userId)
+    .gte('created_at', startIso)
+    .lte('created_at', endIso);
+
+  if (error) {
+    return { error: { message: error.message, code: error.code } };
+  }
+
+  const totalsByKey = new Map<string, number>();
+  const cursor = new Date(start);
+  while (cursor.getTime() <= end.getTime()) {
+    totalsByKey.set(localDateKeyFromDate(cursor), 0);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  for (const row of data ?? []) {
+    const key = localDateKeyFromCreatedAt(String(row.created_at));
+    if (!key || !totalsByKey.has(key)) {
+      continue;
+    }
+    totalsByKey.set(key, (totalsByKey.get(key) ?? 0) + Number(row.amount_ml));
+  }
+
+  const days: WaterDayTotal[] = [];
+  const outCursor = new Date(start);
+  while (outCursor.getTime() <= end.getTime()) {
+    const key = localDateKeyFromDate(outCursor);
+    days.push({ date: new Date(outCursor), totalMl: totalsByKey.get(key) ?? 0 });
+    outCursor.setDate(outCursor.getDate() + 1);
   }
 
   return { days };

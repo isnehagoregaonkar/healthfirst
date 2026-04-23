@@ -34,10 +34,6 @@ export function StepsDrawerIcon({ color, size }: DrawerIconProps) {
   return <Icon name="walk" size={size} color={color} />;
 }
 
-export function ExerciseDrawerIcon({ color, size }: DrawerIconProps) {
-  return <Icon name="dumbbell" size={size} color={color} />;
-}
-
 export function FastingDrawerIcon({ color, size }: DrawerIconProps) {
   return <Icon name="timer-outline" size={size} color={color} />;
 }
