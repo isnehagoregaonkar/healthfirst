@@ -1,15 +1,17 @@
 import type { StreakCapsuleTone } from '../components/StreakPanel';
 import type { MealDaySummary } from '../../../services/meals';
+import type { WaterDayTotal } from '../../../services/water';
 
 export function dayHasLog(day: {
   mealCount: number;
   totalCalories: number;
+  waterTotalMl?: number;
 }): boolean {
-  return day.mealCount > 0 || day.totalCalories > 0;
+  return day.mealCount > 0 || day.totalCalories > 0 || (day.waterTotalMl ?? 0) > 0;
 }
 
 export function streakToneForDay(
-  day: { mealCount: number; totalCalories: number },
+  day: { mealCount: number; totalCalories: number; waterTotalMl?: number },
   calorieTarget: number,
   isFuture: boolean,
 ): StreakCapsuleTone {
@@ -32,7 +34,11 @@ export function streakToneForDay(
 
 /** Consecutive days (from today backward) with any meal logged that day. */
 export function computeMealLogStreak(
-  mealWeek: ReadonlyArray<{ mealCount: number; totalCalories: number }>,
+  mealWeek: ReadonlyArray<{
+    mealCount: number;
+    totalCalories: number;
+    waterTotalMl?: number;
+  }>,
 ): number {
   let n = 0;
   for (let i = mealWeek.length - 1; i >= 0; i -= 1) {
@@ -46,7 +52,11 @@ export function computeMealLogStreak(
 }
 
 export function longestMealLogRunInWeek(
-  mealWeek: ReadonlyArray<{ mealCount: number; totalCalories: number }>,
+  mealWeek: ReadonlyArray<{
+    mealCount: number;
+    totalCalories: number;
+    waterTotalMl?: number;
+  }>,
 ): number {
   let best = 0;
   let cur = 0;
@@ -83,16 +93,26 @@ export type DashboardStreakModel = Readonly<{
 
 export function buildDashboardStreakModel(
   mealWeek: ReadonlyArray<MealDaySummary>,
+  waterWeek: ReadonlyArray<WaterDayTotal>,
   calorieTarget: number,
 ): DashboardStreakModel {
+  const waterByDay = new Map<string, number>();
+  for (const day of waterWeek) {
+    waterByDay.set(localDayKey(day.date), day.totalMl);
+  }
+  const combinedWeek = mealWeek.map(day => ({
+    ...day,
+    waterTotalMl: waterByDay.get(localDayKey(day.date)) ?? 0,
+  }));
+
   const n = mealWeek.length;
   const todayIdx = n - 1;
-  const todayDay = mealWeek[todayIdx];
+  const todayDay = combinedWeek[todayIdx];
   const todayOver =
     dayHasLog(todayDay) &&
     todayDay.totalCalories > Math.max(calorieTarget, 1);
 
-  const capsules = mealWeek.map((day, i) => ({
+  const capsules = combinedWeek.map((day, i) => ({
     id: localDayKey(day.date),
     label: formatWeekdayShort(day.date),
     isToday: i === todayIdx,
@@ -101,8 +121,8 @@ export function buildDashboardStreakModel(
 
   return {
     capsules,
-    streak: computeMealLogStreak(mealWeek),
-    longest: longestMealLogRunInWeek(mealWeek),
+    streak: computeMealLogStreak(combinedWeek),
+    longest: longestMealLogRunInWeek(combinedWeek),
     todayOver,
   };
 }
