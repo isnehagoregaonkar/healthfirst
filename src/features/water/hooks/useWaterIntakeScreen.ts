@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import {
   addWaterIntake,
-  DEFAULT_DAILY_GOAL_ML,
   deleteWaterIntake,
   getWaterDailyTotalsForRange,
   getWaterDaySnapshot,
   type WaterDayTotal,
   type WaterIntakeEntry,
 } from '../../../services/water';
+import { loadUserGoals } from '../../../services/goals';
 import { getWaterCoachingLines } from '../waterCoaching';
 import {
   clampWaterPercent,
@@ -57,7 +57,7 @@ export type UseWaterIntakeScreenResult = Readonly<{
  * coaching copy, and add / remove mutations with shared post-mutation sync.
  */
 export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
-  const goalMl = DEFAULT_DAILY_GOAL_ML;
+  const [goalMl, setGoalMl] = useState(2500);
   const [selectedDay, setSelectedDay] = useState(() => startOfLocalDay(new Date()));
   const [totalMl, setTotalMl] = useState(0);
   const [entries, setEntries] = useState<WaterIntakeEntry[]>([]);
@@ -131,6 +131,20 @@ export function useWaterIntakeScreen(): UseWaterIntakeScreenResult {
     }
     return true;
   }, [selectedDay]);
+
+  useEffect(() => {
+    let alive = true;
+    loadUserGoals()
+      .then(goals => {
+        if (alive) {
+          setGoalMl(goals.waterIntakeGoalMl);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {

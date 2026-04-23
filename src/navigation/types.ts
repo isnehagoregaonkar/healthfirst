@@ -16,6 +16,7 @@ export type MainTabParamList = {
 export type RootDrawerParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Profile: undefined;
+  Goals: undefined;
   ProgressHistory: undefined;
   ExerciseHistory: undefined;
   Reminders: undefined;
@@ -26,6 +27,7 @@ export type DrawerDestinationId =
   | 'Dashboard'
   | 'MealTracking'
   | 'WaterIntake'
+  | 'Goals'
   | 'StepsTracking'
   | 'ProgressHistory'
   | 'ExerciseHistory'

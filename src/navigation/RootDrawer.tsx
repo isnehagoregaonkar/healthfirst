@@ -1,5 +1,6 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
+import { GoalsScreen } from '../features/goals/GoalsScreen';
 import { ExerciseScreen } from '../features/exercise/ExerciseScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { ProgressHistoryScreen } from '../features/progress/ProgressHistoryScreen';
@@ -37,6 +38,14 @@ export function RootDrawer() {
       }}
     >
       <Drawer.Screen name="Main" component={MainTabNavigator} options={{ title: 'HealthFirst' }} />
+      <Drawer.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{
+          ...drawerLeafScreenOptions,
+          title: 'Goals',
+        }}
+      />
       <Drawer.Screen
         name="Profile"
         component={ProfileScreen}

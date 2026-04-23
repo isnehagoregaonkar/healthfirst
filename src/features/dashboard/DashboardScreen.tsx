@@ -31,7 +31,6 @@ import {
   RING_WATER,
 } from './dashboardTokens';
 import { useDashboardScreen } from './hooks/useDashboardScreen';
-import { EXERCISE_RING_GOAL } from './hooks/useDashboardTodayMetrics';
 import {
   formatHeartSourceLabel,
   formatRelativeHeartTime,
@@ -253,6 +252,7 @@ export function DashboardScreen() {
     waterPct,
     moveExercise,
     exerciseToday,
+    exerciseGoalMin,
     moveEstKcalToday,
     weightLabel,
     hrPoints,
@@ -276,7 +276,7 @@ export function DashboardScreen() {
 
   const exercisePct = Math.min(
     100,
-    Math.round((exerciseToday / Math.max(EXERCISE_RING_GOAL, 1)) * 100),
+    Math.round((exerciseToday / Math.max(exerciseGoalMin, 1)) * 100),
   );
 
   return (
@@ -415,7 +415,7 @@ export function DashboardScreen() {
                           {exerciseToday} min
                         </Text>
                         <Text style={styles.metricTileHint}>
-                          Goal {EXERCISE_RING_GOAL} min · {exercisePct}%
+                          Goal {exerciseGoalMin} min · {exercisePct}%
                         </Text>
                       </View>
                       <DashboardStatPill tone="exercise">
@@ -528,7 +528,7 @@ export function DashboardScreen() {
                         <Text style={styles.weightUnit}> kg</Text>
                       </Text>
                       <Text style={styles.weightGoal}>
-                        Goal {snapshot.profile.goalWeightKg.toFixed(1)} kg
+                        Goal {snapshot.weightGoalKg.toFixed(1)} kg
                       </Text>
                     </View>
                     <DashboardStatPill tone="weight">

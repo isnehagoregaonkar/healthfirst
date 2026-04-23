@@ -12,8 +12,6 @@ import type { DashboardSnapshot } from './useDashboardData';
 /** Preview minutes per day until move sync (index aligned with `mealWeek`). */
 const EXERCISE_DUMMY = [18, 32, 45, 28, 52, 36, 22] as const;
 const KCAL_PER_MOVE_MIN_EST = 7.5;
-
-export const EXERCISE_RING_GOAL = 30;
 export const EXERCISE_STREAK_MIN = 25;
 
 export type MoveExerciseWeek = Readonly<{
@@ -74,13 +72,14 @@ export function useDashboardTodayMetrics(snapshot: DashboardSnapshot | null) {
   const exerciseToday = snapshot
     ? moveExercise.values[moveExercise.todayIdx] ?? 0
     : 0;
+  const exerciseGoalMin = snapshot?.goals.exerciseMinutesGoal ?? 30;
   const moveEstKcalToday = Math.round(exerciseToday * KCAL_PER_MOVE_MIN_EST);
 
   const weightLabel = useMemo(() => {
     if (!snapshot) {
       return '';
     }
-    const delta = snapshot.profile.weightKg - snapshot.profile.goalWeightKg;
+    const delta = snapshot.profile.weightKg - snapshot.weightGoalKg;
     if (Math.abs(delta) < 0.15) {
       return 'On target';
     }
@@ -105,6 +104,7 @@ export function useDashboardTodayMetrics(snapshot: DashboardSnapshot | null) {
     waterPct,
     moveExercise,
     exerciseToday,
+    exerciseGoalMin,
     moveEstKcalToday,
     weightLabel,
     hrPoints,
