@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
 import {
+  computeBmi,
+  suggestedMacroTargets,
+} from '../../../services/mealCalorieTarget';
+import {
   formatWeekdayShort,
   localDayKey,
 } from '../logic/dashboardStreak';
@@ -87,6 +91,8 @@ export function useDashboardTodayMetrics(snapshot: DashboardSnapshot | null) {
   }, [snapshot]);
 
   const hrPoints = snapshot?.heartWeek.map(d => d.avgBpm) ?? [];
+  const macroTargets = snapshot ? suggestedMacroTargets(snapshot.profile) : null;
+  const bmiInfo = snapshot ? computeBmi(snapshot.profile) : null;
 
   const calOverAmt = snapshot
     ? snapshot.todayCalories - snapshot.calorieTarget
@@ -103,5 +109,7 @@ export function useDashboardTodayMetrics(snapshot: DashboardSnapshot | null) {
     weightLabel,
     hrPoints,
     calOverAmt,
+    macroTargets,
+    bmiInfo,
   };
 }

@@ -18,6 +18,7 @@ import { ScreenTopCard } from '../../components/screenTop';
 import { colors } from '../../theme/tokens';
 import { MealCalorieProfileModal } from '../meals/components/MealCalorieProfileModal';
 import { MEAL_PRIMARY } from '../meals/mealUiTheme';
+import { DashboardHalfCard } from './components/DashboardHalfCard';
 import { LogHeartRateModal } from './components/LogHeartRateModal';
 import {
   DASH_BAD,
@@ -25,7 +26,6 @@ import {
   DASH_HEART_SOFT,
   DASH_MUTED,
   DASH_SLATE,
-  EXERCISE_BAR,
   EXERCISE_BAR_TODAY,
   RING_CAL,
   RING_WATER,
@@ -43,7 +43,7 @@ const DASHBOARD_TWIN_CARD_MIN_HEIGHT = 148;
 /** Ring diameter in calories / water dashboard tiles. */
 const DASHBOARD_METRIC_RING_SIZE = 44;
 
-type DashboardStatPillTone = 'cal' | 'calOver' | 'water' | 'weight';
+type DashboardStatPillTone = 'cal' | 'calOver' | 'water' | 'weight' | 'exercise';
 
 function DashboardStatPill({
   tone,
@@ -72,6 +72,10 @@ function DashboardStatPill({
     case 'weight':
       wrap.push(styles.halfCardStatPillWeight);
       txt.push(styles.halfCardStatPillTextWeight);
+      break;
+    case 'exercise':
+      wrap.push(styles.halfCardStatPillExercise);
+      txt.push(styles.halfCardStatPillTextExercise);
       break;
     default:
       break;
@@ -186,80 +190,44 @@ function MetricRingWithIcon({
   );
 }
 
-type ExerciseWeekBarsProps = Readonly<{
-  values: ReadonlyArray<number>;
-  labels: ReadonlyArray<string>;
-  dayKeys: ReadonlyArray<string>;
-  goalMinutes: number;
-  todayIndex: number;
-  /** Default 78; lower for a shorter Move card. */
-  maxBarHeight?: number;
+type MacroRingProps = Readonly<{
+  label: string;
+  consumed: number;
+  target: number;
+  color: string;
 }>;
 
-function ExerciseZigzagBg() {
-  return (
-    <Svg
-      width={112}
-      height={96}
-      style={styles.exerciseZigzagSvg}
-      pointerEvents="none"
-    >
-      <Path
-        d="M -4 72 Q 22 28 48 64 T 108 52 L 116 96 L -8 96 Z"
-        fill="#FFEDD5"
-        opacity={0.45}
-      />
-    </Svg>
-  );
-}
+function MacroProgressRing({ label, consumed, target, color }: MacroRingProps) {
+  const size = 54;
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const c = size / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = target > 0 ? Math.min(100, Math.max(0, (consumed / target) * 100)) : 0;
+  const dash = (pct / 100) * circ;
 
-/** Weekly move minutes as pill bars with a light dot at the top (reference UI). */
-function ExerciseWeekBars({
-  values,
-  labels,
-  dayKeys,
-  goalMinutes,
-  todayIndex,
-  maxBarHeight = 78,
-}: ExerciseWeekBarsProps) {
-  const maxH = maxBarHeight;
-  const barW = 11;
-  const maxV = Math.max(1, goalMinutes, ...values);
   return (
-    <View style={styles.exerciseBarsRow}>
-      {values.map((v, i) => {
-        const h = Math.max(10, Math.round((v / maxV) * maxH));
-        const isToday = i === todayIndex;
-        return (
-          <View key={dayKeys[i] ?? `move-${i}`} style={styles.exerciseBarCol}>
-            <View style={[styles.exerciseBarTrack, { height: maxH }]}>
-              <View
-                style={[
-                  styles.exerciseBarFill,
-                  {
-                    width: barW,
-                    height: h,
-                    borderRadius: barW / 2,
-                    backgroundColor: isToday
-                      ? EXERCISE_BAR_TODAY
-                      : EXERCISE_BAR,
-                  },
-                ]}
-              >
-                <View style={styles.exerciseBarDot} />
-              </View>
-            </View>
-            <Text
-              style={[
-                styles.exerciseBarLbl,
-                isToday && styles.exerciseBarLblToday,
-              ]}
-            >
-              {labels[i]}
-            </Text>
-          </View>
-        );
-      })}
+    <View style={styles.macroRingItem}>
+      <View style={styles.macroRingWrap}>
+        <Svg width={size} height={size}>
+          <Circle cx={c} cy={c} r={r} stroke="#E2E8F0" strokeWidth={stroke} fill="none" />
+          <Circle
+            cx={c}
+            cy={c}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={`${dash} ${circ}`}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${c} ${c})`}
+          />
+        </Svg>
+        <View style={styles.macroRingCenter}>
+          <Text style={styles.macroRingValue}>{consumed}g</Text>
+        </View>
+      </View>
+      <Text style={styles.macroRingLabel}>{label}</Text>
     </View>
   );
 }
@@ -280,7 +248,6 @@ export function DashboardScreen() {
     streakModel,
     reminders,
     insights,
-    calPctRaw,
     calOverEarly,
     calPct,
     waterPct,
@@ -290,6 +257,7 @@ export function DashboardScreen() {
     weightLabel,
     hrPoints,
     calOverAmt,
+    macroTargets,
   } = useDashboardScreen();
 
   const scrollRef = useRef<ScrollView>(null);
@@ -304,6 +272,11 @@ export function DashboardScreen() {
       });
       return () => cancelAnimationFrame(id);
     }, []),
+  );
+
+  const exercisePct = Math.min(
+    100,
+    Math.round((exerciseToday / Math.max(EXERCISE_RING_GOAL, 1)) * 100),
   );
 
   return (
@@ -368,90 +341,9 @@ export function DashboardScreen() {
 
               <View style={styles.metricPairRow}>
                 <View style={styles.metricTileWrap}>
-                  <Pressable
-                    onPress={() => navigation.navigate('Meals')}
-                    accessibilityRole="button"
-                    accessibilityLabel="Calories, open meals"
-                    style={({ pressed }) => [
-                      styles.card,
-                      styles.metricTile,
-                      styles.metricTileCal,
-                      styles.dashboardTwinCard,
-                      pressed && styles.cardPressed,
-                    ]}
-                  >
-                    <View style={styles.dashboardTwinCardInner}>
-                      <View>
-                        <View style={styles.cardIconRow}>
-                          <MetricRingWithIcon
-                            size={DASHBOARD_METRIC_RING_SIZE}
-                            pct={calPct}
-                            color={RING_CAL}
-                            icon={calOverEarly ? 'fire-alert' : 'fire'}
-                            alert={calOverEarly}
-                          />
-                          <Text style={styles.cardEyebrow}>Calories</Text>
-                        </View>
-                        <View style={styles.metricTileAmountRow}>
-                          <Text
-                            style={[
-                              styles.metricTileAmount,
-                              calOverEarly && styles.metricTileAmountWarn,
-                            ]}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.7}
-                          >
-                            {snapshot.todayCalories.toLocaleString('en-US')}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.metricTileAmountUnit,
-                              calOverEarly && styles.metricTileAmountWarn,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {' '}
-                            kcal
-                          </Text>
-                        </View>
-                        <Text
-                          style={styles.metricTileHint}
-                          numberOfLines={2}
-                          ellipsizeMode="tail"
-                        >
-                          Goal {snapshot.calorieTarget.toLocaleString('en-US')}{' '}
-                          kcal · {calPctRaw}%
-                        </Text>
-                      </View>
-                      <View style={styles.metricStatPillOffset}>
-                        <DashboardStatPill
-                          tone={calOverEarly ? 'calOver' : 'cal'}
-                        >
-                          {calOverEarly
-                            ? `${calOverAmt} kcal over goal`
-                            : `${Math.max(
-                                0,
-                                snapshot.calorieTarget - snapshot.todayCalories,
-                              ).toLocaleString('en-US')} kcal left`}
-                        </DashboardStatPill>
-                      </View>
-                    </View>
-                  </Pressable>
-                </View>
-
-                <View style={styles.metricTileWrap}>
-                  <Pressable
+                  <DashboardHalfCard
                     onPress={() => navigation.navigate('Water')}
-                    accessibilityRole="button"
                     accessibilityLabel="Water, open water log"
-                    style={({ pressed }) => [
-                      styles.card,
-                      styles.metricTile,
-                      styles.metricTileWater,
-                      styles.dashboardTwinCard,
-                      pressed && styles.cardPressed,
-                    ]}
                   >
                     <View style={styles.dashboardTwinCardInner}>
                       <View>
@@ -499,63 +391,153 @@ export function DashboardScreen() {
                         </DashboardStatPill>
                       </View>
                     </View>
-                  </Pressable>
+                  </DashboardHalfCard>
+                </View>
+
+                <View style={styles.metricTileWrap}>
+                  <DashboardHalfCard
+                    onPress={() => navigation.navigate('Steps')}
+                    accessibilityLabel="Exercise, open steps screen"
+                  >
+                    <View style={styles.dashboardTwinCardInner}>
+                      <View>
+                        <View style={styles.cardIconRow}>
+                          <View style={styles.exerciseIconBubble}>
+                            <Icon
+                              name="run-fast"
+                              size={20}
+                              color={EXERCISE_BAR_TODAY}
+                            />
+                          </View>
+                          <Text style={styles.cardEyebrow}>Exercise</Text>
+                        </View>
+                        <Text style={styles.exerciseTileBig}>
+                          {exerciseToday} min
+                        </Text>
+                        <Text style={styles.metricTileHint}>
+                          Goal {EXERCISE_RING_GOAL} min · {exercisePct}%
+                        </Text>
+                      </View>
+                      <DashboardStatPill tone="exercise">
+                        {`Week ${moveExercise.weekTotalMin} min`}
+                      </DashboardStatPill>
+                    </View>
+                  </DashboardHalfCard>
                 </View>
               </View>
 
-              <View
-                style={[styles.card, styles.todayHeroCard, styles.moveCard]}
+              <Pressable
+                onPress={() => navigation.navigate('Meals')}
+                accessibilityRole="button"
+                accessibilityLabel="Calories and macros, open meals"
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
               >
-                <View style={[styles.cardIconRow, styles.moveCardIconRow]}>
-                  <View style={styles.exerciseIconBubble}>
-                    <Icon
-                      name="run-fast"
-                      size={20}
-                      color={EXERCISE_BAR_TODAY}
-                    />
+                <View style={styles.burnMacroGrid}>
+                  <View style={styles.burnMacroCol}>
+                    <View style={styles.cardIconRow}>
+                      <MetricRingWithIcon
+                        size={DASHBOARD_METRIC_RING_SIZE}
+                        pct={calPct}
+                        color={RING_CAL}
+                        icon={calOverEarly ? 'fire-alert' : 'fire'}
+                        alert={calOverEarly}
+                      />
+                      <Text style={styles.cardEyebrow}>Calories</Text>
+                    </View>
+                    <Text style={styles.burnMetricLabel}>Consumed today</Text>
+                    <Text
+                      style={[
+                        styles.burnMetricValue,
+                        calOverEarly && styles.metricTileAmountWarn,
+                      ]}
+                    >
+                      {snapshot.todayCalories.toLocaleString('en-US')} kcal
+                    </Text>
+                    <Text style={styles.burnMetricSub}>
+                      Burned today {moveEstKcalToday.toLocaleString('en-US')} kcal
+                    </Text>
+                    <View style={styles.metricStatPillOffset}>
+                      <DashboardStatPill tone={calOverEarly ? 'calOver' : 'cal'}>
+                        {calOverEarly
+                          ? `${calOverAmt} kcal over goal`
+                          : `${Math.max(
+                              0,
+                              snapshot.calorieTarget - snapshot.todayCalories,
+                            ).toLocaleString('en-US')} kcal left`}
+                      </DashboardStatPill>
+                    </View>
                   </View>
-                  <Text style={styles.cardEyebrow}>Move</Text>
+
+                  <View style={styles.burnMacroDivider} />
+
+                  <View style={styles.burnMacroCol}>
+                    <View style={styles.macroRingGrid}>
+                      <MacroProgressRing
+                        label="Protein"
+                        consumed={Math.round(snapshot.todayMacros.proteinG)}
+                        target={macroTargets?.proteinG ?? 0}
+                        color="#2563EB"
+                      />
+                      <MacroProgressRing
+                        label="Carbs"
+                        consumed={Math.round(snapshot.todayMacros.carbsG)}
+                        target={macroTargets?.carbsG ?? 0}
+                        color="#CA8A04"
+                      />
+                      <MacroProgressRing
+                        label="Fat"
+                        consumed={Math.round(snapshot.todayMacros.fatG)}
+                        target={macroTargets?.fatG ?? 0}
+                        color="#EA580C"
+                      />
+                      <MacroProgressRing
+                        label="Fiber"
+                        consumed={Math.round(snapshot.todayMacros.fiberG)}
+                        target={macroTargets?.fiberG ?? 0}
+                        color="#16A34A"
+                      />
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.exerciseBody}>
-                  <View style={styles.exerciseCopy}>
-                    <Text style={styles.todayHeroMetric}>
-                      {exerciseToday} min today
-                    </Text>
-                    <Text style={styles.todayHeroSub}>
-                      {EXERCISE_RING_GOAL} min goal · est. {moveEstKcalToday}{' '}
-                      kcal
-                    </Text>
-                    <Text style={styles.todayHeroMicro}>
-                      Week {moveExercise.weekTotalMin} min · ~
-                      {moveExercise.estKcalWeek} kcal
-                    </Text>
-                  </View>
-                  <View
-                    style={[styles.exerciseChart, styles.exerciseChartCompact]}
-                  >
-                    <ExerciseZigzagBg />
-                    <ExerciseWeekBars
-                      values={moveExercise.values}
-                      labels={moveExercise.labels}
-                      dayKeys={moveExercise.dayKeys}
-                      goalMinutes={EXERCISE_RING_GOAL}
-                      todayIndex={moveExercise.todayIdx}
-                      maxBarHeight={62}
-                    />
-                  </View>
-                </View>
-              </View>
+              </Pressable>
 
               <View style={styles.row2}>
-                <Pressable
-                  onPress={() => setHrModal(true)}
-                  style={({ pressed }) => [
-                    styles.card,
-                    styles.cardHalf,
-                    styles.dashboardTwinCard,
-                    pressed && styles.cardPressed,
-                  ]}
+                <DashboardHalfCard
+                  onPress={() => setWeightModal(true)}
+                  accessibilityLabel="Weight, update current and goal weight"
                 >
+                  <View style={styles.dashboardTwinCardInner}>
+                    <View>
+                      <View style={styles.cardIconRow}>
+                        <View
+                          style={[
+                            styles.iconBubble,
+                            { backgroundColor: '#E0E7FF' },
+                          ]}
+                        >
+                          <Icon
+                            name="scale-bathroom"
+                            size={22}
+                            color="#4F46E5"
+                          />
+                        </View>
+                        <Text style={styles.cardEyebrow}>Weight</Text>
+                      </View>
+                      <Text style={styles.weightBig}>
+                        {snapshot.profile.weightKg.toFixed(1)}
+                        <Text style={styles.weightUnit}> kg</Text>
+                      </Text>
+                      <Text style={styles.weightGoal}>
+                        Goal {snapshot.profile.goalWeightKg.toFixed(1)} kg
+                      </Text>
+                    </View>
+                    <DashboardStatPill tone="weight">
+                      {weightLabel}
+                    </DashboardStatPill>
+                  </View>
+                </DashboardHalfCard>
+
+                <DashboardHalfCard onPress={() => setHrModal(true)}>
                   <View style={styles.dashboardTwinCardInner}>
                     <View>
                       <View style={styles.cardIconRow}>
@@ -596,49 +578,7 @@ export function DashboardScreen() {
                       <HeartSpark points={hrPoints} color={DASH_HEART} />
                     </View>
                   </View>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setWeightModal(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Weight, update current and goal weight"
-                  style={({ pressed }) => [
-                    styles.card,
-                    styles.cardHalf,
-                    styles.dashboardTwinCard,
-                    pressed && styles.cardPressed,
-                  ]}
-                >
-                  <View style={styles.dashboardTwinCardInner}>
-                    <View>
-                      <View style={styles.cardIconRow}>
-                        <View
-                          style={[
-                            styles.iconBubble,
-                            { backgroundColor: '#E0E7FF' },
-                          ]}
-                        >
-                          <Icon
-                            name="scale-bathroom"
-                            size={22}
-                            color="#4F46E5"
-                          />
-                        </View>
-                        <Text style={styles.cardEyebrow}>Weight</Text>
-                      </View>
-                      <Text style={styles.weightBig}>
-                        {snapshot.profile.weightKg.toFixed(1)}
-                        <Text style={styles.weightUnit}> kg</Text>
-                      </Text>
-                      <Text style={styles.weightGoal}>
-                        Goal {snapshot.profile.goalWeightKg.toFixed(1)} kg
-                      </Text>
-                    </View>
-                    <DashboardStatPill tone="weight">
-                      {weightLabel}
-                    </DashboardStatPill>
-                  </View>
-                </Pressable>
+                </DashboardHalfCard>
               </View>
 
               {reminders.length > 0 ? (
@@ -901,6 +841,12 @@ const styles = StyleSheet.create({
   metricTileAmountWarn: {
     color: DASH_BAD,
   },
+  exerciseTileBig: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: DASH_SLATE,
+    letterSpacing: -0.5,
+  },
   metricTileHint: {
     marginTop: 4,
     fontSize: 13,
@@ -910,6 +856,75 @@ const styles = StyleSheet.create({
   },
   metricStatPillOffset: {
     marginTop: 8,
+  },
+  burnMacroGrid: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  burnMacroCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  burnMacroDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  burnMetricLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: DASH_MUTED,
+  },
+  burnMetricValue: {
+    marginTop: 4,
+    fontSize: 24,
+    fontWeight: '800',
+    color: DASH_SLATE,
+    letterSpacing: -0.4,
+  },
+  burnMetricSub: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    color: DASH_MUTED,
+  },
+  macroRingGrid: {
+    marginTop: 2,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 6,
+  },
+  macroRingItem: {
+    width: '48%',
+    alignItems: 'center',
+  },
+  macroRingWrap: {
+    position: 'relative',
+    width: 54,
+    height: 54,
+  },
+  macroRingCenter: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 54,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  macroRingValue: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: DASH_SLATE,
+  },
+  macroRingLabel: {
+    marginTop: 3,
+    fontSize: 10,
+    fontWeight: '700',
+    color: DASH_MUTED,
+    lineHeight: 12,
+    textAlign: 'center',
   },
   halfCardStatPill: {
     alignSelf: 'flex-start',
@@ -944,6 +959,12 @@ const styles = StyleSheet.create({
   },
   halfCardStatPillTextWeight: {
     color: '#4338CA',
+  },
+  halfCardStatPillExercise: {
+    backgroundColor: '#FFEDD5',
+  },
+  halfCardStatPillTextExercise: {
+    color: EXERCISE_BAR_TODAY,
   },
   dashboardTwinCard: {
     minHeight: DASHBOARD_TWIN_CARD_MIN_HEIGHT,
