@@ -18,6 +18,9 @@ import {
   type HeartRateDayBucket,
   type HeartRateReading,
 } from '../../../services/vitals';
+import { fetchActiveEnergyKcalForLocalDay } from '../../../services/deviceActiveEnergy';
+import { startOfLocalDay } from '../../water/waterDayUtils';
+
 export type DashboardSnapshot = Readonly<{
   profile: MealCalorieProfile;
   calorieTarget: number;
@@ -32,6 +35,8 @@ export type DashboardSnapshot = Readonly<{
   heartLatest: HeartRateReading | null;
   goals: UserGoals;
   weightGoalKg: number;
+  /** Active energy from HealthKit / Health Connect for local today; null if unavailable. */
+  todayActiveEnergyKcal: number | null;
 }>;
 
 function round1(n: number): number {
@@ -81,7 +86,10 @@ export function useDashboardData() {
         return;
       }
 
-      const waterToday = await getTodayTotalMl();
+      const [waterToday, todayActiveEnergyKcal] = await Promise.all([
+        getTodayTotalMl(),
+        fetchActiveEnergyKcalForLocalDay(startOfLocalDay(today)),
+      ]);
       const waterMl = 'error' in waterToday ? 0 : waterToday.totalMl;
 
       const mealWeekR = await getMealDaySummariesForRange(today, 7);
@@ -150,6 +158,7 @@ export function useDashboardData() {
         heartLatest,
         goals,
         weightGoalKg: goals.targetWeightKg,
+        todayActiveEnergyKcal,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
