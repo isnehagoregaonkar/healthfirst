@@ -111,7 +111,6 @@ export function GoalsScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.headerTitle}>Goals</Text>
           <Text style={styles.headerSub}>
             Set your daily targets. If left unset, defaults are based on your current weight and height profile.
           </Text>
@@ -218,12 +217,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 13,
