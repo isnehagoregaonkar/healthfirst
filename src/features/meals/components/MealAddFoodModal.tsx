@@ -54,10 +54,7 @@ export function MealAddFoodModal({
       onRequestClose={onClose}
       presentationStyle="overFullScreen"
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.backdrop}
-      >
+      <View style={styles.backdrop}>
         <Pressable
           style={styles.scrim}
           accessibilityLabel="Dismiss"
@@ -82,29 +79,54 @@ export function MealAddFoodModal({
             </Pressable>
           </View>
           {meal ? (
-            <ScrollView
-              style={styles.scroll}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.formScroll}
-            >
-              <AddFoodItemForm
-                activeMeal={meal}
-                editingItem={editingItem}
-                submitting={submitting}
-                onSubmitAdd={onSubmitAdd}
-                onSubmitEdit={onSubmitEdit}
-                onSwitchToAddFood={onSwitchToAddFood}
-                variant="modal"
-              />
-            </ScrollView>
+            Platform.OS === 'android' ? (
+              <KeyboardAvoidingView behavior="padding" style={styles.scroll}>
+                <ScrollView
+                  style={styles.scrollFill}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                  keyboardDismissMode="on-drag"
+                  contentContainerStyle={styles.formScroll}
+                >
+                  <AddFoodItemForm
+                    activeMeal={meal}
+                    editingItem={editingItem}
+                    submitting={submitting}
+                    onSubmitAdd={onSubmitAdd}
+                    onSubmitEdit={onSubmitEdit}
+                    onSwitchToAddFood={onSwitchToAddFood}
+                    variant="modal"
+                  />
+                </ScrollView>
+              </KeyboardAvoidingView>
+            ) : (
+              <ScrollView
+                style={styles.scroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                keyboardDismissMode="interactive"
+                automaticallyAdjustKeyboardInsets
+                contentInsetAdjustmentBehavior="automatic"
+                contentContainerStyle={styles.formScroll}
+              >
+                <AddFoodItemForm
+                  activeMeal={meal}
+                  editingItem={editingItem}
+                  submitting={submitting}
+                  onSubmitAdd={onSubmitAdd}
+                  onSubmitEdit={onSubmitEdit}
+                  onSwitchToAddFood={onSwitchToAddFood}
+                  variant="modal"
+                />
+              </ScrollView>
+            )
           ) : (
             <View style={styles.fallback}>
               <ActivityIndicatorPlaceholder />
             </View>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -186,6 +208,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scroll: {
+    flex: 1,
+  },
+  scrollFill: {
     flex: 1,
   },
   formScroll: {
