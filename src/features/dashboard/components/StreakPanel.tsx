@@ -36,12 +36,13 @@ type StreakDayCapsuleProps = Readonly<{
   tone: StreakCapsuleTone;
 }>;
 
-function circleBg(tone: StreakCapsuleTone): string {
+function circleBg(tone: StreakCapsuleTone, isToday: boolean): string {
   switch (tone) {
     case 'good':
       return STREAK_FLAME_SOFT;
     case 'warn':
-      return '#FEF3C7';
+      /** Past water-only days still read as streak days — match flame capsule chrome. */
+      return isToday ? '#FEF3C7' : STREAK_FLAME_SOFT;
     case 'over':
       return '#FEE2E2';
     case 'future':
@@ -51,12 +52,20 @@ function circleBg(tone: StreakCapsuleTone): string {
   }
 }
 
-function CapsuleIcon({ tone }: Readonly<{ tone: StreakCapsuleTone }>) {
+function CapsuleIcon({
+  tone,
+  isToday,
+}: Readonly<{ tone: StreakCapsuleTone; isToday: boolean }>) {
   switch (tone) {
     case 'good':
       return <Icon name="fire" size={18} color={STREAK_FLAME} />;
     case 'warn':
-      return <Icon name="food-apple" size={17} color="#B45309" />;
+      /** Apple only when today is water-only; every other day uses streak flame. */
+      return isToday ? (
+        <Icon name="food-apple" size={17} color="#B45309" />
+      ) : (
+        <Icon name="fire" size={18} color={STREAK_FLAME} />
+      );
     case 'over':
       return <Icon name="fire" size={18} color={RED} />;
     case 'missed':
@@ -73,8 +82,10 @@ function StreakDayCapsule({ label, isToday, tone }: StreakDayCapsuleProps) {
       >
         {label}
       </Text>
-      <View style={[capsuleStyles.circle, { backgroundColor: circleBg(tone) }]}>
-        <CapsuleIcon tone={tone} />
+      <View
+        style={[capsuleStyles.circle, { backgroundColor: circleBg(tone, isToday) }]}
+      >
+        <CapsuleIcon tone={tone} isToday={isToday} />
       </View>
     </View>
   );

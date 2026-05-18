@@ -74,6 +74,7 @@ export function useDashboardTodayMetrics(snapshot: DashboardSnapshot | null) {
     : 0;
   const exerciseGoalMin = snapshot?.goals.exerciseMinutesGoal ?? 30;
   const moveEstKcalToday = Math.round(exerciseToday * KCAL_PER_MOVE_MIN_EST);
+  const burnedKcalToday = snapshot?.todayActiveEnergyKcal ?? null;
 
   const weightLabel = useMemo(() => {
     if (!snapshot) {
@@ -106,6 +107,7 @@ export function useDashboardTodayMetrics(snapshot: DashboardSnapshot | null) {
     exerciseToday,
     exerciseGoalMin,
     moveEstKcalToday,
+    burnedKcalToday,
     weightLabel,
     hrPoints,
     calOverAmt,

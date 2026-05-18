@@ -1,11 +1,15 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MealItemRow, MealType, MealWithItems } from '../../../services/meals';
+import type {
+  MealItemRow,
+  MealType,
+  MealWithItems,
+} from '../../../services/meals';
 import { colors } from '../../../theme/tokens';
 import { MEAL_TYPE_ACCENTS, MEAL_TYPE_MCI, mealTypography } from '../mealUiTheme';
 import { MEAL_TYPE_LABEL } from '../mealConstants';
-import { MealEmptyMealSlotCard, MealLoggedItemCard } from './MealLoggedItemCard';
+import { MealLoggedItemCard } from './MealLoggedItemCard';
 
 function itemSelectionFooter(
   rowSelected: boolean,
@@ -28,10 +32,11 @@ type MealTypeSectionProps = Readonly<{
   /** When set, sheet is editing this food line; when null with highlightedMealId, sheet is add-food mode. */
   highlightedItemId: string | null;
   deletingItemId: string | null;
-  deletingMealId: string | null;
   onOpenMealSheet: (mealId: string, itemId: string | null) => void;
   onRemoveItem: (item: MealItemRow, mealId: string) => void;
-  onRemoveEmptyMeal: (mealId: string) => void;
+  /** Opens add-food for this meal type (reuses an empty meal if one exists). */
+  onRequestAddMealForType: (mealType: MealType) => void | Promise<void>;
+  addingMealType: MealType | null;
 }>;
 
 export function MealTypeSection({
@@ -40,10 +45,10 @@ export function MealTypeSection({
   highlightedMealId,
   highlightedItemId,
   deletingItemId,
-  deletingMealId,
   onOpenMealSheet,
   onRemoveItem,
-  onRemoveEmptyMeal,
+  onRequestAddMealForType,
+  addingMealType,
 }: MealTypeSectionProps) {
   const a = MEAL_TYPE_ACCENTS[mealType];
   const icon = MEAL_TYPE_MCI[mealType];
@@ -95,43 +100,50 @@ export function MealTypeSection({
         </View>
       </View>
 
-      {meals.length === 0 ? (
-        <View style={[styles.emptyHintCard, { borderColor: a.border }]}>
+      {meals.every(m => m.items.length === 0) ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${MEAL_TYPE_LABEL[mealType]}`}
+          accessibilityHint="Opens food search for this meal type"
+          disabled={addingMealType === mealType}
+          onPress={() => {
+            Promise.resolve(onRequestAddMealForType(mealType)).catch(() => {});
+          }}
+          style={({ pressed }) => [
+            styles.emptyHintCard,
+            { borderColor: a.border },
+            pressed &&
+              addingMealType !== mealType &&
+              styles.emptyHintPressed,
+          ]}
+        >
           <Icon name="silverware-fork-knife" size={22} color={colors.textSecondary} style={styles.emptyIcon} />
+          {addingMealType === mealType ? (
+            <ActivityIndicator style={styles.emptySpinner} color={a.primary} />
+          ) : null}
           <Text style={[mealTypography.body, styles.emptyCenter]}>
-            No {MEAL_TYPE_LABEL[mealType].toLowerCase()} yet — tap a meal button above.
+            No {MEAL_TYPE_LABEL[mealType].toLowerCase()} yet — tap here or a meal button above.
           </Text>
-        </View>
+        </Pressable>
       ) : (
         meals.flatMap((m) =>
-          m.items.length === 0
-            ? [
-                <MealEmptyMealSlotCard
-                  key={m.id}
-                  meal={m}
-                  selected={highlightedMealId === m.id && highlightedItemId === null}
-                  deleting={deletingMealId === m.id}
-                  onPressCard={() => onOpenMealSheet(m.id, null)}
-                  onPressRemove={() => onRemoveEmptyMeal(m.id)}
-                />,
-              ]
-            :             m.items.map((it) => {
-                const rowSelected =
-                  highlightedMealId === m.id &&
-                  (highlightedItemId === null || highlightedItemId === it.id);
-                return (
-                  <MealLoggedItemCard
-                    key={it.id}
-                    meal={m}
-                    item={it}
-                    selected={rowSelected}
-                    selectionFooter={itemSelectionFooter(rowSelected, highlightedItemId, it.id)}
-                    deleting={deletingItemId === it.id}
-                    onPressCard={() => onOpenMealSheet(m.id, it.id)}
-                    onPressRemove={() => onRemoveItem(it, m.id)}
-                  />
-                );
-              }),
+          m.items.map((it) => {
+            const rowSelected =
+              highlightedMealId === m.id &&
+              (highlightedItemId === null || highlightedItemId === it.id);
+            return (
+              <MealLoggedItemCard
+                key={it.id}
+                meal={m}
+                item={it}
+                selected={rowSelected}
+                selectionFooter={itemSelectionFooter(rowSelected, highlightedItemId, it.id)}
+                deleting={deletingItemId === it.id}
+                onPressCard={() => onOpenMealSheet(m.id, it.id)}
+                onPressRemove={() => onRemoveItem(it, m.id)}
+              />
+            );
+          }),
         )
       )}
     </View>
@@ -214,5 +226,12 @@ const styles = StyleSheet.create({
   emptyCenter: {
     textAlign: 'center',
     lineHeight: 22,
+  },
+  emptyHintPressed: {
+    opacity: 0.92,
+    backgroundColor: colors.background,
+  },
+  emptySpinner: {
+    marginBottom: 8,
   },
 });

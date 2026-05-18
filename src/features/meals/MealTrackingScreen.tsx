@@ -52,9 +52,7 @@ export function MealTrackingScreen() {
     submitFoodItem,
     updateFoodItem,
     confirmRemoveFoodItem,
-    confirmRemoveEmptyMeal,
     deletingItemId,
-    deletingMealId,
     clearError,
   } = useMealLogScreen();
 
@@ -101,13 +99,18 @@ export function MealTrackingScreen() {
 
   const handleMealTypePress = useCallback(
     async (mealType: MealType) => {
+      const existingEmpty = grouped[mealType].find(m => m.items.length === 0);
+      if (existingEmpty) {
+        openMealSheet(existingEmpty.id, null);
+        return;
+      }
       const id = await startMeal(mealType);
       if (id) {
         setFoodModalMealId(id);
         setFoodModalItemId(null);
       }
     },
-    [startMeal],
+    [grouped, openMealSheet, startMeal],
   );
 
   const handleSubmitAddFood = useCallback(
@@ -229,10 +232,10 @@ export function MealTrackingScreen() {
                   highlightedMealId={foodModalMealId}
                   highlightedItemId={foodModalItemId}
                   deletingItemId={deletingItemId}
-                  deletingMealId={deletingMealId}
                   onOpenMealSheet={openMealSheet}
                   onRemoveItem={confirmRemoveFoodItem}
-                  onRemoveEmptyMeal={confirmRemoveEmptyMeal}
+                  onRequestAddMealForType={handleMealTypePress}
+                  addingMealType={creatingMealType}
                 />
               ))}
             </ScrollView>

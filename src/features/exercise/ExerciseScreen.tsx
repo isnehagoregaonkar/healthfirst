@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   NativeModules,
   PermissionsAndroid,
@@ -1120,15 +1121,24 @@ export function ExerciseScreen() {
         setMealProfile(p);
       }
     });
-    void loadUserGoals().then(goals => {
-      if (alive) {
-        setEnergyGoalKcal(goals.calorieBurnGoal);
-      }
-    });
     return () => {
       alive = false;
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      void loadUserGoals().then(goals => {
+        if (alive) {
+          setEnergyGoalKcal(goals.calorieBurnGoal);
+        }
+      });
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
 
   const selectDay = useCallback((d: Date) => {
     setSelectedDay(startOfLocalDay(d));
@@ -1408,7 +1418,14 @@ export function ExerciseScreen() {
       }
       return (m.steps ?? 0) >= ACTIVE_DAY_MIN_STEPS || m.workoutCount >= 1;
     }).length;
-    return { rangeLabel, avgSteps, totalWorkouts, activeDays };
+    const burnVals = metrics
+      .map(m => m?.energyKcal ?? null)
+      .filter((v): v is number => v != null && Number.isFinite(v) && v >= 0);
+    const weekBurnedKcal =
+      burnVals.length > 0
+        ? Math.round(burnVals.reduce((a, b) => a + b, 0) * 10) / 10
+        : null;
+    return { rangeLabel, avgSteps, totalWorkouts, activeDays, weekBurnedKcal };
   }, [weekStripMetrics, activeDay]);
 
   const groupedWorkouts = useMemo(() => {
@@ -1464,6 +1481,14 @@ export function ExerciseScreen() {
               </Text>
               <Text style={styles.weekStripMetricLabel}>Active days</Text>
             </View>
+          </View>
+          <View style={styles.weekStripBurnRow}>
+            <Text style={styles.weekStripBurnLabel}>Burned this week</Text>
+            <Text style={styles.weekStripBurnValue}>
+              {weekStripSummary.weekBurnedKcal == null
+                ? '—'
+                : `${Math.round(weekStripSummary.weekBurnedKcal).toLocaleString()} kcal`}
+            </Text>
           </View>
         </View>
 
@@ -1669,6 +1694,26 @@ const styles = StyleSheet.create({
     width: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
     marginVertical: 4,
+  },
+  weekStripBurnRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  weekStripBurnLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  weekStripBurnValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textPrimary,
   },
   bannerError: {
     marginTop: 12,

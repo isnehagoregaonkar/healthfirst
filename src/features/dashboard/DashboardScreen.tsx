@@ -269,7 +269,7 @@ export function DashboardScreen() {
     moveExercise,
     exerciseToday,
     exerciseGoalMin,
-    moveEstKcalToday,
+    burnedKcalToday,
     weightLabel,
     hrPoints,
     calOverAmt,
@@ -471,8 +471,11 @@ export function DashboardScreen() {
                       {snapshot.todayCalories.toLocaleString('en-US')} kcal
                     </Text>
                     <Text style={styles.burnMetricSub}>
-                      Burned today {moveEstKcalToday.toLocaleString('en-US')}{' '}
-                      kcal
+                      {burnedKcalToday != null
+                        ? `Burned today ${Math.round(burnedKcalToday).toLocaleString(
+                            'en-US',
+                          )} kcal`
+                        : 'Burned today —'}
                     </Text>
                     <View style={styles.metricStatPillOffset}>
                       <DashboardStatPill
